@@ -88,7 +88,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
       try {
         await html5QrCode.start(
           config,
-          { fps: 5, qrbox: { width: 300, height: 100 } },
+          { fps: 15, qrbox: { width: 200, height: 100 } },
           (decodedText) => handleScan(decodedText),
           () => {},
         );
