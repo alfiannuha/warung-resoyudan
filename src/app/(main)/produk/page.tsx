@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
+import { lookupBarcode } from "@/lib/barcode-lookup";
 import { useProductStore } from "@/stores/use-product-store";
 import { useShallow } from "zustand/react/shallow";
 import StockBadge from "@/components/produk/stock-badge";
@@ -20,6 +21,8 @@ export default function ProdukPage() {
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const [scannedName, setScannedName] = useState<string>("");
+  const [scannedCategory, setScannedCategory] = useState<string>("");
 
   const { products, quickAddStock, deleteProduct } = useProductStore(
     useShallow((s) => ({
@@ -67,12 +70,16 @@ export default function ProdukPage() {
     setFormOpen(false);
     setEditId(null);
     setScannedBarcode(null);
+    setScannedName("");
+    setScannedCategory("");
   };
 
   const handleManualAdd = () => {
     setSpeedDialOpen(false);
     setEditId(null);
     setScannedBarcode(null);
+    setScannedName("");
+    setScannedCategory("");
     setFormOpen(true);
   };
 
@@ -81,14 +88,31 @@ export default function ProdukPage() {
     setScannerOpen(true);
   };
 
-  const handleScanResult = (barcode: string) => {
+  const handleScanResult = async (barcode: string) => {
     // Check duplicate
     const existing = useProductStore.getState().findProductByBarcode(barcode);
     if (existing) {
       toast(`Barcode sudah digunakan oleh produk "${existing.name}".`, "error");
       return;
     }
+
+    // Try to look up product details from barcode database
     setScannedBarcode(barcode);
+
+    let name = "";
+    let category = "Makanan";
+    try {
+      const result = await lookupBarcode(barcode);
+      if (result) {
+        name = result.name;
+        category = result.category;
+      }
+    } catch {
+      // Lookup failed, leave name empty for manual input
+    }
+
+    setScannedName(name);
+    setScannedCategory(category);
     setScannerOpen(false);
     setEditId(null);
     setFormOpen(true);
@@ -388,6 +412,8 @@ export default function ProdukPage() {
         onOpenChange={handleFormClose}
         editId={editId || undefined}
         initialBarcode={scannedBarcode || undefined}
+        initialName={scannedName || undefined}
+        initialCategory={scannedCategory || undefined}
       />
 
       {/* Delete Confirm */}

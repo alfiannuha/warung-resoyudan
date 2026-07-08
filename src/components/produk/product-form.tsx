@@ -15,26 +15,30 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   editId?: string;
   initialBarcode?: string;
+  initialName?: string;
+  initialCategory?: string;
 }
 
-export default function ProductForm({ open, onOpenChange, editId, initialBarcode }: Props) {
+export default function ProductForm({ open, onOpenChange, editId, initialBarcode, initialName, initialCategory }: Props) {
   const { products, addProduct, updateProduct } = useProductStore();
   const existing = editId ? products.find((p) => p.id === editId) : null;
 
-  const [category, setCategory] = useState(existing?.category || "Makanan");
-  const [name, setName] = useState(existing?.name || "");
+  const [category, setCategory] = useState(existing?.category || initialCategory || "Makanan");
+  const [name, setName] = useState(existing?.name || initialName || "");
   const [barcode, setBarcode] = useState(existing?.barcode || initialBarcode || "");
   const [buyPrice, setBuyPrice] = useState(String(existing?.buyPrice || ""));
   const [sellPrice, setSellPrice] = useState(String(existing?.sellPrice || ""));
   const [stock, setStock] = useState(String(existing?.stock || ""));
   const [minStock, setMinStock] = useState(String(existing?.minStock || "0"));
 
-  // Sync initialBarcode when dialog opens from scan
+  // Sync initial values when dialog opens from scan
   useEffect(() => {
-    if (open && initialBarcode && !editId) {
-      setBarcode(initialBarcode);
+    if (open && !editId) {
+      if (initialBarcode) setBarcode(initialBarcode);
+      if (initialName) setName(initialName);
+      if (initialCategory) setCategory(initialCategory);
     }
-  }, [open, initialBarcode, editId]);
+  }, [open, initialBarcode, initialName, initialCategory, editId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
