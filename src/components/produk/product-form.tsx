@@ -94,7 +94,7 @@ export default function ProductForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white rounded-xl max-w-[400px]">
+      <DialogContent className="bg-white rounded-xl max-w-[400px] max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-headline-md font-bold">
             {editId ? "Edit Produk" : "Tambah Produk"}
