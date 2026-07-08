@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { Icon } from "@/lib/icon-map";
 
 interface Props {
   open: boolean;
@@ -31,6 +30,7 @@ function playBeep() {
 
 export default function ScannerDialog({ open, onClose, onScan, mode = "product" }: Props) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const runningRef = useRef(false);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const onScanRef = useRef(onScan);
   const [processing, setProcessing] = useState(false);
@@ -72,10 +72,11 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
   useEffect(() => {
     if (!open) {
-      if (scannerRef.current) {
+      if (scannerRef.current && runningRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
       }
+      scannerRef.current = null;
+      runningRef.current = false;
       trackRef.current = null;
       setProcessing(false);
       setStatusText("");
@@ -123,6 +124,8 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           () => {}
         );
 
+        runningRef.current = true;
+
         // Grab the video track for torch control
         const videoEl = document.querySelector("#scanner-element video") as HTMLVideoElement | null;
         if (videoEl && videoEl.srcObject instanceof MediaStream) {
@@ -144,20 +147,21 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
     return () => {
       cancelled = true;
-      if (scannerRef.current) {
+      if (scannerRef.current && runningRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
       }
+      scannerRef.current = null;
+      runningRef.current = false;
       trackRef.current = null;
     };
   }, [open, handleScan]);
 
   const handleClose = () => {
-    if (scannerRef.current) {
+    if (scannerRef.current && runningRef.current) {
       scannerRef.current.stop().catch(() => {});
-      scannerRef.current = null;
     }
-    trackRef.current = null;
+    scannerRef.current = null;
+    runningRef.current = false;
     onClose();
   };
 
