@@ -7,3 +7,6 @@
 
 # api
 - Use real Open Food Facts API for barcode product lookups with mock fallback. Confidence: 0.50
+
+# language
+- Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.60

@@ -22,7 +22,7 @@ export default function CartItemRow({ item }: Props) {
   return (
     <div className="flex items-center gap-4 py-2">
       <div className="flex-1 min-w-0">
-        <p className="text-body-lg font-medium truncate">{item.name}</p>
+        <p className="text-body-lg font-medium break-words leading-snug">{item.name}</p>
         <p className="text-label-md text-on-surface-variant">
           {formatCurrency(item.sellPrice)}
         </p>
