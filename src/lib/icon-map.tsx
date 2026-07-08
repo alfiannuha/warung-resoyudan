@@ -33,6 +33,7 @@ import {
   Store,
   Edit,
   MoreVertical,
+  Camera,
   type LucideIcon,
 } from "lucide-react";
 
@@ -76,6 +77,7 @@ export const iconMap: Record<string, LucideIcon> = {
   store: Store,
   edit: Edit,
   more_vert: MoreVertical,
+  camera_switch: Camera,
 };
 
 export function Icon({ name, className = "", size = 24 }: { name: string; className?: string; size?: number }) {

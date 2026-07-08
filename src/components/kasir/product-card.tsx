@@ -11,6 +11,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.addToCart);
   const throwBall = useFlyingBallStore((s) => s.throwBall);
   const [animating, setAnimating] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleAdd = () => {
@@ -39,6 +40,8 @@ export default function ProductCard({ product }: { product: Product }) {
     setTimeout(() => setAnimating(false), 300);
   };
 
+  const showImage = product.image_url && !imgError;
+
   return (
     <div
       ref={cardRef}
@@ -52,6 +55,13 @@ export default function ProductCard({ product }: { product: Product }) {
           <div className="w-full h-full bg-secondary/10 flex items-center justify-center">
             <Icon name="check_circle" size={40} className="text-secondary animate-badge-pulse" />
           </div>
+        ) : showImage ? (
+          <img
+            src={product.image_url!}
+            alt={product.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
         ) : (
           <Icon name="inventory_2" size={40} className="text-outline" />
         )}

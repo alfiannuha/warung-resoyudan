@@ -16,8 +16,25 @@ export default function ProductRow({ product }: Props) {
   return (
     <div className="bg-white border border-border-standard rounded-xl p-4 flex flex-col gap-3 transition-all active:scale-[0.99]">
       <div className="flex justify-between items-start">
-        <div className="flex flex-col min-w-0">
-          <span className="text-label-xl font-bold text-on-surface truncate">{product.name}</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+            {product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <span className="text-label-xl font-bold text-outline opacity-40">
+                {product.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-label-xl font-bold text-on-surface truncate">{product.name}</span>
+            {product.brand && <span className="text-[11px] text-outline">{product.brand}</span>}
+          </div>
         </div>
         <StockBadge stock={product.stock} minStock={product.minStock} />
       </div>

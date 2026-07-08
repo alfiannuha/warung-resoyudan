@@ -33,11 +33,16 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
   const runningRef = useRef(false);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const onScanRef = useRef(onScan);
+  const debounceRef = useRef(false);
+  const mountedRef = useRef(false);
+
   const [processing, setProcessing] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
   const [cameraError, setCameraError] = useState("");
-  const debounceRef = useRef(false);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+
   onScanRef.current = onScan;
 
   const handleScan = useCallback((barcode: string) => {
@@ -54,63 +59,47 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     }, 800);
   }, []);
 
-  const toggleTorch = async () => {
-    const track = trackRef.current;
-    if (!track) return;
-    try {
-      await track.applyConstraints({
-        // @ts-expect-error - torch is non-standard
-        advanced: [{ torch: !torchOn }],
-      });
-      setTorchOn(!torchOn);
-    } catch {
-      // Torch toggle failed
-    }
-  };
-
-  useEffect(() => {
-    if (!open) {
-      if (scannerRef.current && runningRef.current) {
-        scannerRef.current.stop().catch(() => {});
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current && runningRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch {
+        // Ignore stop errors
       }
-      scannerRef.current = null;
-      runningRef.current = false;
-      trackRef.current = null;
-      setProcessing(false);
-      setTorchOn(false);
-      setTorchSupported(false);
-      setCameraError("");
-      debounceRef.current = false;
-      return;
     }
+    scannerRef.current = null;
+    runningRef.current = false;
+    trackRef.current = null;
+  }, []);
 
-    let cancelled = false;
-
-    const start = async () => {
+  const startScanner = useCallback(
+    async (deviceId?: string) => {
+      if (!mountedRef.current) return;
       await new Promise((r) => setTimeout(r, 100));
-      if (cancelled || !document.getElementById("scanner-element")) return;
+      if (!mountedRef.current || !document.getElementById("scanner-element")) return;
 
       const html5QrCode = new Html5Qrcode("scanner-element");
       scannerRef.current = html5QrCode;
 
+      const config = deviceId
+        ? { deviceId: { exact: deviceId } }
+        : { facingMode: "environment" };
+
       try {
         await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 15,
-            qrbox: { width: 200, height: 100 },
-          },
-          (decodedText) => {
-            handleScan(decodedText);
-          },
-          () => {}
+          config,
+          { fps: 15, qrbox: { width: 200, height: 100 } },
+          (decodedText) => handleScan(decodedText),
+          () => {},
         );
 
         runningRef.current = true;
         setCameraError("");
 
         // Grab track for torch
-        const videoEl = document.querySelector("#scanner-element video") as HTMLVideoElement | null;
+        const videoEl = document.querySelector(
+          "#scanner-element video",
+        ) as HTMLVideoElement | null;
         if (videoEl?.srcObject instanceof MediaStream) {
           const track = videoEl.srcObject.getVideoTracks()[0];
           if (track) {
@@ -128,27 +117,84 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           setCameraError("Kamera tidak tersedia. Pastikan perangkat memiliki kamera.");
         }
       }
-    };
+    },
+    [handleScan],
+  );
 
-    start();
+  const toggleTorch = async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    try {
+      await track.applyConstraints({
+        // @ts-expect-error - torch is non-standard
+        advanced: [{ torch: !torchOn }],
+      });
+      setTorchOn(!torchOn);
+    } catch {
+      // Torch toggle failed
+    }
+  };
+
+  const switchCamera = async () => {
+    if (cameras.length < 2) return;
+    const nextIndex = (currentCameraIndex + 1) % cameras.length;
+
+    try {
+      await stopScanner();
+      setTorchOn(false);
+      setTorchSupported(false);
+      setCurrentCameraIndex(nextIndex);
+      await startScanner(cameras[nextIndex].deviceId);
+    } catch {
+      // Camera switch failed — keep current
+    }
+  };
+
+  // Enumerate cameras on mount
+  useEffect(() => {
+    if (!open) {
+      setCameras([]);
+      setCurrentCameraIndex(0);
+      return;
+    }
+
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        const videoInputs = devices.filter(
+          (d) => d.kind === "videoinput",
+        );
+        setCameras(videoInputs);
+      })
+      .catch(() => {});
+  }, [open]);
+
+  // Start/stop scanner on open/close
+  useEffect(() => {
+    mountedRef.current = open;
+
+    if (!open) {
+      stopScanner();
+      setProcessing(false);
+      setTorchOn(false);
+      setTorchSupported(false);
+      setCameraError("");
+      debounceRef.current = false;
+      return;
+    }
+
+    setCurrentCameraIndex(0);
+    startScanner();
 
     return () => {
-      cancelled = true;
-      if (scannerRef.current && runningRef.current) {
-        scannerRef.current.stop().catch(() => {});
-      }
-      scannerRef.current = null;
-      runningRef.current = false;
-      trackRef.current = null;
+      mountedRef.current = false;
+      stopScanner();
     };
-  }, [open, handleScan]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleClose = () => {
-    if (scannerRef.current && runningRef.current) {
-      scannerRef.current.stop().catch(() => {});
-    }
-    scannerRef.current = null;
-    runningRef.current = false;
+    stopScanner();
     onClose();
   };
 
@@ -168,6 +214,18 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           Tutup
         </button>
         <div className="flex items-center gap-3">
+          {cameras.length > 1 && (
+            <button
+              onClick={switchCamera}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white transition-colors"
+              aria-label="Ganti kamera"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 8h-1.5a2 2 0 0 1-1.76-1.08L16 5.5a2 2 0 0 0-1.76-1.08H9.76A2 2 0 0 0 8 5.5l-.74 1.42A2 2 0 0 1 5.5 8H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+            </button>
+          )}
           {torchSupported && (
             <button
               onClick={toggleTorch}

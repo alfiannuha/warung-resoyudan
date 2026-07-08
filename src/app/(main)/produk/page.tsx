@@ -22,7 +22,9 @@ export default function ProdukPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [scannedName, setScannedName] = useState<string>("");
+  const [scannedBrand, setScannedBrand] = useState<string>("");
   const [scannedCategory, setScannedCategory] = useState<string>("");
+  const [scannedImageUrl, setScannedImageUrl] = useState<string>("");
 
   const { products, quickAddStock, deleteProduct } = useProductStore(
     useShallow((s) => ({
@@ -100,19 +102,25 @@ export default function ProdukPage() {
     setScannedBarcode(barcode);
 
     let name = "";
+    let brand = "";
     let category = "Makanan";
+    let imageUrl = "";
     try {
       const result = await lookupBarcode(barcode);
       if (result) {
         name = result.name;
+        brand = result.brand;
         category = result.category;
+        imageUrl = result.image_url;
       }
     } catch {
-      // Lookup failed, leave name empty for manual input
+      // Lookup failed, leave fields empty for manual input
     }
 
     setScannedName(name);
+    setScannedBrand(brand);
     setScannedCategory(category);
+    setScannedImageUrl(imageUrl);
     setScannerOpen(false);
     setEditId(null);
     setFormOpen(true);
@@ -220,12 +228,22 @@ export default function ProdukPage() {
                 <tr key={product.id} className="hover:bg-surface-container-lowest/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0">
-                        <Icon name="package" size={24} className="text-outline opacity-40" />
+                      <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <Icon name="package" size={24} className="text-outline opacity-40" />
+                        )}
                       </div>
                       <div>
                         <div className="text-body-lg font-bold text-primary">{product.name}</div>
                         <div className="flex items-center gap-2">
+                          {product.brand && <span className="text-[11px] text-outline">{product.brand}</span>}
                           <span className="text-label-md text-[12px] uppercase text-on-surface-variant bg-surface-container-high px-1.5 rounded">{product.category}</span>
                           {product.barcode && <span className="text-[11px] text-outline">• {product.barcode}</span>}
                           <StockBadge stock={product.stock} minStock={product.minStock} />
@@ -297,10 +315,19 @@ export default function ProdukPage() {
           filtered.map((product) => (
             <div key={product.id} className="bg-white border border-border-standard rounded-xl p-4">
               <div className="flex justify-between items-start mb-2">
-                <div className="flex-1 min-w-0">
-                  <span className="text-label-xl font-bold">{product.name}</span>
-                  <span className="block text-[12px] text-outline">{product.category}</span>
-                  {product.barcode && <span className="text-[11px] text-outline">• {product.barcode}</span>}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <Icon name="package" size={20} className="text-outline opacity-40" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-label-xl font-bold block truncate">{product.name}</span>
+                    {product.brand && <span className="text-[11px] text-outline">{product.brand}</span>}
+                    <span className="block text-[12px] text-outline">{product.category}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0 ml-2">
                   <StockBadge stock={product.stock} minStock={product.minStock} />
@@ -413,7 +440,9 @@ export default function ProdukPage() {
         editId={editId || undefined}
         initialBarcode={scannedBarcode || undefined}
         initialName={scannedName || undefined}
+        initialBrand={scannedBrand || undefined}
         initialCategory={scannedCategory || undefined}
+        initialImageUrl={scannedImageUrl || undefined}
       />
 
       {/* Delete Confirm */}

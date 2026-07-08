@@ -16,16 +16,29 @@ interface Props {
   editId?: string;
   initialBarcode?: string;
   initialName?: string;
+  initialBrand?: string;
   initialCategory?: string;
+  initialImageUrl?: string;
 }
 
-export default function ProductForm({ open, onOpenChange, editId, initialBarcode, initialName, initialCategory }: Props) {
+export default function ProductForm({
+  open,
+  onOpenChange,
+  editId,
+  initialBarcode,
+  initialName,
+  initialBrand,
+  initialCategory,
+  initialImageUrl,
+}: Props) {
   const { products, addProduct, updateProduct } = useProductStore();
   const existing = editId ? products.find((p) => p.id === editId) : null;
 
-  const [category, setCategory] = useState(existing?.category || initialCategory || "Makanan");
   const [name, setName] = useState(existing?.name || initialName || "");
+  const [brand, setBrand] = useState(existing?.brand || initialBrand || "");
+  const [category, setCategory] = useState(existing?.category || initialCategory || "Makanan");
   const [barcode, setBarcode] = useState(existing?.barcode || initialBarcode || "");
+  const [imageUrl, setImageUrl] = useState(existing?.image_url || initialImageUrl || "");
   const [buyPrice, setBuyPrice] = useState(String(existing?.buyPrice || ""));
   const [sellPrice, setSellPrice] = useState(String(existing?.sellPrice || ""));
   const [stock, setStock] = useState(String(existing?.stock || ""));
@@ -36,16 +49,20 @@ export default function ProductForm({ open, onOpenChange, editId, initialBarcode
     if (open && !editId) {
       if (initialBarcode) setBarcode(initialBarcode);
       if (initialName) setName(initialName);
+      if (initialBrand) setBrand(initialBrand);
       if (initialCategory) setCategory(initialCategory);
+      if (initialImageUrl) setImageUrl(initialImageUrl);
     }
-  }, [open, initialBarcode, initialName, initialCategory, editId]);
+  }, [open, initialBarcode, initialName, initialBrand, initialCategory, initialImageUrl, editId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data = {
       name,
+      brand: brand.trim() || null,
       category,
       barcode: barcode.trim() || null,
+      image_url: imageUrl.trim() || null,
       buyPrice: Number(buyPrice),
       sellPrice: Number(sellPrice),
       stock: Number(stock),
@@ -65,8 +82,10 @@ export default function ProductForm({ open, onOpenChange, editId, initialBarcode
 
   const resetForm = () => {
     setName("");
+    setBrand("");
     setCategory("Makanan");
     setBarcode("");
+    setImageUrl("");
     setBuyPrice("");
     setSellPrice("");
     setStock("");
@@ -95,9 +114,16 @@ export default function ProductForm({ open, onOpenChange, editId, initialBarcode
             />
           </div>
           <div>
-            <label className="text-label-md text-on-surface-variant block mb-1">
-              Kategori
-            </label>
+            <label className="text-label-md text-on-surface-variant block mb-1">Merek</label>
+            <input
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-surface transition-all"
+              placeholder="Contoh: Indomie, Aqua, ..."
+            />
+          </div>
+          <div>
+            <label className="text-label-md text-on-surface-variant block mb-1">Kategori</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -117,6 +143,21 @@ export default function ProductForm({ open, onOpenChange, editId, initialBarcode
               placeholder="Kosongkan jika tidak ada barcode"
             />
           </div>
+          {imageUrl && (
+            <div>
+              <label className="text-label-md text-on-surface-variant block mb-1">Gambar Produk</label>
+              <div className="w-24 h-24 rounded-xl border border-border-standard overflow-hidden bg-surface-container">
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-label-md text-on-surface-variant block mb-1">

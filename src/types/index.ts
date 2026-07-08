@@ -1,8 +1,10 @@
 export interface Product {
   id: string;
   name: string;
+  brand: string | null;
   category: string;
   barcode: string | null;
+  image_url: string | null;
   buyPrice: number;
   sellPrice: number;
   stock: number;
