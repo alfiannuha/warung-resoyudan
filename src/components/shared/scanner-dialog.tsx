@@ -36,6 +36,8 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
   const scanningRef = useRef(false);
   const onScanRef = useRef(onScan);
   const debounceRef = useRef(false);
+  const lastBarcodeRef = useRef<string | null>(null);
+  const waitingClearRef = useRef(false);
   const mountedRef = useRef(false);
 
   const [processing, setProcessing] = useState(false);
@@ -60,6 +62,8 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
     playBeep();
     setProcessing(true);
+    lastBarcodeRef.current = barcode;
+    waitingClearRef.current = true;
     onScanRef.current(barcode);
 
     setTimeout(() => {
@@ -70,6 +74,8 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
   const stopStream = useCallback(() => {
     scanningRef.current = false;
+    lastBarcodeRef.current = null;
+    waitingClearRef.current = false;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -139,9 +145,24 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
     try {
       const barcodes = await detector.detect(video);
-      if (barcodes.length > 0 && scanningRef.current) {
-        handleScan(barcodes[0].rawValue);
-        return;
+
+      if (waitingClearRef.current) {
+        // Waiting for current barcode to leave frame
+        if (barcodes.length === 0) {
+          waitingClearRef.current = false;
+        }
+      } else if (barcodes.length > 0) {
+        const raw = barcodes[0].rawValue;
+
+        if (debounceRef.current) {
+          // Still in cooldown — skip
+        } else if (raw === lastBarcodeRef.current) {
+          // Same barcode reappeared after leaving — re-scan
+          handleScan(raw);
+        } else {
+          // New barcode
+          handleScan(raw);
+        }
       }
     } catch {
       // Frame skipped — continue scanning
