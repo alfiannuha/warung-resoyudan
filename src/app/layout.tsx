@@ -38,6 +38,7 @@ export const metadata: Metadata = {
       template: "%s - Warung Resoyudan",
     },
     description: APP_DESCRIPTION,
+    images: "/icons/logo_warung_resoyudan.png",
   },
   twitter: {
     card: "summary",
@@ -46,6 +47,17 @@ export const metadata: Metadata = {
       template: "%s - Warung Resoyudan",
     },
     description: APP_DESCRIPTION,
+    images: "/icons/logo_warung_resoyudan.png",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/favicon_io/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/favicon_io/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon_io/favicon.ico", sizes: "48x48" },
+    ],
+    apple: [
+      { url: "/icons/favicon_io/apple-touch-icon.png", sizes: "180x180" },
+    ],
   },
 };
 
