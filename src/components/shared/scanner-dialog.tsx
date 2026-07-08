@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { BarcodeDetector } from "barcode-detector";
 
 interface Props {
   open: boolean;
@@ -29,9 +29,11 @@ function playBeep() {
 }
 
 export default function ScannerDialog({ open, onClose, onScan, mode = "product" }: Props) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const runningRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
+  const detectorRef = useRef<BarcodeDetector | null>(null);
+  const scanningRef = useRef(false);
   const onScanRef = useRef(onScan);
   const debounceRef = useRef(false);
   const mountedRef = useRef(false);
@@ -44,6 +46,13 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
 
   onScanRef.current = onScan;
+
+  // Initialise detector once
+  useEffect(() => {
+    detectorRef.current = new BarcodeDetector({
+      formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "code_93", "itf", "qr_code"],
+    });
+  }, []);
 
   const handleScan = useCallback((barcode: string) => {
     if (debounceRef.current) return;
@@ -59,56 +68,58 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     }, 800);
   }, []);
 
-  const stopScanner = useCallback(async () => {
-    if (scannerRef.current && runningRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch {
-        // Ignore stop errors
-      }
+  const stopStream = useCallback(() => {
+    scanningRef.current = false;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
     }
-    scannerRef.current = null;
-    runningRef.current = false;
     trackRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   }, []);
 
-  const startScanner = useCallback(
+  const startStream = useCallback(
     async (deviceId?: string) => {
       if (!mountedRef.current) return;
-      await new Promise((r) => setTimeout(r, 100));
-      if (!mountedRef.current || !document.getElementById("scanner-element")) return;
 
-      const html5QrCode = new Html5Qrcode("scanner-element");
-      scannerRef.current = html5QrCode;
-
-      const config = deviceId
-        ? { deviceId: { exact: deviceId } }
-        : { facingMode: "environment" };
+      const constraints: MediaStreamConstraints = {
+        video: deviceId
+          ? { deviceId: { exact: deviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+          : { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      };
 
       try {
-        await html5QrCode.start(
-          config,
-          { fps: 15, qrbox: { width: 200, height: 100 } },
-          (decodedText) => handleScan(decodedText),
-          () => {},
-        );
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+        const track = stream.getVideoTracks()[0];
+        trackRef.current = track;
 
-        runningRef.current = true;
-        setCameraError("");
+        // Check torch support
+        const caps = track.getCapabilities?.();
+        // @ts-expect-error - torch is non-standard
+        setTorchSupported(!!caps?.torch);
 
-        // Grab track for torch
-        const videoEl = document.querySelector(
-          "#scanner-element video",
-        ) as HTMLVideoElement | null;
-        if (videoEl?.srcObject instanceof MediaStream) {
-          const track = videoEl.srcObject.getVideoTracks()[0];
-          if (track) {
-            trackRef.current = track;
-            const caps = track.getCapabilities?.();
-            // @ts-expect-error - torch is non-standard
-            setTorchSupported(!!caps?.torch);
-          }
+        if (!mountedRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
         }
+
+        const video = document.getElementById("scanner-video") as HTMLVideoElement | null;
+        if (!video) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        video.srcObject = stream;
+        videoRef.current = video;
+        await video.play();
+
+        setCameraError("");
+        scanningRef.current = true;
+        scanFrame();
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("NotAllowedError") || msg.includes("Permission")) {
@@ -118,8 +129,28 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
         }
       }
     },
-    [handleScan],
+    [],
   );
+
+  const scanFrame = useCallback(async () => {
+    const detector = detectorRef.current;
+    const video = videoRef.current;
+    if (!detector || !video || !scanningRef.current) return;
+
+    try {
+      const barcodes = await detector.detect(video);
+      if (barcodes.length > 0 && scanningRef.current) {
+        handleScan(barcodes[0].rawValue);
+        return;
+      }
+    } catch {
+      // Frame skipped — continue scanning
+    }
+
+    if (scanningRef.current) {
+      requestAnimationFrame(() => scanFrame());
+    }
+  }, [handleScan]);
 
   const toggleTorch = async () => {
     const track = trackRef.current;
@@ -140,11 +171,11 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     const nextIndex = (currentCameraIndex + 1) % cameras.length;
 
     try {
-      await stopScanner();
+      stopStream();
       setTorchOn(false);
       setTorchSupported(false);
       setCurrentCameraIndex(nextIndex);
-      await startScanner(cameras[nextIndex].deviceId);
+      await startStream(cameras[nextIndex].deviceId);
     } catch {
       // Camera switch failed — keep current
     }
@@ -161,20 +192,19 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     navigator.mediaDevices
       .enumerateDevices()
       .then((devices) => {
-        const videoInputs = devices.filter(
-          (d) => d.kind === "videoinput",
-        );
+        const videoInputs = devices.filter((d) => d.kind === "videoinput");
         setCameras(videoInputs);
       })
       .catch(() => {});
   }, [open]);
 
-  // Start/stop scanner on open/close
+  // Start/stop camera on open/close
   useEffect(() => {
     mountedRef.current = open;
 
     if (!open) {
-      stopScanner();
+      scanningRef.current = false;
+      stopStream();
       setProcessing(false);
       setTorchOn(false);
       setTorchSupported(false);
@@ -184,17 +214,19 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     }
 
     setCurrentCameraIndex(0);
-    startScanner();
+    startStream();
 
     return () => {
       mountedRef.current = false;
-      stopScanner();
+      scanningRef.current = false;
+      stopStream();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleClose = () => {
-    stopScanner();
+    scanningRef.current = false;
+    stopStream();
     onClose();
   };
 
@@ -257,7 +289,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
       {/* Scanner area */}
       <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-black">
-        <div id="scanner-element" className="w-full h-full" />
+        <video id="scanner-video" className="w-full h-full object-cover" playsInline muted />
 
         {cameraError && (
           <div className="absolute inset-0 flex items-center justify-center px-8">
@@ -273,7 +305,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           </div>
         )}
 
-        {/* Overlay — only show when camera is running */}
+        {/* Overlay */}
         {!cameraError && (
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 bg-black/30" />
@@ -334,7 +366,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           0%, 100% { top: calc(50% - 65px); opacity: 0.3; }
           50% { top: calc(50% + 65px); opacity: 1; }
         }
-        #scanner-element video {
+        #scanner-video {
           object-fit: cover !important;
           width: 100% !important;
           height: 100% !important;
