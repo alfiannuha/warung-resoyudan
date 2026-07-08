@@ -31,9 +31,12 @@ function playBeep() {
 
 export default function ScannerDialog({ open, onClose, onScan, mode = "product" }: Props) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const onScanRef = useRef(onScan);
   const [processing, setProcessing] = useState(false);
   const [statusText, setStatusText] = useState("");
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
   const debounceRef = useRef(false);
   onScanRef.current = onScan;
 
@@ -46,7 +49,6 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     setStatusText("Barcode terdeteksi!");
     onScanRef.current(barcode);
 
-    // Brief throttle to prevent double-fire
     setTimeout(() => {
       debounceRef.current = false;
       setProcessing(false);
@@ -54,14 +56,31 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     }, 800);
   }, []);
 
+  const toggleTorch = async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    try {
+      await track.applyConstraints({
+        // @ts-expect-error - torch is a non-standard constraint
+        advanced: [{ torch: !torchOn }],
+      });
+      setTorchOn(!torchOn);
+    } catch {
+      // Torch toggle failed
+    }
+  };
+
   useEffect(() => {
     if (!open) {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
         scannerRef.current = null;
       }
+      trackRef.current = null;
       setProcessing(false);
       setStatusText("");
+      setTorchOn(false);
+      setTorchSupported(false);
       debounceRef.current = false;
       return;
     }
@@ -88,7 +107,11 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
       try {
         await html5QrCode.start(
-          { facingMode: "environment" },
+          {
+            facingMode: { ideal: "environment" },
+            // @ts-expect-error - focusMode is a non-standard constraint for autofocus
+            focusMode: "continuous",
+          },
           {
             fps: 30,
             qrbox: { width: 200, height: 100 },
@@ -99,6 +122,19 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           },
           () => {}
         );
+
+        // Grab the video track for torch control
+        const videoEl = document.querySelector("#scanner-element video") as HTMLVideoElement | null;
+        if (videoEl && videoEl.srcObject instanceof MediaStream) {
+          const track = videoEl.srcObject.getVideoTracks()[0];
+          if (track) {
+            trackRef.current = track;
+            // Check if torch is supported
+            const capabilities = track.getCapabilities?.();
+            // @ts-expect-error - torch is non-standard
+            setTorchSupported(!!capabilities?.torch);
+          }
+        }
       } catch {
         // Camera permission denied or not available
       }
@@ -112,6 +148,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
         scannerRef.current.stop().catch(() => {});
         scannerRef.current = null;
       }
+      trackRef.current = null;
     };
   }, [open, handleScan]);
 
@@ -120,6 +157,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
       scannerRef.current.stop().catch(() => {});
       scannerRef.current = null;
     }
+    trackRef.current = null;
     onClose();
   };
 
@@ -138,9 +176,36 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           </svg>
           Tutup
         </button>
-        <span className="text-white/70 text-label-md">
-          Arahkan kamera ke barcode
-        </span>
+        <div className="flex items-center gap-3">
+          {torchSupported && (
+            <button
+              onClick={toggleTorch}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                torchOn ? "bg-secondary text-on-secondary" : "text-white/70"
+              }`}
+              aria-label={torchOn ? "Matikan senter" : "Nyalakan senter"}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {torchOn ? (
+                  <>
+                    <path d="M18 6L6 18" />
+                    <path d="M22 12h-4" />
+                    <path d="M16 8l-4 4" />
+                    <path d="M2 12h4" />
+                    <path d="M8 16l4-4" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor" />
+                  </>
+                )}
+              </svg>
+            </button>
+          )}
+          <span className="text-white/70 text-label-md">
+            Arahkan kamera ke barcode
+          </span>
+        </div>
       </div>
 
       {/* Scanner area */}
@@ -157,7 +222,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
             }}
           />
 
-          {/* Corner markers — wider for barcode */}
+          {/* Corner markers */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[55vw] h-[28vw] max-w-[260px] max-h-[130px]">
             <div className="absolute top-0 left-0 w-8 h-8 border-t-[3px] border-l-[3px] border-secondary rounded-tl-lg" />
             <div className="absolute top-0 right-0 w-8 h-8 border-t-[3px] border-r-[3px] border-secondary rounded-tr-lg" />

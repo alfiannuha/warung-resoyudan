@@ -129,10 +129,10 @@ export default function KasirPage() {
         <div className="flex-1 overflow-y-auto">
           <ProductGrid />
         </div>
-        {/* Scan FAB — tablet: right of product grid, mobile: above cart bar */}
+        {/* Scan FAB — mobile only */}
         <button
           onClick={() => setScannerOpen(true)}
-          className="fixed bottom-24 md:bottom-6 right-4 md:right-[calc(33.33%+24px)] w-14 h-14 bg-white border-2 border-secondary text-secondary rounded-2xl shadow-xl items-center justify-center z-30 active:scale-90 transition-transform hover:bg-secondary hover:text-on-secondary flex"
+          className="md:hidden fixed bottom-24 right-4 w-14 h-14 bg-white border-2 border-secondary text-secondary rounded-2xl shadow-xl items-center justify-center z-30 active:scale-90 transition-transform hover:bg-secondary hover:text-on-secondary flex"
           aria-label="Scan barcode"
         >
           <Icon name="qr_code_scanner" size={28} />
