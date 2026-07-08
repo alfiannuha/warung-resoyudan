@@ -41,18 +41,18 @@ export default function PaymentInput({ customerId }: Props) {
     setConfirmOpen(true);
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     const paymentAmount = Number(amount);
     setConfirmOpen(false);
 
-    addPayment({
+    await addPayment({
       customerId,
       amount: paymentAmount,
       paymentDate: new Date().toISOString(),
       notes: "Pembayaran hutang",
     });
 
-    updateDebt(customerId, -paymentAmount);
+    await updateDebt(customerId, -paymentAmount);
     setAmount("");
     toast("Pembayaran berhasil!");
   };

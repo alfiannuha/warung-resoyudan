@@ -1,37 +1,81 @@
 import { create } from "zustand";
 import type { Customer } from "@/types";
-import { generateId } from "@/lib/formatters";
-import { mockCustomers } from "@/data/mock/customers";
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface CustomerStore {
   customers: Customer[];
-  addCustomer: (c: Omit<Customer, "id" | "createdAt" | "updatedAt">) => void;
-  updateCustomer: (id: string, data: Partial<Customer>) => void;
+  loading: boolean;
+  initialized: boolean;
+  loadCustomers: () => () => void;
+  addCustomer: (
+    c: Omit<Customer, "id" | "createdAt" | "updatedAt">,
+  ) => Promise<string>;
+  updateCustomer: (
+    id: string,
+    data: Partial<Customer>,
+  ) => Promise<void>;
   getCustomerById: (id: string) => Customer | undefined;
   getDebtors: () => Customer[];
   getAllCustomers: () => Customer[];
-  updateDebt: (id: string, delta: number) => void;
+  updateDebt: (id: string, delta: number) => Promise<void>;
 }
 
-export const useCustomerStore = create<CustomerStore>((set, get) => ({
-  customers: [...mockCustomers],
+const customersCollection = collection(db, "customers");
+const customersQuery = query(
+  customersCollection,
+  orderBy("createdAt", "desc"),
+);
 
-  addCustomer: (data) => {
-    const now = new Date().toISOString();
-    set((s) => ({
-      customers: [
-        ...s.customers,
-        { ...data, id: generateId(), createdAt: now, updatedAt: now },
-      ],
-    }));
+export const useCustomerStore = create<CustomerStore>((set, get) => ({
+  customers: [],
+  loading: true,
+  initialized: false,
+
+  loadCustomers: () => {
+    const unsub = onSnapshot(
+      customersQuery,
+      (snapshot) => {
+        const customers = snapshot.docs.map(
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+            }) as Customer,
+        );
+        set({ customers, loading: false, initialized: true });
+      },
+      () => {
+        set({ loading: false });
+      },
+    );
+    return unsub;
   },
 
-  updateCustomer: (id, data) => {
-    set((s) => ({
-      customers: s.customers.map((c) =>
-        c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
-      ),
-    }));
+  addCustomer: async (data) => {
+    const docRef = await addDoc(customersCollection, {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  updateCustomer: async (id, data) => {
+    await updateDoc(doc(customersCollection, id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
   },
 
   getCustomerById: (id) => get().customers.find((c) => c.id === id),
@@ -40,17 +84,14 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
   getAllCustomers: () => get().customers,
 
-  updateDebt: (id, delta) => {
-    set((s) => ({
-      customers: s.customers.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              currentDebt: Math.max(0, c.currentDebt + delta),
-              updatedAt: new Date().toISOString(),
-            }
-          : c
-      ),
-    }));
+  updateDebt: async (id, delta) => {
+    const ref = doc(customersCollection, id);
+    const customer = get().customers.find((c) => c.id === id);
+    if (!customer) return;
+    const newDebt = Math.max(0, customer.currentDebt + delta);
+    await updateDoc(ref, {
+      currentDebt: newDebt,
+      updatedAt: serverTimestamp(),
+    });
   },
 }));

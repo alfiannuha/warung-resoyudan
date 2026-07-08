@@ -50,15 +50,19 @@ export default function CartPage() {
     setConfirmCheckout(true);
   };
 
-  const handleConfirmTransaction = () => {
+  const handleConfirmTransaction = async () => {
     setConfirmCheckout(false);
     if (checkoutError) return;
 
     for (const item of items) {
-      reduceStock(item.productId, item.quantity);
+      const ok = await reduceStock(item.productId, item.quantity);
+      if (!ok) {
+        toast(`Stok ${item.name} tidak mencukupi.`, "error");
+        return;
+      }
     }
 
-    addTransaction({
+    await addTransaction({
       date: new Date().toISOString(),
       items: items.map((i) => ({ ...i })),
       totalAmount,
@@ -69,7 +73,7 @@ export default function CartPage() {
     });
 
     if (paymentMethod === "kasbon" && selectedCustomerId) {
-      updateDebt(selectedCustomerId, totalAmount);
+      await updateDebt(selectedCustomerId, totalAmount);
     }
 
     if (paymentMethod === "qris") {

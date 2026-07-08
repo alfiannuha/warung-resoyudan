@@ -21,9 +21,9 @@ export default function CustomerSelect() {
 
   const debtors = customers.filter((c) => c.currentDebt > 0);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newName.trim()) return;
-    addCustomer({ name: newName.trim(), phone: "", currentDebt: 0 });
+    await addCustomer({ name: newName.trim(), phone: "", currentDebt: 0 });
     // Select the newly added customer
     const updated = useCustomerStore.getState().customers;
     const newest = updated[updated.length - 1];

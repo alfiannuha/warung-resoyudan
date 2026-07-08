@@ -55,7 +55,7 @@ export default function ProductForm({
     }
   }, [open, initialBarcode, initialName, initialBrand, initialCategory, initialImageUrl, editId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const data = {
       name,
@@ -70,14 +70,17 @@ export default function ProductForm({
       isActive: true,
     };
 
-    if (editId && existing) {
-      updateProduct(editId, data);
-    } else {
-      addProduct(data);
+    try {
+      if (editId && existing) {
+        await updateProduct(editId, data);
+      } else {
+        await addProduct(data);
+      }
+      onOpenChange(false);
+      resetForm();
+    } catch {
+      // Silently fail — Firestore will retry via offline persistence
     }
-
-    onOpenChange(false);
-    resetForm();
   };
 
   const resetForm = () => {

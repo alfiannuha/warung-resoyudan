@@ -35,9 +35,9 @@ export default function KasbonPage() {
     setDetailOpen(true);
   };
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = async () => {
     if (!newName.trim()) return;
-    addCustomer({ name: newName.trim(), phone: newPhone.trim(), currentDebt: 0 });
+    await addCustomer({ name: newName.trim(), phone: newPhone.trim(), currentDebt: 0 });
     setNewName("");
     setNewPhone("");
     setAddOpen(false);

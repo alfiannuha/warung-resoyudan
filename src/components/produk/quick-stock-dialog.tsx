@@ -22,10 +22,10 @@ export default function QuickStockDialog({ open, onOpenChange, product }: Props)
   const [qty, setQty] = useState("1");
   const quickAddStock = useProductStore((s) => s.quickAddStock);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product || !qty) return;
-    quickAddStock(product.id, Number(qty));
+    await quickAddStock(product.id, Number(qty));
     onOpenChange(false);
     setQty("1");
   };

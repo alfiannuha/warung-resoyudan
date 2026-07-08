@@ -1,39 +1,87 @@
 import { create } from "zustand";
 import type { Transaction, DailyReport } from "@/types";
-import { generateId, getTodayISO } from "@/lib/formatters";
-import { mockTransactions } from "@/data/mock/transactions";
+import { getTodayISO } from "@/lib/formatters";
+import {
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  orderBy,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { createAuditLog } from "@/lib/audit-log";
 
 interface TransactionStore {
   transactions: Transaction[];
+  loading: boolean;
+  initialized: boolean;
+  loadTransactions: () => () => void;
   addTransaction: (
-    t: Omit<Transaction, "id" | "createdAt">
-  ) => Transaction;
+    t: Omit<Transaction, "id" | "createdAt">,
+  ) => Promise<string>;
   getTodayTransactions: () => Transaction[];
   getTransactionsByDateRange: (
     start: string,
-    end: string
+    end: string,
   ) => Transaction[];
   getTransactionsByCustomer: (customerId: string) => Transaction[];
   getDailyReport: (date: string) => DailyReport;
   getTopProducts: (
     start: string,
     end: string,
-    limit?: number
+    limit?: number,
   ) => { name: string; qty: number; revenue: number }[];
 }
 
-export const useTransactionStore = create<TransactionStore>((set, get) => ({
-  transactions: [...mockTransactions],
+const transactionsCollection = collection(db, "transactions");
+const transactionsQuery = query(
+  transactionsCollection,
+  orderBy("createdAt", "desc"),
+);
 
-  addTransaction: (data) => {
-    const now = new Date().toISOString();
-    const transaction: Transaction = {
+export const useTransactionStore = create<TransactionStore>((set, get) => ({
+  transactions: [],
+  loading: true,
+  initialized: false,
+
+  loadTransactions: () => {
+    const unsub = onSnapshot(
+      transactionsQuery,
+      (snapshot) => {
+        const transactions = snapshot.docs.map(
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+            }) as Transaction,
+        );
+        set({ transactions, loading: false, initialized: true });
+      },
+      () => {
+        set({ loading: false });
+      },
+    );
+    return unsub;
+  },
+
+  addTransaction: async (data) => {
+    const docRef = await addDoc(transactionsCollection, {
       ...data,
-      id: generateId(),
-      createdAt: now,
-    };
-    set((s) => ({ transactions: [...s.transactions, transaction] }));
-    return transaction;
+      createdAt: serverTimestamp(),
+    });
+
+    await createAuditLog({
+      action: "create",
+      entity: "transaction",
+      entityId: docRef.id,
+      description: `Transaksi ${data.paymentMethod} sebesar ${data.totalAmount}`,
+    });
+
+    return docRef.id;
   },
 
   getTodayTransactions: () => {
@@ -56,7 +104,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
   getDailyReport: (date) => {
     const dayTx = get().transactions.filter((t) =>
-      t.date.startsWith(date)
+      t.date.startsWith(date),
     );
     return {
       date,

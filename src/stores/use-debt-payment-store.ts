@@ -1,22 +1,65 @@
 import { create } from "zustand";
 import type { DebtPayment } from "@/types";
-import { generateId } from "@/lib/formatters";
-import { mockDebtPayments } from "@/data/mock/debt-payments";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  orderBy,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface DebtPaymentStore {
   payments: DebtPayment[];
-  addPayment: (p: Omit<DebtPayment, "id">) => string;
+  loading: boolean;
+  initialized: boolean;
+  loadPayments: () => () => void;
+  addPayment: (
+    p: Omit<DebtPayment, "id">,
+  ) => Promise<string>;
   getPaymentsByCustomer: (customerId: string) => DebtPayment[];
 }
 
-export const useDebtPaymentStore = create<DebtPaymentStore>((set, get) => ({
-  payments: [...mockDebtPayments],
+const paymentsCollection = collection(db, "debt_payments");
+const paymentsQuery = query(
+  paymentsCollection,
+  orderBy("paymentDate", "desc"),
+);
 
-  addPayment: (data) => {
-    const id = generateId();
-    const payment: DebtPayment = { ...data, id };
-    set((s) => ({ payments: [...s.payments, payment] }));
-    return id;
+export const useDebtPaymentStore = create<DebtPaymentStore>((set, get) => ({
+  payments: [],
+  loading: true,
+  initialized: false,
+
+  loadPayments: () => {
+    const unsub = onSnapshot(
+      paymentsQuery,
+      (snapshot) => {
+        const payments = snapshot.docs.map(
+          (d) =>
+            ({
+              id: d.id,
+              ...d.data(),
+            }) as DebtPayment,
+        );
+        set({ payments, loading: false, initialized: true });
+      },
+      () => {
+        set({ loading: false });
+      },
+    );
+    return unsub;
+  },
+
+  addPayment: async (data) => {
+    const docRef = await addDoc(paymentsCollection, {
+      ...data,
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
   },
 
   getPaymentsByCustomer: (customerId) =>

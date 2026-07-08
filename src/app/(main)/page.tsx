@@ -57,15 +57,20 @@ export default function KasirPage() {
     setConfirmCheckout(true);
   };
 
-  const handleConfirmTransaction = () => {
+  const handleConfirmTransaction = async () => {
     setConfirmCheckout(false);
     if (checkoutError) return;
 
+    // Reduce stock for each item, catching any failures
     for (const item of items) {
-      reduceStock(item.productId, item.quantity);
+      const ok = await reduceStock(item.productId, item.quantity);
+      if (!ok) {
+        toast(`Stok ${item.name} tidak mencukupi.`, "error");
+        return;
+      }
     }
 
-    addTransaction({
+    await addTransaction({
       date: new Date().toISOString(),
       items: items.map((i) => ({ ...i })),
       totalAmount,
@@ -76,7 +81,7 @@ export default function KasirPage() {
     });
 
     if (paymentMethod === "kasbon" && selectedCustomerId) {
-      updateDebt(selectedCustomerId, totalAmount);
+      await updateDebt(selectedCustomerId, totalAmount);
     }
 
     if (paymentMethod === "qris") {

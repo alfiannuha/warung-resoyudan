@@ -60,9 +60,9 @@ export default function ProdukPage() {
     setMenuOpenId(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      deleteProduct(deleteId);
+      await deleteProduct(deleteId);
       setDeleteId(null);
       toast("Produk berhasil dihapus.");
     }

@@ -1,6 +1,8 @@
 import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/shared/toast-provider";
+import FirestoreProvider from "@/components/shared/firestore-provider";
+import SyncStatus from "@/components/shared/sync-status";
 
 const hanken = Hanken_Grotesk({
   subsets: ["latin"],
@@ -24,7 +26,12 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col bg-surface text-on-surface">
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <FirestoreProvider>
+            {children}
+            <SyncStatus />
+          </FirestoreProvider>
+        </ToastProvider>
       </body>
     </html>
   );
