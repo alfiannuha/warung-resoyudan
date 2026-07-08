@@ -1,0 +1,361 @@
+<!DOCTYPE html><html class="light" lang="id"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>WarungDigital - Kasir POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#fcf8fa",
+                    "primary-fixed-dim": "#bec6e0",
+                    "surface-variant": "#e4e2e4",
+                    "primary": "#000000",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#003ea8",
+                    "danger-alert": "#DC2626",
+                    "surface-container-low": "#f6f3f5",
+                    "secondary": "#0051d5",
+                    "secondary-fixed-dim": "#b4c5ff",
+                    "error": "#ba1a1a",
+                    "tertiary": "#000000",
+                    "surface-container-highest": "#e4e2e4",
+                    "on-primary-fixed": "#131b2e",
+                    "on-surface": "#1b1b1d",
+                    "warning-debt": "#D97706",
+                    "surface-dim": "#dcd9db",
+                    "inverse-on-surface": "#f3f0f2",
+                    "surface-tint": "#565e74",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-error": "#ffffff",
+                    "background": "#fcf8fa",
+                    "primary-container": "#131b2e",
+                    "surface-container-high": "#eae7e9",
+                    "secondary-container": "#316bf3",
+                    "inverse-primary": "#bec6e0",
+                    "on-tertiary-fixed": "#271901",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#fefcff",
+                    "inverse-surface": "#303032",
+                    "success-paid": "#16A34A",
+                    "surface": "#fcf8fa",
+                    "tertiary-fixed": "#fcdeb5",
+                    "primary-fixed": "#dae2fd",
+                    "on-secondary-fixed": "#00174b",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#271901",
+                    "on-primary-container": "#7c839b",
+                    "error-container": "#ffdad6",
+                    "surface-container": "#f0edef",
+                    "border-standard": "#E2E8F0",
+                    "tertiary-fixed-dim": "#dec29a",
+                    "on-tertiary-fixed-variant": "#574425",
+                    "surface-muted": "#F8FAFC",
+                    "on-background": "#1b1b1d",
+                    "on-surface-variant": "#45464d",
+                    "on-tertiary-container": "#98805d",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#dbe1ff",
+                    "outline-variant": "#c6c6cd",
+                    "on-error-container": "#93000a",
+                    "outline": "#76777d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "1rem",
+                    "container-padding": "1.25rem",
+                    "stack-gap": "0.75rem",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"],
+                    "label-xl": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "numeric-display": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-xl": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-lg": ["30px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "numeric-display": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Side Navigation Bar -->
+<aside class="fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border-standard py-gutter flex flex-col transition-transform -translate-x-full">
+<div class="px-6 mb-8"><button class="absolute right-4 top-4 p-2 rounded-lg hover:bg-surface-container-high md:hidden" onclick="document.querySelector('aside').classList.add('-translate-x-full')"><span class="material-symbols-outlined">close</span></button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Warung Digital</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Kiosk Assistant</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<!-- Active Navigation for 'Kasir' -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span class="font-label-md text-label-md">Kasir</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Produk</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Kasbon</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-md text-label-md">Laporan</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full py-3 px-4 bg-primary text-on-primary font-bold rounded-lg mb-4 hover:opacity-90 transition-opacity">
+                Buka Shift
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex flex-row h-screen overflow-hidden">
+<!-- Left Column: Product Selection -->
+<section class="flex-1 flex flex-col min-w-0 border-r border-border-standard">
+<!-- Search & Categories Bar -->
+<header class="p-container-padding bg-surface border-b border-border-standard space-y-4"><div class="flex items-center gap-4 mb-2"><button class="p-2 -ml-2 rounded-lg hover:bg-surface-container-high active:scale-95 transition-all" onclick="document.querySelector('aside').classList.toggle('-translate-x-full')"><span class="material-symbols-outlined">menu</span></button><h2 class="font-headline-md text-headline-md md:hidden">Warung Digital</h2></div>
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-touch-target-min pl-10 pr-4 bg-surface-container border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:outline-none font-body-md text-body-md" placeholder="Cari produk atau scan barcode..." type="text">
+</div>
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="whitespace-nowrap px-4 py-2 bg-secondary text-on-secondary rounded-full font-label-md text-label-md">Semua</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-high text-on-surface rounded-full font-label-md text-label-md border border-border-standard">Makanan</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-high text-on-surface rounded-full font-label-md text-label-md border border-border-standard">Minuman</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-high text-on-surface rounded-full font-label-md text-label-md border border-border-standard">Sembako</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-high text-on-surface rounded-full font-label-md text-label-md border border-border-standard">Rokok</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-high text-on-surface rounded-full font-label-md text-label-md border border-border-standard">Kebutuhan Rumah</button>
+</div>
+</header>
+<!-- Product Grid -->
+<div class="flex-1 overflow-y-auto p-gutter bg-surface-bright no-scrollbar">
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+<!-- Product Card -->
+<div class="bg-white border border-border-standard rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:border-secondary transition-all active:scale-[0.98]">
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up high-quality photo of a bottle of mineral water standing on a clean wooden surface in a bright, modern shop. Soft natural lighting emphasizes the condensation on the bottle, suggesting coolness. The background is slightly blurred, showing the organized shelves of a premium kiosk. Modern minimalist retail aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFNBjWnjjFuSWDTSFmEvnGM6_XCWcpb5jD2wA414HZfVBghaNh2geQ3ycupTZ1zwtFQnUYWrtqijU1CJx-_p2fXvgIAfdEbcRmu3ATadchi5yJQbROyKamgVKOlCELQZPlPmDgzezA6DG-KIQ_zDPyAiFsW7fbtNA8WICylakXLGaLgh87SCwvMU-r0wriCL07HSwPwah-U3mcU4S0iGRw9dJBhewzAd4nLCDs8xrV4Hyrv1jU1z-HMNofVwiiNze95UwLnkUgcmsP">
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Minuman</span>
+<h3 class="font-body-lg text-body-lg text-on-surface line-clamp-1">Aqua 600ml</h3>
+<div class="flex justify-between items-end mt-auto pt-2">
+<span class="font-numeric-display text-numeric-display text-primary">Rp 4.500</span>
+<span class="text-xs text-outline font-medium">Stok: 24</span>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-white border border-secondary border-2 rounded-xl p-3 flex flex-col gap-2 relative">
+<div class="absolute top-2 right-2 bg-secondary text-on-secondary w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">2</div>
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A vibrant and colorful photograph of a pack of classic Indonesian instant noodles on a clean white shelf. The packaging colors are bright red and yellow, standing out against the neutral background. High-contrast studio lighting highlights the glossy texture of the plastic wrap. Dependable and professional retail presentation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoAaPIgNP9H-UUbvwDXl-AqXo8puaUD3ULjT5hbjTrTMjVg1bwbzieDdCkSe9Mzmlj0TJksV2_5mySH8i69hyUQyro3RmmGA2BUj-eyVQ39CvsVr9T70HodqsvEoiA1td8XSEm_1CzWGf6ume-4oyvyrvF1mOdx4QAd8Yg1sU_eyaYg5p8yp1pmlc3PX4Uv_BoeXwGXFRO4DET7wxeS7yQSTngLd0FMw07tipaP5N03FmbdqyfccJfiIfWLE8wXTuodcZnmGbcXwsT">
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Sembako</span>
+<h3 class="font-body-lg text-body-lg text-on-surface line-clamp-1">Indomie Goreng</h3>
+<div class="flex justify-between items-end mt-auto pt-2">
+<span class="font-numeric-display text-numeric-display text-primary">Rp 3.000</span>
+<span class="text-xs text-outline font-medium">Stok: 156</span>
+</div>
+</div>
+</div>
+<!-- More cards to fill the bento grid -->
+<div class="bg-white border border-border-standard rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:border-secondary transition-all">
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional product shot of a pack of premium ground coffee beans. The packaging is a matte black with gold lettering, placed on a slate grey stone surface. Soft side lighting creates elegant shadows and emphasizes the texture of the bag. A sophisticated corporate modern retail look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_SFtYPT1KXHCnNB6LXitXNQpOowqY939vAax4qPs18pDpwRs2mJN6aKT_GtSLlb_5aay90gNfXVal971GVvJho56rHUmada2FPkpektFcen2Bu8ynNiz9ykHo_faFJR9xc6-93ZWexDg1w4o_qgQbL6nkBM6Wvbc2DdycSYHpWKmE94ImCl4tU6MwFFkV0Be_BNftKWEcRim5WjVD_MiFgljOxIRXtkJINcleNOsp826lI9RlEH5w5yPwniGsYlndAtyFXXK9Txxo">
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Minuman</span>
+<h3 class="font-body-lg text-body-lg text-on-surface line-clamp-1">Kopi Kapal Api</h3>
+<div class="flex justify-between items-end mt-auto pt-2">
+<span class="font-numeric-display text-numeric-display text-primary">Rp 12.000</span>
+<span class="text-xs text-outline font-medium">Stok: 42</span>
+</div>
+</div>
+</div>
+<div class="bg-white border border-border-standard rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:border-secondary transition-all">
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="An organized display of various chocolate bars with colorful wrappers arranged neatly in a retail tray. Bright, high-key lighting creates a cheerful and trustworthy shop atmosphere. The focus is sharp on the foreground items, showing clear text on the labels. Commercial clean aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJEHgv1BGI2RxbGt-jBIZQrTGfhbAuI3gylw6ApTg2QYLFVrVJy3an0e34ZtokmcP4kYU-Fp8CqTmZj2G5TzXtmQiID88FAC91YhQSeUU_qXCjakElrmDpHPMzXT8JX3ze4Xt_dN2CjLXSTxfSJ6-4gb0YxVE-RoYDs15t6zO_fPwAptk_ldW2sene5tGoGHbMUqZIdSrruPP_3FvIDbtuVMcjTTDLoMYq6_UE4H1GmTPKS7JJvlnh9lUCUJb0J3wKSfdFvybmMZ_t">
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Makanan</span>
+<h3 class="font-body-lg text-body-lg text-on-surface line-clamp-1">Silverqueen 65g</h3>
+<div class="flex justify-between items-end mt-auto pt-2">
+<span class="font-numeric-display text-numeric-display text-primary">Rp 15.500</span>
+<span class="text-xs text-outline font-medium">Stok: 12</span>
+</div>
+</div>
+</div>
+<!-- Repeatable placeholder blocks for layout demonstration -->
+<div class="bg-white border border-border-standard rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:border-secondary transition-all">
+<div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="High quality commercial photography of a stack of fresh laundry detergent packs in a clean storage area. Blue and white colors dominate the frame, suggesting cleanliness and efficiency. The lighting is even and professional, highlighting the product features clearly for a retail POS interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIiWMYuC3yxRS8qSOy3iaJiH0N0xZYRyDQv6aKk-T2TIORoJ9FEf5EX1Z_RA7YA11Izy3BiCUwSzxMMluN3OLNWLruzzfSZS47-rVNTdeLWvhGb7fhYSPugnIEVyg_-yE1RaHIu5SQgI4QipLSCJMngOmuQxEKZOAWIX1rVFc9GrG3lpxOk83yCg3wm6C_fYn3BC_ZX8FjIyKOYl0lyn87fXraof_Pv5UZAwCttJNehWuH8Hx7gFJHvqUcT2fB_usaXUOmm8krmuTc">
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Kebutuhan</span>
+<h3 class="font-body-lg text-body-lg text-on-surface line-clamp-1">Rinso Molto 800g</h3>
+<div class="flex justify-between items-end mt-auto pt-2">
+<span class="font-numeric-display text-numeric-display text-primary">Rp 28.000</span>
+<span class="text-xs text-outline font-medium">Stok: 8</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Column: Keranjang Belanja -->
+<section class="w-96 flex flex-col bg-white shadow-xl z-10">
+<header class="p-container-padding flex justify-between items-center border-b border-border-standard">
+<h2 class="font-headline-md text-headline-md">Keranjang</h2>
+<button class="text-error font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">delete</span>
+                    Hapus
+                </button>
+</header>
+<!-- Cart Items List -->
+<div class="flex-1 overflow-y-auto no-scrollbar">
+<div class="divide-y divide-border-standard">
+<!-- Item 1 -->
+<div class="p-4 flex gap-3 items-start">
+<div class="flex-1">
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Indomie Goreng</h4>
+<p class="font-label-md text-label-md text-on-surface-variant">Rp 3.000 x 2</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-8 h-8 flex items-center justify-center border border-border-standard rounded-lg text-secondary active:bg-secondary-container">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<span class="font-numeric-display text-numeric-display w-6 text-center">2</span>
+<button class="w-8 h-8 flex items-center justify-center border border-border-standard rounded-lg text-secondary active:bg-secondary-container">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<div class="text-right ml-2 min-w-[80px]">
+<p class="font-numeric-display text-numeric-display text-primary">Rp 6.000</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-4 flex gap-3 items-start">
+<div class="flex-1">
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Aqua 600ml</h4>
+<p class="font-label-md text-label-md text-on-surface-variant">Rp 4.500 x 1</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-8 h-8 flex items-center justify-center border border-border-standard rounded-lg text-secondary active:bg-secondary-container">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<span class="font-numeric-display text-numeric-display w-6 text-center">1</span>
+<button class="w-8 h-8 flex items-center justify-center border border-border-standard rounded-lg text-secondary active:bg-secondary-container">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<div class="text-right ml-2 min-w-[80px]">
+<p class="font-numeric-display text-numeric-display text-primary">Rp 4.500</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer: Summary & Payment -->
+<footer class="p-container-padding bg-surface-container-low border-t border-border-standard space-y-4">
+<div class="space-y-2">
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-md text-body-md">Subtotal</span>
+<span class="font-body-md text-body-md">Rp 10.500</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-md text-body-md">Diskon</span>
+<span class="font-body-md text-body-md text-error">- Rp 0</span>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-border-standard">
+<span class="font-headline-md text-headline-md">Total</span>
+<span class="font-headline-md text-headline-md text-secondary">Rp 10.500</span>
+</div>
+</div>
+<!-- Payment Methods Grid -->
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-2">Metode Pembayaran</p>
+<div class="grid grid-cols-3 gap-2">
+<button class="flex flex-col items-center gap-1 p-2 border-2 border-secondary rounded-lg bg-secondary-container/10">
+<span class="material-symbols-outlined text-secondary">payments</span>
+<span class="font-label-md text-[10px] uppercase font-bold text-secondary">Tunai</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 border border-border-standard rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-outline">receipt_long</span>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">Kasbon</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 border border-border-standard rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-outline">qr_code_2</span>
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant">QRIS</span>
+</button>
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full h-touch-target-min bg-secondary text-white rounded-xl font-headline-md text-headline-md shadow-lg shadow-secondary/20 active:scale-[0.98] transition-transform">
+                    Bayar Sekarang
+                </button>
+</footer>
+</section>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+        document.querySelectorAll('.active\\:scale-95').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('scale-95');
+            });
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('scale-95');
+            });
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('scale-95');
+            });
+        });
+
+        // Simple cart counter mock
+        const addButtons = document.querySelectorAll('.material-symbols-outlined:contains("add")');
+        // (Simplified logic for demonstration purposes)
+    </script>
+
+
+<div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="document.querySelector('aside').classList.add('-translate-x-full'); this.classList.add('hidden')"></div></body></html>

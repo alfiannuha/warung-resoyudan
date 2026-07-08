@@ -1,0 +1,390 @@
+<!DOCTYPE html><html class="light" lang="id"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>WarungDigital - Kasbon Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#fcf8fa",
+                    "primary-fixed-dim": "#bec6e0",
+                    "surface-variant": "#e4e2e4",
+                    "primary": "#000000",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#003ea8",
+                    "danger-alert": "#DC2626",
+                    "surface-container-low": "#f6f3f5",
+                    "secondary": "#0051d5",
+                    "secondary-fixed-dim": "#b4c5ff",
+                    "error": "#ba1a1a",
+                    "tertiary": "#000000",
+                    "surface-container-highest": "#e4e2e4",
+                    "on-primary-fixed": "#131b2e",
+                    "on-surface": "#1b1b1d",
+                    "warning-debt": "#D97706",
+                    "surface-dim": "#dcd9db",
+                    "inverse-on-surface": "#f3f0f2",
+                    "surface-tint": "#565e74",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-error": "#ffffff",
+                    "background": "#fcf8fa",
+                    "primary-container": "#131b2e",
+                    "surface-container-high": "#eae7e9",
+                    "secondary-container": "#316bf3",
+                    "inverse-primary": "#bec6e0",
+                    "on-tertiary-fixed": "#271901",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#fefcff",
+                    "inverse-surface": "#303032",
+                    "success-paid": "#16A34A",
+                    "surface": "#fcf8fa",
+                    "tertiary-fixed": "#fcdeb5",
+                    "primary-fixed": "#dae2fd",
+                    "on-secondary-fixed": "#00174b",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#271901",
+                    "on-primary-container": "#7c839b",
+                    "error-container": "#ffdad6",
+                    "surface-container": "#f0edef",
+                    "border-standard": "#E2E8F0",
+                    "tertiary-fixed-dim": "#dec29a",
+                    "on-tertiary-fixed-variant": "#574425",
+                    "surface-muted": "#F8FAFC",
+                    "on-background": "#1b1b1d",
+                    "on-surface-variant": "#45464d",
+                    "on-tertiary-container": "#98805d",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#dbe1ff",
+                    "outline-variant": "#c6c6cd",
+                    "on-error-container": "#93000a",
+                    "outline": "#76777d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "1rem",
+                    "container-padding": "1.25rem",
+                    "stack-gap": "0.75rem",
+                    "touch-target-min": "48px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"],
+                    "label-xl": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "numeric-display": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-xl": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-lg": ["30px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "numeric-display": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- Persistent SideNavBar -->
+<aside class="hidden flex-col h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-surface border-r border-border-standard dark:border-outline py-gutter z-50 -translate-x-full transition-transform duration-300">
+<div class="px-6 mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Warung Digital</h1>
+<p class="text-on-surface-variant text-sm">Kiosk Assistant</p>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span class="font-label-md text-label-md">Kasir</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Produk</span>
+</a>
+<!-- Active Tab: Kasbon -->
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-bold active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-md text-label-md">Kasbon</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-md text-label-md">Laporan</span>
+</a>
+</nav>
+<div class="px-3 mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-bold mb-4 shadow-sm hover:opacity-90 transition-opacity">
+                Buka Shift
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="h-screen flex flex-col">
+<!-- TopAppBar / Header -->
+<header class="flex justify-between items-center px-gutter h-touch-target-min w-full bg-surface border-b border-border-standard sticky top-0 z-40"><button class="p-2 -ml-2 mr-2 rounded-full hover:bg-surface-container-low transition-colors duration-200 text-on-surface-variant md:block" onclick="document.querySelector('aside').classList.toggle('-translate-x-full'); document.querySelector('aside').classList.toggle('flex'); document.querySelector('aside').classList.toggle('hidden')"><span class="material-symbols-outlined">menu</span></button>
+<div class="flex flex-col">
+<h2 class="font-headline-md text-headline-md text-primary">Kasbon</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Total Piutang</p>
+<p class="font-numeric-display text-numeric-display text-danger-alert">Rp 4.250.000</p>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors duration-200 text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors duration-200 text-on-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-border-standard">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a friendly Indonesian kiosk owner in a modern retail setting, soft natural lighting, high-end photography style with clean background elements reflecting a digital business environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuALM0FPcnI4Ku6J1B_ZIb2Oqgf8VRM3U23n7UmVZGwLb28pDdDLd5eijNpFSN879WxYMDFerfI0Lrpt5Tt5NwgsDqaXpPVUjgPuwawJvk1RFxL-f9w_ESt4kBfBS-Mdne9N69vBa4CF0TMY5ZA2tUBlyWu5rQyP3feIqFvbEvBay3zwi_v3Y_AoLjtNOJMuEAPdzscdw3Sk4lwBqaC3Ve3L6eO8DfFgCQEXj9Ax-zvy2dZspGrasKDDmg1ma6izV0j-gqm7Rlti74fE">
+</div>
+</div>
+</div>
+</header>
+<!-- Split Screen Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Panel: Customer List -->
+<section class="w-full md:w-[400px] border-r border-border-standard flex flex-col bg-surface-muted">
+<div class="p-4 border-b border-border-standard bg-surface">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary transition-all outline-none text-body-md" placeholder="Cari nama pelanggan..." type="text">
+</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Customer Item (Active) -->
+<div class="p-4 bg-white border-b border-border-standard cursor-pointer border-l-4 border-l-secondary shadow-sm">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-label-xl text-label-xl">Budi Santoso</h3>
+<span class="px-2 py-0.5 bg-error-container text-on-error-container text-[10px] font-bold rounded uppercase tracking-tighter">Overdue</span>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-sm text-on-surface-variant">Terakhir: 2 jam yang lalu</p>
+<p class="font-numeric-display text-body-lg font-bold text-danger-alert">Rp 1.240.000</p>
+</div>
+</div>
+<!-- Customer Item -->
+<div class="p-4 hover:bg-surface-container-low border-b border-border-standard cursor-pointer transition-colors">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-label-xl text-label-xl">Siti Aminah</h3>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-sm text-on-surface-variant">Terakhir: Kemarin</p>
+<p class="font-numeric-display text-body-lg font-bold text-on-surface">Rp 450.000</p>
+</div>
+</div>
+<!-- Customer Item -->
+<div class="p-4 hover:bg-surface-container-low border-b border-border-standard cursor-pointer transition-colors">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-label-xl text-label-xl">Andi Wijaya</h3>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-sm text-on-surface-variant">Terakhir: 3 hari lalu</p>
+<p class="font-numeric-display text-body-lg font-bold text-on-surface">Rp 89.500</p>
+</div>
+</div>
+<!-- Customer Item -->
+<div class="p-4 hover:bg-surface-container-low border-b border-border-standard cursor-pointer transition-colors">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-label-xl text-label-xl">Rizky Pratama</h3>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-sm text-on-surface-variant">Terakhir: 1 minggu lalu</p>
+<p class="font-numeric-display text-body-lg font-bold text-on-surface">Rp 2.100.000</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Panel: Details -->
+<section class="flex-1 flex flex-col bg-white overflow-hidden relative">
+<!-- Customer Detail Header -->
+<div class="p-6 border-b border-border-standard bg-surface-bright flex justify-between items-center">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-2xl">
+                            BS
+                        </div>
+<div>
+<h2 class="font-headline-md text-headline-md">Budi Santoso</h2>
+<p class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">phone</span> +62 812-3456-7890
+                            </p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-bold text-on-surface-variant uppercase mb-1">Total Hutang Aktif</p>
+<p class="text-3xl font-bold text-danger-alert font-numeric-display">Rp 1.240.000</p>
+</div>
+</div>
+<!-- Tabs/Sections -->
+<div class="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+<!-- Debt Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div class="p-4 border border-border-standard rounded-xl bg-white">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Kunjungan Bulan Ini</p>
+<p class="text-xl font-bold">12 Kali</p>
+</div>
+<div class="p-4 border border-border-standard rounded-xl bg-white">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Cicilan Terakhir</p>
+<p class="text-xl font-bold text-success-paid">Rp 200.000</p>
+</div>
+<div class="p-4 border border-border-standard rounded-xl bg-white">
+<p class="text-xs font-semibold text-on-surface-variant mb-1">Limit Kredit</p>
+<p class="text-xl font-bold text-secondary">Rp 2.000.000</p>
+</div>
+</div>
+<!-- Transaction History -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-xl text-label-xl">Riwayat Transaksi &amp; Pembayaran</h3>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 border border-border-standard rounded-lg text-xs font-bold hover:bg-surface-container-low">Semua</button>
+<button class="px-3 py-1.5 border border-border-standard rounded-lg text-xs font-bold hover:bg-surface-container-low">Piutang</button>
+<button class="px-3 py-1.5 border border-border-standard rounded-lg text-xs font-bold hover:bg-surface-container-low">Bayar</button>
+</div>
+</div>
+<div class="space-y-3">
+<!-- List Item: Debt -->
+<div class="flex items-center gap-4 p-4 border border-border-standard rounded-xl">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">shopping_basket</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface">Belanja Harian (Sembako)</h4>
+<p class="text-xs text-on-surface-variant">14 Okt 2023, 18:30</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-danger-alert font-numeric-display">+ Rp 150.000</p>
+<p class="text-[10px] text-on-surface-variant">Sisa: Rp 1.240.000</p>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+<!-- List Item: Payment -->
+<div class="flex items-center gap-4 p-4 border border-border-standard rounded-xl bg-surface-container-lowest">
+<div class="w-12 h-12 rounded-lg bg-success-paid/10 flex items-center justify-center text-success-paid">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface">Pembayaran Cicilan</h4>
+<p class="text-xs text-on-surface-variant">12 Okt 2023, 09:15</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-success-paid font-numeric-display">- Rp 200.000</p>
+<p class="text-[10px] text-on-surface-variant">Sisa: Rp 1.090.000</p>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+<!-- List Item: Debt -->
+<div class="flex items-center gap-4 p-4 border border-border-standard rounded-xl">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">shopping_basket</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface">Rokok &amp; Minuman Dingin</h4>
+<p class="text-xs text-on-surface-variant">10 Okt 2023, 20:45</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-danger-alert font-numeric-display">+ Rp 85.000</p>
+<p class="text-[10px] text-on-surface-variant">Sisa: Rp 1.290.000</p>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+<!-- List Item: Debt -->
+<div class="flex items-center gap-4 p-4 border border-border-standard rounded-xl">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface">Saldo Awal (Migrasi)</h4>
+<p class="text-xs text-on-surface-variant">01 Okt 2023</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-on-surface font-numeric-display">Rp 1.205.000</p>
+<p class="text-[10px] text-on-surface-variant">Initial balance</p>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action Zone -->
+<div class="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-border-standard flex gap-4 items-center shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+<button class="flex-1 h-touch-target-min bg-secondary text-on-secondary font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-secondary/20">
+<span class="material-symbols-outlined">payments</span>
+                        Bayar Hutang
+                    </button>
+<button class="p-3 border border-border-standard rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="p-3 border border-border-standard rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">print</span>
+</button>
+</div>
+</section>
+</div>
+</main>
+<!-- Micro-interaction Scripts -->
+<script>
+        // Simple click interaction for customer list
+        document.querySelectorAll('section[class*="w-full md:w-[400px]"] .cursor-pointer').forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active styling from all
+                document.querySelectorAll('section[class*="w-full md:w-[400px]"] .cursor-pointer').forEach(i => {
+                    i.classList.remove('bg-white', 'border-l-4', 'border-l-secondary', 'shadow-sm');
+                    i.classList.add('hover:bg-surface-container-low');
+                });
+                // Add to current
+                this.classList.add('bg-white', 'border-l-4', 'border-l-secondary', 'shadow-sm');
+                this.classList.remove('hover:bg-surface-container-low');
+                
+                // Trigger ripple or feedback
+                this.style.opacity = '0.7';
+                setTimeout(() => this.style.opacity = '1', 100);
+            });
+        });
+
+        // Search highlight mock
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('input', (e) => {
+            if (e.target.value.length > 0) {
+                searchInput.classList.add('border-secondary');
+            } else {
+                searchInput.classList.remove('border-secondary');
+            }
+        });
+    </script>
+
+
+</body></html>

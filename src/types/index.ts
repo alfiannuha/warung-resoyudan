@@ -1,0 +1,74 @@
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  barcode: string | null;
+  buyPrice: number;
+  sellPrice: number;
+  stock: number;
+  minStock: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const PRODUCT_CATEGORIES = [
+  "Makanan",
+  "Minuman",
+  "Sembako",
+  "Rokok",
+  "Kebutuhan Rumah",
+] as const;
+
+export interface CartItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  subtotal: number;
+  profit: number;
+}
+
+export type PaymentMethod = "cash" | "kasbon" | "qris";
+export type TransactionStatus = "paid" | "debt";
+
+export interface Transaction {
+  id: string;
+  date: string;
+  items: CartItem[];
+  totalAmount: number;
+  totalProfit: number;
+  paymentMethod: PaymentMethod;
+  status: TransactionStatus;
+  customerId: string | null;
+  createdAt: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  currentDebt: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DebtPayment {
+  id: string;
+  customerId: string;
+  amount: number;
+  paymentDate: string;
+  notes: string;
+}
+
+export interface DailyReport {
+  date: string;
+  totalSales: number;
+  totalProfit: number;
+  totalCash: number;
+  totalKasbon: number;
+  transactionCount: number;
+}
+
+export type PeriodFilter = "today" | "week" | "month" | "custom";
