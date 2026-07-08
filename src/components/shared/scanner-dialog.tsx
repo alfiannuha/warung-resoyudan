@@ -152,9 +152,17 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
           waitingClearRef.current = false;
         }
       } else if (barcodes.length > 0) {
-        const raw = barcodes[0].rawValue;
+        const barcode = barcodes[0];
+        const raw = barcode.rawValue;
+        const format = barcode.format;
 
-        if (debounceRef.current) {
+        // Only accept known 1D product barcode formats with numeric-only values
+        const isEanUpc = ["ean_13", "ean_8", "upc_a", "upc_e"].includes(format);
+        const isNumeric = /^\d+$/.test(raw);
+
+        if (!isEanUpc || !isNumeric) {
+          // Skip non-product barcodes (GS1 DataBar, composite, etc.)
+        } else if (debounceRef.current) {
           // Still in cooldown — skip
         } else if (raw === lastBarcodeRef.current) {
           // Same barcode reappeared after leaving — re-scan
