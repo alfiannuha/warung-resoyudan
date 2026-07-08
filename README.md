@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Warung Resoyudan
 
-## Getting Started
+Aplikasi Point of Sale (POS) untuk warung kelontong — responsive mobile & tablet, dengan fitur manajemen produk, transaksi kasir, kasbon pelanggan, laporan usaha, dan scan barcode.
 
-First, run the development server:
+## Fitur
+
+- **Kasir** — Grid produk, tambah ke keranjang, animasi bola keranjang, pilih metode bayar (Tunai / Kasbon / QRIS), konfirmasi transaksi
+- **Scan Barcode** — Scan produk via kamera, continuous scanning, otomatis tambah ke keranjang (kasir) atau isi form produk (manajemen produk)
+- **Manajemen Produk** — Tambah manual / scan barcode, edit, hapus, cari, filter kategori, stok menipis, nilai inventaris
+- **Kasbon** — Daftar pelanggan, riwayat transaksi, bayar cicilan, overdue tracking
+- **Dashboard** — Ringkasan penjualan, profit, stok menipis, utang aktif, grafik 7 hari
+- **Laporan** — Filter periode (hari/minggu/bulan/kustom), grafik batang, donat profit, produk terlaris, export PDF
+- **Sidebar Navigation** — Akses semua menu via drawer
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (Turbopack)
+- **UI:** Tailwind CSS 4, shadcn/ui, Lucide React
+- **State:** Zustand
+- **Scanner:** html5-qrcode
+- **PDF:** jsPDF + jsPDF-AutoTable
+
+## Cara Menjalankan
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka `http://localhost:3000` di browser. Untuk scan barcode, izinkan akses kamera.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Struktur
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/(main)/          # Halaman: kasir (/), dashboard, produk, kasbon, laporan
+├── components/
+│   ├── kasir/           # POS: grid, card, cart, payment, scanner, animasi
+│   ├── produk/          # Product form, table, stock badge
+│   ├── kasbon/          # Customer list, debt detail, payment input
+│   ├── dashboard/       # Metrics, stock alerts, debt list, chart
+│   ├── laporan/         # Charts, top products, export PDF
+│   ├── layout/          # App bar, sidebar drawer
+│   └── shared/          # Toast, confirm dialog, empty state, scanner
+├── stores/              # Zustand stores (product, cart, transaction, dll)
+├── data/mock/           # Data dummy
+└── types/               # TypeScript interfaces
+```
