@@ -20,31 +20,31 @@ export default function CartItemRow({ item }: Props) {
   const maxStock = product ? product.stock : undefined;
 
   return (
-    <div className="flex items-center gap-4 py-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-body-lg font-medium break-words leading-snug">{item.name}</p>
-        <p className="text-label-md text-on-surface-variant">
-          {formatCurrency(item.sellPrice)}
-        </p>
+    <div className="py-3 space-y-2">
+      {/* Row 1: name + subtotal */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-body-lg font-medium break-words leading-snug flex-1 min-w-0">{item.name}</p>
+        <p className="font-bold text-on-surface shrink-0">{formatCurrency(item.subtotal)}</p>
       </div>
-      <QuantityControl
-        quantity={item.quantity}
-        maxStock={maxStock}
-        onDecrement={() => updateQuantity(item.productId, item.quantity - 1)}
-        onIncrement={() => updateQuantity(item.productId, item.quantity + 1)}
-      />
-      <div className="text-right min-w-[80px]">
-        <p className="font-bold text-on-surface">
-          {formatCurrency(item.subtotal)}
-        </p>
+      {/* Row 2: unit price + quantity control + delete */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-label-md text-on-surface-variant">{formatCurrency(item.sellPrice)}</p>
+        <div className="flex items-center gap-2">
+          <QuantityControl
+            quantity={item.quantity}
+            maxStock={maxStock}
+            onDecrement={() => updateQuantity(item.productId, item.quantity - 1)}
+            onIncrement={() => updateQuantity(item.productId, item.quantity + 1)}
+          />
+          <button
+            onClick={() => removeFromCart(item.productId)}
+            className="text-danger-alert w-9 h-9 flex items-center justify-center rounded-lg hover:bg-danger-alert/10 active:scale-90 transition-all"
+            aria-label={`Hapus ${item.name}`}
+          >
+            <Icon name="delete" size={18} />
+          </button>
+        </div>
       </div>
-      <button
-        onClick={() => removeFromCart(item.productId)}
-        className="text-danger-alert touch-target w-8 h-8 flex items-center justify-center"
-        aria-label={`Hapus ${item.name}`}
-      >
-        <Icon name="delete" size={20} />
-      </button>
     </div>
   );
 }
