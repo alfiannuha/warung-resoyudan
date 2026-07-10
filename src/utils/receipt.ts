@@ -197,7 +197,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
 
     for (const item of items) {
       lines.push(item.name);
-      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}${formatCurrencyInline(item.subtotal)}`);
+      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}  ${formatCurrencyInline(item.subtotal)}`);
       lines.push("");
     }
 
@@ -232,7 +232,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
 
     for (const item of items) {
       lines.push(item.name);
-      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}${formatCurrencyInline(item.subtotal)}`);
+      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}  ${formatCurrencyInline(item.subtotal)}`);
       lines.push("");
     }
 
