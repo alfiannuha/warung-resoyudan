@@ -34,65 +34,127 @@ export interface ReceiptParams {
 function buildThermalReceipt(params: ReceiptParams): string {
   const { items, totalAmount, amountPaid, change, paymentMethod, receiptNumber, date, customerName, paperWidth } = params;
   const w = line(paperWidth);
+  const sep = "-".repeat(w);
   const isKasbon = paymentMethod === "kasbon";
   const isCash = paymentMethod === "cash";
 
   const lines: string[] = [];
 
-  lines.push("");
-  lines.push(center("WARUNG RESOYUDAN", w));
-  lines.push(center(receiptNumber, w));
-
   const d = new Date(date);
   const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-  lines.push(center(`${dateStr}  ${timeStr} WIB`, w));
-
-  if (customerName) {
-    lines.push("");
-    lines.push(`Pelanggan: ${customerName}`);
-  }
-  lines.push("");
-  lines.push(separator(w));
 
   if (isKasbon) {
-    lines.push(center("KASBON", w));
-    lines.push(separator(w));
-  }
+    lines.push("");
+    lines.push(center("WARUNG RESOYUDAN", w));
+    lines.push("");
+    lines.push(`No Nota: ${receiptNumber}`);
+    lines.push(`Tanggal: ${dateStr} ${timeStr} WIB`);
+    if (customerName) {
+      lines.push(`Pelanggan: ${customerName}`);
+    }
+    lines.push("");
+    lines.push("STATUS: KASBON");
+    lines.push("");
+    lines.push(sep);
+    lines.push("");
 
-  // Items
-  for (const item of items) {
-    lines.push(item.name);
-    const lineStr = `${item.quantity}x  ${formatCurrency(item.sellPrice)}  ${formatCurrency(item.subtotal)}`;
-    lines.push(lineStr);
-  }
+    for (const item of items) {
+      lines.push(item.name);
+      const qtyLine = `${item.quantity}x  ${formatCurrency(item.sellPrice)}  ${formatCurrency(item.subtotal)}`;
+      lines.push(qtyLine);
+    }
 
-  lines.push(separator(w));
+    lines.push("");
+    lines.push(sep);
+    const printPair = (label: string, value: string) => {
+      const pad = w - label.length - value.length - 2;
+      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+    };
+    printPair("TOTAL HUTANG", formatCurrency(totalAmount));
+    lines.push("");
+    lines.push(sep);
+    lines.push("");
+    lines.push("Mohon dilunasi sesuai");
+    lines.push("kesepakatan bersama.");
+    lines.push("");
+    lines.push("Terima Kasih");
+  } else if (isCash && amountPaid > 0) {
+    lines.push("");
+    lines.push(center("WARUNG RESOYUDAN", w));
+    lines.push("");
+    lines.push(`No Nota: ${receiptNumber}`);
+    lines.push(`Tanggal: ${dateStr} ${timeStr} WIB`);
+    if (customerName) {
+      lines.push(`Pelanggan: ${customerName}`);
+    }
+    lines.push("");
+    lines.push(sep);
+    lines.push("");
 
-  const printPair = (label: string, value: string) => {
-    const pad = w - label.length - value.length - 2;
-    lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
-  };
+    for (const item of items) {
+      lines.push(item.name);
+      const qtyLine = `${item.quantity}x  ${formatCurrency(item.sellPrice)}  ${formatCurrency(item.subtotal)}`;
+      lines.push(qtyLine);
+    }
 
-  if (isCash && amountPaid > 0) {
+    lines.push("");
+    lines.push(sep);
+    const printPair = (label: string, value: string) => {
+      const pad = w - label.length - value.length - 2;
+      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+    };
     printPair("TOTAL", formatCurrency(totalAmount));
     printPair("TUNAI", formatCurrency(amountPaid));
     printPair("KEMBALI", formatCurrency(change));
-  } else if (isKasbon) {
-    printPair("TOTAL HUTANG", formatCurrency(totalAmount));
-  } else {
-    printPair("TOTAL", formatCurrency(totalAmount));
-  }
-
-  if (paymentMethod === "qris") {
     lines.push("");
-    lines.push(center("QRIS", w));
+    lines.push(sep);
+    lines.push("");
+    lines.push(center("Terima kasih", w));
+    lines.push(center("🙏", w));
+  } else {
+    // QRIS or cash without amount (fallback)
+    lines.push("");
+    lines.push(center("WARUNG RESOYUDAN", w));
+    lines.push("");
+    lines.push(`No Nota: ${receiptNumber}`);
+    lines.push(`Tanggal: ${dateStr} ${timeStr} WIB`);
+    if (customerName) {
+      lines.push(`Pelanggan: ${customerName}`);
+    }
+    lines.push("");
+    lines.push(sep);
+    lines.push("");
+
+    for (const item of items) {
+      lines.push(item.name);
+      const qtyLine = `${item.quantity}x  ${formatCurrency(item.sellPrice)}  ${formatCurrency(item.subtotal)}`;
+      lines.push(qtyLine);
+    }
+
+    lines.push("");
+    lines.push(sep);
+    const printPair = (label: string, value: string) => {
+      const pad = w - label.length - value.length - 2;
+      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+    };
+    printPair("TOTAL", formatCurrency(totalAmount));
+
+    if (paymentMethod === "qris") {
+      lines.push("");
+      lines.push(center("QRIS", w));
+    }
+
+    lines.push("");
+    lines.push(sep);
+    lines.push("");
+    lines.push(center("Terima kasih", w));
+    lines.push(center("🙏", w));
   }
 
-  lines.push(separator(w));
   lines.push("");
-  lines.push(center("Terima kasih", w));
-  lines.push(center("🙏", w));
+  lines.push(center("Warung Resoyudan", w));
+  lines.push(center("Catat. Kelola. Tumbuh.", w));
   lines.push("");
   lines.push(separator(w, "="));
   lines.push("");
