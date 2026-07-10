@@ -50,6 +50,7 @@ export function sendWhatsAppReceipt(
   const receiptText = buildReceiptText({
     ...params,
     paperWidth: params.paperWidth ?? 58,
+    mode: "whatsapp",
   });
 
   const url = `https://wa.me/${formatPhoneToInternational(phone)}?text=${encodeURIComponent(receiptText)}`;

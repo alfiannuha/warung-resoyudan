@@ -3,56 +3,19 @@ import { formatCurrency } from "@/lib/formatters";
 
 const LINE_58 = 32;
 const LINE_80 = 48;
+const LINE_WA = 40;
 
 function line(width: PaperWidth): number {
   return width === 58 ? LINE_58 : LINE_80;
 }
 
-function center(text: string, width: PaperWidth): string {
-  const len = line(width);
-  const pad = Math.max(0, Math.floor((len - text.length) / 2));
-  return " ".repeat(pad) + text;
+function center(text: string, w: number, padChar = " "): string {
+  const pad = Math.max(0, Math.floor((w - text.length) / 2));
+  return padChar.repeat(pad) + text;
 }
 
-function separator(width: PaperWidth, char = "-"): string {
-  return char.repeat(line(width));
-}
-
-function wrapItems(
-  items: CartItem[],
-  width: PaperWidth,
-): string[] {
-  const result: string[] = [];
-  const maxQtyLen = 4;
-  const priceWidth = 12;
-
-  for (const item of items) {
-    // Item name line
-    result.push(item.name);
-
-    // "2 x Rp3.500  =  Rp7.000" or compact for 58mm
-    const qty = `${item.quantity}x`;
-    const unitPrice = formatCurrency(item.sellPrice);
-    const total = formatCurrency(item.subtotal);
-
-    if (width === 58) {
-      // 58mm: "2x  Rp3.500  Rp7.000"
-      const pricePart = `${unitPrice}`;
-      const totalPart = `${total}`;
-      const rightSide = `${pricePart}  ${totalPart}`;
-      const lineStr = `${qty.padEnd(maxQtyLen)}${rightSide}`;
-      result.push(lineStr);
-    } else {
-      // 80mm: more spacing
-      const pricePart = `${unitPrice}`;
-      const totalPart = `${total}`;
-      const rightSide = `${pricePart.padEnd(priceWidth)}${totalPart}`;
-      const lineStr = `${qty.padEnd(maxQtyLen)}${rightSide}`;
-      result.push(lineStr);
-    }
-  }
-
-  return result;
+function separator(w: number, char = "-"): string {
+  return char.repeat(w);
 }
 
 export interface ReceiptParams {
@@ -65,29 +28,26 @@ export interface ReceiptParams {
   date: string;
   customerName?: string;
   paperWidth: PaperWidth;
+  mode?: "thermal" | "whatsapp";
 }
 
-export function buildReceiptText(params: ReceiptParams): string {
+function buildThermalReceipt(params: ReceiptParams): string {
   const { items, totalAmount, amountPaid, change, paymentMethod, receiptNumber, date, customerName, paperWidth } = params;
-  const w = paperWidth;
-  const l = line(w);
+  const w = line(paperWidth);
   const isKasbon = paymentMethod === "kasbon";
   const isCash = paymentMethod === "cash";
 
   const lines: string[] = [];
 
-  // Header
   lines.push("");
   lines.push(center("WARUNG RESOYUDAN", w));
   lines.push(center(receiptNumber, w));
 
-  // Date
   const d = new Date(date);
   const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
   lines.push(center(`${dateStr}  ${timeStr} WIB`, w));
 
-  // Customer (kasbon)
   if (customerName) {
     lines.push("");
     lines.push(`Pelanggan: ${customerName}`);
@@ -95,53 +55,40 @@ export function buildReceiptText(params: ReceiptParams): string {
   lines.push("");
   lines.push(separator(w));
 
-  // Kasbon label
   if (isKasbon) {
     lines.push(center("KASBON", w));
     lines.push(separator(w));
   }
 
   // Items
-  const itemLines = wrapItems(items, w);
-  lines.push(...itemLines);
-
-  // Total line
-  lines.push(separator(w));
-
-  if (isCash && amountPaid > 0) {
-    const totalLabel = "TOTAL";
-    const totalVal = `${formatCurrency(totalAmount)}`;
-    const pad = l - totalLabel.length - totalVal.length - 2;
-    lines.push(`${totalLabel}${" ".repeat(Math.max(0, pad))}  ${totalVal}`);
-
-    const paidLabel = "TUNAI";
-    const paidVal = `${formatCurrency(amountPaid)}`;
-    const paidPad = l - paidLabel.length - paidVal.length - 2;
-    lines.push(`${paidLabel}${" ".repeat(Math.max(0, paidPad))}  ${paidVal}`);
-
-    const changeLabel = "KEMBALI";
-    const changeVal = `${formatCurrency(change)}`;
-    const changePad = l - changeLabel.length - changeVal.length - 2;
-    lines.push(`${changeLabel}${" ".repeat(Math.max(0, changePad))}  ${changeVal}`);
-  } else if (isKasbon) {
-    const label = "TOTAL HUTANG";
-    const val = `${formatCurrency(totalAmount)}`;
-    const pad = l - label.length - val.length - 2;
-    lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${val}`);
-  } else {
-    const label = "TOTAL";
-    const val = `${formatCurrency(totalAmount)}`;
-    const pad = l - label.length - val.length - 2;
-    lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${val}`);
+  for (const item of items) {
+    lines.push(item.name);
+    const lineStr = `${item.quantity}x  ${formatCurrency(item.sellPrice)}  ${formatCurrency(item.subtotal)}`;
+    lines.push(lineStr);
   }
 
-  // QRIS note
+  lines.push(separator(w));
+
+  const printPair = (label: string, value: string) => {
+    const pad = w - label.length - value.length - 2;
+    lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+  };
+
+  if (isCash && amountPaid > 0) {
+    printPair("TOTAL", formatCurrency(totalAmount));
+    printPair("TUNAI", formatCurrency(amountPaid));
+    printPair("KEMBALI", formatCurrency(change));
+  } else if (isKasbon) {
+    printPair("TOTAL HUTANG", formatCurrency(totalAmount));
+  } else {
+    printPair("TOTAL", formatCurrency(totalAmount));
+  }
+
   if (paymentMethod === "qris") {
     lines.push("");
     lines.push(center("QRIS", w));
   }
 
-  // Footer
   lines.push(separator(w));
   lines.push("");
   lines.push(center("Terima kasih", w));
@@ -151,4 +98,86 @@ export function buildReceiptText(params: ReceiptParams): string {
   lines.push("");
 
   return lines.join("\n");
+}
+
+function buildWhatsAppReceipt(params: ReceiptParams): string {
+  const { items, totalAmount, amountPaid, change, paymentMethod, receiptNumber, date, customerName } = params;
+  const w = LINE_WA;
+  const isKasbon = paymentMethod === "kasbon";
+  const isCash = paymentMethod === "cash";
+
+  const lines: string[] = [];
+
+  // ── Header ──
+  lines.push("");
+  lines.push(center("WARUNG RESOYUDAN", w));
+  lines.push(center(receiptNumber, w));
+
+  const d = new Date(date);
+  const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  lines.push(center(`${dateStr} • ${timeStr} WIB`, w));
+
+  if (customerName) {
+    lines.push("");
+    lines.push(`  Pelanggan: ${customerName}`);
+  }
+
+  lines.push("");
+  lines.push(separator(w, "─"));
+
+  // Kasbon badge
+  if (isKasbon) {
+    lines.push(center(" KASBON ", w, "─"));
+    lines.push(separator(w, "─"));
+  }
+
+  // ── Items ──
+  for (const item of items) {
+    lines.push(item.name);
+    const qtyPart = `${item.quantity} x ${formatCurrency(item.sellPrice)}`;
+    const totalPart = formatCurrency(item.subtotal);
+    const pad = w - qtyPart.length - totalPart.length - 2;
+    lines.push(`  ${qtyPart}${" ".repeat(Math.max(0, pad))}${totalPart}`);
+  }
+
+  // ── Totals ──
+  lines.push(separator(w, "─"));
+
+  const printPair = (label: string, value: string) => {
+    const pad = w - label.length - value.length - 2;
+    lines.push(`${label}${" ".repeat(Math.max(0, pad))} ${value}`);
+  };
+
+  if (isCash && amountPaid > 0) {
+    printPair("TOTAL", formatCurrency(totalAmount));
+    printPair("TUNAI", formatCurrency(amountPaid));
+    printPair("KEMBALI", formatCurrency(change));
+  } else if (isKasbon) {
+    printPair("TOTAL HUTANG", formatCurrency(totalAmount));
+  } else {
+    printPair("TOTAL", formatCurrency(totalAmount));
+  }
+
+  if (paymentMethod === "qris") {
+    lines.push("");
+    lines.push(center("QRIS", w));
+  }
+
+  // ── Footer ──
+  lines.push(separator(w, "─"));
+  lines.push("");
+  lines.push(center("Terima kasih 🙏", w));
+  lines.push("");
+  lines.push(separator(w, "═"));
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+export function buildReceiptText(params: ReceiptParams): string {
+  if (params.mode === "whatsapp") {
+    return buildWhatsAppReceipt(params);
+  }
+  return buildThermalReceipt(params);
 }
