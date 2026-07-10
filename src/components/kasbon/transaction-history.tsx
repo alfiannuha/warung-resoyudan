@@ -1,10 +1,11 @@
 "use client";
 
 import { useShallow } from "zustand/react/shallow";
-import type { Customer, Transaction, DebtPayment } from "@/types";
+import type { Transaction } from "@/types";
 import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useDebtPaymentStore } from "@/stores/use-debt-payment-store";
+import ReprintButton from "./reprint-button";
 
 interface Props {
   customerId: string;
@@ -24,12 +25,14 @@ export default function TransactionHistory({ customerId }: Props) {
     type: "debt" | "payment";
     description: string;
     amount: number;
+    transaction?: Transaction;
   }[] = [
     ...transactions.map((t) => ({
       date: t.createdAt,
       type: "debt" as const,
       description: `Pembelian ${t.items.map((i) => i.name).join(", ")}`,
       amount: t.totalAmount,
+      transaction: t,
     })),
     ...payments.map((p) => ({
       date: p.paymentDate,
@@ -54,18 +57,30 @@ export default function TransactionHistory({ customerId }: Props) {
           key={i}
           className="flex justify-between items-start py-3 border-b border-border-standard/50"
         >
-          <div>
-            <p className="font-bold text-body-md">{event.description}</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-body-md truncate">{event.description}</p>
             <p className="text-xs text-outline">{formatDateTime(event.date)}</p>
+            {event.transaction?.receiptNumber && (
+              <p className="text-xs text-secondary font-mono mt-0.5">
+                {event.transaction.receiptNumber}
+              </p>
+            )}
           </div>
-          <p
-            className={`font-bold ${
-              event.type === "debt" ? "text-danger-alert" : "text-success-paid"
-            }`}
-          >
-            {event.type === "debt" ? "+" : "-"}
-            {formatCurrency(Math.abs(event.amount))}
-          </p>
+          <div className="text-right shrink-0 ml-3">
+            <p
+              className={`font-bold ${
+                event.type === "debt" ? "text-danger-alert" : "text-success-paid"
+              }`}
+            >
+              {event.type === "debt" ? "+" : "-"}
+              {formatCurrency(Math.abs(event.amount))}
+            </p>
+            {event.transaction && (
+              <div className="mt-1">
+                <ReprintButton transaction={event.transaction} />
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </div>

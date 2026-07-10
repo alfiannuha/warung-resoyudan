@@ -34,6 +34,7 @@ export interface CartItem {
 
 export type PaymentMethod = "cash" | "kasbon" | "qris";
 export type TransactionStatus = "paid" | "debt";
+export type PaperWidth = 58 | 80;
 
 export interface Transaction {
   id: string;
@@ -45,6 +46,9 @@ export interface Transaction {
   status: TransactionStatus;
   customerId: string | null;
   createdAt: string;
+  receiptNumber: string | null;
+  amountPaid: number;
+  change: number;
 }
 
 export interface Customer {

@@ -34,6 +34,10 @@ import {
   Edit,
   MoreVertical,
   Camera,
+  Settings,
+  Printer,
+  MessageCircle,
+  Bluetooth,
   type LucideIcon,
 } from "lucide-react";
 
@@ -78,6 +82,11 @@ export const iconMap: Record<string, LucideIcon> = {
   edit: Edit,
   more_vert: MoreVertical,
   camera_switch: Camera,
+  settings: Settings,
+  print: Printer,
+  message_circle: MessageCircle,
+  receipt_long: Receipt,
+  bluetooth: Bluetooth,
 };
 
 export function Icon({ name, className = "", size = 24 }: { name: string; className?: string; size?: number }) {

@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
   { label: "Produk", href: "/produk", icon: "inventory_2" as const },
   { label: "Kasbon", href: "/kasbon", icon: "menu_book" as const },
   { label: "Laporan", href: "/laporan", icon: "assessment" as const },
+  { label: "Pengaturan", href: "/settings", icon: "settings" as const },
 ];
 
 export const APP_NAME = "Warung Resoyudan";

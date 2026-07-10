@@ -4,11 +4,18 @@ import CartItemRow from "@/components/kasir/cart-item";
 import PaymentMethod from "@/components/kasir/payment-method";
 import CustomerSelect from "@/components/kasir/customer-select";
 import QrisPaymentDialog from "@/components/kasir/qris-payment-dialog";
+import CashPaymentDialog from "@/components/kasir/cash-payment-dialog";
+import ReceiptSuccessDialog from "@/components/kasir/receipt-success-dialog";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import EmptyState from "@/components/shared/empty-state";
 import { useToast } from "@/components/shared/toast-provider";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
+import { generateReceiptNumber } from "@/lib/receipt-counter";
+import { buildReceiptText } from "@/utils/receipt";
+import { sendWhatsAppReceipt } from "@/utils/whatsapp";
+import { requestPrinter, reconnectPrinter, printReceipt } from "@/utils/bluetooth-printer";
+import { usePrinterStore } from "@/stores/use-printer-store";
 import { useState } from "react";
 import { useCartStore } from "@/stores/use-cart-store";
 import { useProductStore } from "@/stores/use-product-store";
@@ -24,12 +31,25 @@ export default function CartPage() {
   const addTransaction = useTransactionStore((s) => s.addTransaction);
   const updateDebt = useCustomerStore((s) => s.updateDebt);
   const { toast } = useToast();
+  const { paperWidth, savedDeviceId } = usePrinterStore();
   const [showQris, setShowQris] = useState(false);
   const [confirmCheckout, setConfirmCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [showCashPayment, setShowCashPayment] = useState(false);
+  const [showReceiptSuccess, setShowReceiptSuccess] = useState(false);
+  const [receiptNumber, setReceiptNumber] = useState("");
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [change, setChange] = useState(0);
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
   const totalProfit = items.reduce((sum, i) => sum + i.profit, 0);
+
+  const getSelectedCustomer = () => {
+    if (!selectedCustomerId) return undefined;
+    return useCustomerStore.getState().customers.find((c) => c.id === selectedCustomerId);
+  };
+
+  const customerPhone = getSelectedCustomer()?.phone;
 
   const handleCheckoutStart = () => {
     if (items.length === 0) return;
@@ -54,6 +74,16 @@ export default function CartPage() {
     setConfirmCheckout(false);
     if (checkoutError) return;
 
+    const rn = await generateReceiptNumber();
+    setReceiptNumber(rn);
+    setAmountPaid(0);
+    setChange(0);
+
+    if (paymentMethod === "cash") {
+      setShowCashPayment(true);
+      return;
+    }
+
     for (const item of items) {
       const ok = await reduceStock(item.productId, item.quantity);
       if (!ok) {
@@ -69,7 +99,10 @@ export default function CartPage() {
       totalProfit,
       paymentMethod,
       status: paymentMethod === "kasbon" ? "debt" : "paid",
-      customerId: paymentMethod === "kasbon" ? selectedCustomerId : null,
+      customerId: selectedCustomerId,
+      receiptNumber: rn,
+      amountPaid: 0,
+      change: 0,
     });
 
     if (paymentMethod === "kasbon" && selectedCustomerId) {
@@ -81,16 +114,105 @@ export default function CartPage() {
       return;
     }
 
+    setShowReceiptSuccess(true);
+  };
+
+  const handleCashPaymentConfirm = async (paid: number) => {
+    setShowCashPayment(false);
+    const chg = paid - totalAmount;
+    setAmountPaid(paid);
+    setChange(chg);
+
+    for (const item of items) {
+      const ok = await reduceStock(item.productId, item.quantity);
+      if (!ok) {
+        toast(`Stok ${item.name} tidak mencukupi.`, "error");
+        return;
+      }
+    }
+
+    await addTransaction({
+      date: new Date().toISOString(),
+      items: items.map((i) => ({ ...i })),
+      totalAmount,
+      totalProfit,
+      paymentMethod: "cash",
+      status: "paid",
+      customerId: null,
+      receiptNumber,
+      amountPaid: paid,
+      change: chg,
+    });
+
+    setShowReceiptSuccess(true);
+  };
+
+  const handleQrisConfirm = () => {
+    setShowQris(false);
+    setShowReceiptSuccess(true);
+  };
+
+  const handleQrisClose = () => {
+    setShowQris(false);
     clearCart();
+    router.push("/");
+    toast("Transaksi QRIS dibatalkan.", "info");
+  };
+
+  const handleReceiptDone = () => {
+    clearCart();
+    setShowReceiptSuccess(false);
     router.push("/");
     toast("Transaksi berhasil disimpan!");
   };
 
-  const handleQrisConfirm = () => {
-    clearCart();
-    setShowQris(false);
-    router.push("/");
-    toast("Pembayaran berhasil dikonfirmasi!");
+  const handlePrint = async () => {
+    try {
+      let device = savedDeviceId ? await reconnectPrinter(savedDeviceId) : null;
+      if (!device) {
+        device = await requestPrinter();
+      }
+
+      const customer = getSelectedCustomer();
+      const receiptText = buildReceiptText({
+        items,
+        totalAmount,
+        amountPaid,
+        change,
+        paymentMethod,
+        receiptNumber,
+        date: new Date().toISOString(),
+        customerName: customer?.name,
+        paperWidth,
+      });
+
+      await printReceipt(device, receiptText, paperWidth);
+      toast("Nota berhasil dicetak.", "success");
+    } catch (err) {
+      toast(
+        err instanceof Error ? err.message : "Gagal mencetak nota.",
+        "error",
+      );
+    }
+  };
+
+  const handleWhatsApp = () => {
+    if (!customerPhone) {
+      toast("Nomor WhatsApp pelanggan belum tersedia.", "error");
+      return;
+    }
+    const customer = getSelectedCustomer();
+    sendWhatsAppReceipt(customerPhone, {
+      items,
+      totalAmount,
+      amountPaid,
+      change,
+      paymentMethod,
+      receiptNumber,
+      date: new Date().toISOString(),
+      customerName: customer?.name,
+      paperWidth,
+    });
   };
 
   if (items.length === 0) {
@@ -150,12 +272,34 @@ export default function CartPage() {
         </button>
       </div>
 
+      {/* Cash Payment Dialog */}
+      <CashPaymentDialog
+        open={showCashPayment}
+        totalAmount={totalAmount}
+        onConfirm={handleCashPaymentConfirm}
+        onCancel={() => setShowCashPayment(false)}
+      />
+
       {/* QRIS Dialog */}
       <QrisPaymentDialog
         open={showQris}
         amount={totalAmount}
         onConfirm={handleQrisConfirm}
-        onClose={() => setShowQris(false)}
+        onClose={handleQrisClose}
+      />
+
+      {/* Receipt Success Dialog */}
+      <ReceiptSuccessDialog
+        open={showReceiptSuccess}
+        receiptNumber={receiptNumber}
+        totalAmount={totalAmount}
+        amountPaid={amountPaid}
+        change={change}
+        paymentMethod={paymentMethod}
+        customerPhone={customerPhone}
+        onPrint={handlePrint}
+        onWhatsApp={handleWhatsApp}
+        onDone={handleReceiptDone}
       />
 
       {/* Confirm Dialog */}
