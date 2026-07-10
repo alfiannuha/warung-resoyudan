@@ -173,7 +173,7 @@ export default function KasbonPage() {
                 return (
                   <div
                     key={customer.id}
-                    onClick={() => { setSelectedCustomer(customer); setDetailOpen(true); }}
+                    onClick={() => setSelectedCustomer(customer)}
                     className={`p-4 border-b border-border-standard cursor-pointer transition-colors ${
                       isSelected
                         ? "bg-white border-l-4 border-l-secondary shadow-sm"
@@ -212,7 +212,7 @@ export default function KasbonPage() {
 
         {/* Right: Customer Detail */}
         <section className="flex-1 flex flex-col bg-white min-h-0">
-          {!selectedCustomer || !detailOpen ? (
+          {!selectedCustomer ? (
             <div className="flex-1 flex items-center justify-center text-on-surface-variant/50">
               <div className="text-center">
                 <Icon name="person_search" size={64} className="mx-auto mb-3" />
