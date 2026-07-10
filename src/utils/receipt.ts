@@ -102,7 +102,7 @@ function buildThermalReceipt(params: ReceiptParams): string {
 
 function buildWhatsAppReceipt(params: ReceiptParams): string {
   const { items, totalAmount, amountPaid, change, paymentMethod, receiptNumber, date, customerName } = params;
-  const w = 36;
+  const w = 32;
   const sep = "-".repeat(w);
   const isKasbon = paymentMethod === "kasbon";
   const isCash = paymentMethod === "cash";
