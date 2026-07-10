@@ -76,7 +76,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   setPaymentMethod: (method) => {
     set({ paymentMethod: method });
-    if (method === "cash" || method === "qris") set({ selectedCustomerId: null });
   },
 
   setCustomer: (id) => set({ selectedCustomerId: id }),

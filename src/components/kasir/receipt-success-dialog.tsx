@@ -88,18 +88,15 @@ export default function ReceiptSuccessDialog({
             <Icon name="print" size={20} />
             Cetak Nota
           </button>
-          <button
-            onClick={onWhatsApp}
-            className={`w-full h-touch-target-min rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform ${
-              hasPhone
-                ? "border-2 border-secondary text-secondary"
-                : "border border-border-standard text-on-surface-variant cursor-not-allowed"
-            }`}
-            disabled={!hasPhone}
-          >
-            <Icon name="message_circle" size={20} />
-            {hasPhone ? "Kirim WhatsApp" : "Nomor WhatsApp tidak tersedia"}
-          </button>
+          {hasPhone && (
+            <button
+              onClick={onWhatsApp}
+              className="w-full h-touch-target-min rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform border-2 border-secondary text-secondary"
+            >
+              <Icon name="message_circle" size={20} />
+              Kirim WhatsApp
+            </button>
+          )}
           <button
             onClick={onDone}
             className="w-full h-12 text-on-surface-variant font-bold active:opacity-80"

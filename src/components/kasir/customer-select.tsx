@@ -18,37 +18,36 @@ export default function CustomerSelect() {
   );
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
-
-  const debtors = customers.filter((c) => c.currentDebt > 0);
+  const [newPhone, setNewPhone] = useState("");
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
-    await addCustomer({ name: newName.trim(), phone: "", currentDebt: 0 });
-    // Select the newly added customer
-    const updated = useCustomerStore.getState().customers;
-    const newest = updated[updated.length - 1];
-    setCustomer(newest.id);
+    const id = await addCustomer({
+      name: newName.trim(),
+      phone: newPhone.trim() || "",
+      currentDebt: 0,
+    });
+    setCustomer(id);
     setNewName("");
+    setNewPhone("");
     setAddOpen(false);
   };
-
-  if (paymentMethod !== "kasbon") return null;
 
   return (
     <div className="space-y-2">
       <label className="text-label-md block text-on-surface-variant">
-        Nama Pelanggan (Kasbon)
+        Pelanggan
       </label>
       <div className="flex gap-2">
         <select
           value={selectedCustomerId || ""}
           onChange={(e) => setCustomer(e.target.value || null)}
-          className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-warning-debt outline-none bg-white transition-all text-body-md"
+          className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-white transition-all text-body-md"
         >
-          <option value="">Pilih pelanggan...</option>
+          <option value="">{paymentMethod === "kasbon" ? "Pilih pelanggan..." : "Tanpa pelanggan"}</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} — {c.currentDebt > 0 ? `Rp ${c.currentDebt.toLocaleString("id-ID")}` : "Lunas"}
+              {c.name}{c.phone ? ` (${c.phone})` : ""} — {c.currentDebt > 0 ? `Rp ${c.currentDebt.toLocaleString("id-ID")}` : "Lunas"}
             </option>
           ))}
         </select>
@@ -66,24 +65,39 @@ export default function CustomerSelect() {
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setAddOpen(false)}>
           <div className="bg-white rounded-xl max-w-[360px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-headline-md font-bold">Pelanggan Baru</h3>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
-              placeholder="Nama pelanggan"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            />
+            <div>
+              <label className="text-label-md text-on-surface-variant block mb-1">Nama</label>
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
+                placeholder="Nama pelanggan"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-label-md text-on-surface-variant block mb-1">
+                Nomor WhatsApp <span className="text-outline">(opsional)</span>
+              </label>
+              <input
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
+                placeholder="0812xxxx atau 62812xxxx"
+              />
+              <p className="text-xs text-outline mt-1">Diperlukan untuk kirim nota via WhatsApp</p>
+            </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setAddOpen(false)}
+                onClick={() => { setAddOpen(false); setNewName(""); setNewPhone(""); }}
                 className="flex-1 h-12 border border-border-standard rounded-xl font-bold"
               >
                 Batal
               </button>
               <button
                 onClick={handleAdd}
-                className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform"
+                disabled={!newName.trim()}
+                className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
               >
                 Tambah
               </button>
