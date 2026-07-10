@@ -68,8 +68,7 @@ function buildThermalReceipt(params: ReceiptParams): string {
     lines.push("");
     lines.push(sep);
     const printPair = (label: string, value: string) => {
-      const pad = w - label.length - value.length - 2;
-      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+      lines.push(`${label}\t\t\t${value}`);
     };
     printPair("TOTAL HUTANG", formatCurrency(totalAmount));
     lines.push("");
@@ -101,8 +100,7 @@ function buildThermalReceipt(params: ReceiptParams): string {
     lines.push("");
     lines.push(sep);
     const printPair = (label: string, value: string) => {
-      const pad = w - label.length - value.length - 2;
-      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+      lines.push(`${label}\t\t\t${value}`);
     };
     printPair("TOTAL", formatCurrency(totalAmount));
     printPair("TUNAI", formatCurrency(amountPaid));
@@ -135,8 +133,7 @@ function buildThermalReceipt(params: ReceiptParams): string {
     lines.push("");
     lines.push(sep);
     const printPair = (label: string, value: string) => {
-      const pad = w - label.length - value.length - 2;
-      lines.push(`${label}${" ".repeat(Math.max(0, pad))}  ${value}`);
+      lines.push(`${label}\t\t\t${value}`);
     };
     printPair("TOTAL", formatCurrency(totalAmount));
 
@@ -204,7 +201,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
     lines.push(sep);
     lines.push("");
     const pl = (label: string, value: string) => {
-      lines.push(`${label.padEnd(14)}${value}`);
+      lines.push(`${label}\t\t\t${value}`);
     };
     pl("TOTAL HUTANG", formatCurrency(totalAmount));
     lines.push("");
@@ -239,7 +236,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
     lines.push(sep);
 
     const pl = (label: string, value: string) => {
-      lines.push(`${label.padEnd(14)}${value}`);
+      lines.push(`${label}\t\t\t${value}`);
     };
 
     pl("Subtotal", formatCurrency(totalAmount));
