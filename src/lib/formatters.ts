@@ -7,6 +7,11 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+/** Formats currency without space after Rp, for compact receipt lines. */
+export function formatCurrencyInline(amount: number): string {
+  return formatCurrency(amount).replace("Rp ", "Rp");
+}
+
 export function formatCurrencyCompact(amount: number): string {
   if (amount >= 1_000_000) {
     return `Rp ${(amount / 1_000_000).toFixed(1)}jt`;

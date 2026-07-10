@@ -1,5 +1,5 @@
 import type { CartItem, PaymentMethod, PaperWidth } from "@/types";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatCurrencyInline } from "@/lib/formatters";
 
 const LINE_58 = 32;
 const LINE_80 = 48;
@@ -197,7 +197,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
 
     for (const item of items) {
       lines.push(item.name);
-      lines.push(`${item.quantity} x ${formatCurrency(item.sellPrice)}${formatCurrency(item.subtotal)}`);
+      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}${formatCurrencyInline(item.subtotal)}`);
       lines.push("");
     }
 
@@ -232,7 +232,7 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
 
     for (const item of items) {
       lines.push(item.name);
-      lines.push(`${item.quantity} x ${formatCurrency(item.sellPrice)}${formatCurrency(item.subtotal)}`);
+      lines.push(`${item.quantity} x ${formatCurrencyInline(item.sellPrice)}${formatCurrencyInline(item.subtotal)}`);
       lines.push("");
     }
 
