@@ -102,8 +102,9 @@ function buildThermalReceipt(params: ReceiptParams): string {
 
 function buildWhatsAppReceipt(params: ReceiptParams): string {
   const { items, totalAmount, amountPaid, change, paymentMethod, receiptNumber, date, customerName } = params;
-  const w = 39;
-  const sep = "=".repeat(w);
+  const w = 36;
+  const sep = "-".repeat(w);
+  const isKasbon = paymentMethod === "kasbon";
   const isCash = paymentMethod === "cash";
 
   const lines: string[] = [];
@@ -112,36 +113,55 @@ function buildWhatsAppReceipt(params: ReceiptParams): string {
   const dateStr = d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
-  lines.push("WARUNG RESOYUDAN");
+  lines.push("🧾 WARUNG RESOYUDAN");
   lines.push("");
-  lines.push(`No Transaksi: ${receiptNumber}`);
-  lines.push(`Tanggal : ${dateStr}  ${timeStr} WIB`);
+  lines.push("No Nota");
+  lines.push(receiptNumber);
+  lines.push("");
+  lines.push("Tanggal");
+  lines.push(`${dateStr} ${timeStr} WIB`);
   if (customerName) {
+    lines.push("");
     lines.push(`Pelanggan: ${customerName}`);
   }
+  if (isKasbon) {
+    lines.push("");
+    lines.push("Status: KASBON");
+  }
+  lines.push("");
   lines.push(sep);
+  lines.push("");
   lines.push("");
 
   for (const item of items) {
     lines.push(item.name);
-    const qtyPart = `${item.quantity}x  ${formatCurrency(item.sellPrice)}`;
-    const totalPart = formatCurrency(item.subtotal);
-    const pad = w - qtyPart.length - totalPart.length;
-    lines.push(`${qtyPart}${" ".repeat(Math.max(0, pad))}${totalPart}`);
+    lines.push(`${item.quantity} x ${formatCurrency(item.sellPrice)}${formatCurrency(item.subtotal)}`);
+    lines.push("");
+  }
+
+  lines.push(sep);
+
+  const pl = (label: string, value: string) => {
+    lines.push(`${label.padEnd(14)}${value}`);
+  };
+
+  pl("Subtotal", formatCurrency(totalAmount));
+
+  if (isCash && amountPaid > 0) {
+    lines.push("");
+    pl("Bayar", formatCurrency(amountPaid));
+    pl("Kembalian", formatCurrency(change));
   }
 
   lines.push("");
   lines.push(sep);
-  if (isCash && amountPaid > 0) {
-    printWA("TOTAL", formatCurrency(totalAmount), lines, w);
-    printWA("TUNAI", formatCurrency(amountPaid), lines, w);
-    printWA("KEMBALI", formatCurrency(change), lines, w);
-  } else {
-    printWA("TOTAL", formatCurrency(totalAmount), lines, w);
-  }
-  lines.push(sep);
   lines.push("");
-  lines.push("Terima kasih Telah Berbelanja di Warung Resoyudan");
+  pl("Total", formatCurrency(totalAmount));
+  lines.push("");
+  lines.push("🙏 Terima kasih telah berbelanja.");
+  lines.push("");
+  lines.push("Warung Resoyudan");
+  lines.push("Catat. Kelola. Tumbuh.");
 
   return lines.join("\n");
 }
