@@ -79,12 +79,18 @@ export default function CustomerSelect() {
               <label className="text-label-md text-on-surface-variant block mb-1">
                 Nomor WhatsApp <span className="text-outline">(opsional)</span>
               </label>
-              <input
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
-                placeholder="0812xxxx atau 62812xxxx"
-              />
+              <div className="flex border border-border-standard rounded-xl focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/20 overflow-hidden transition-all">
+                <span className="flex items-center px-3 text-body-md font-bold bg-surface-container text-on-surface-variant shrink-0">
+                  +62
+                </span>
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
+                  className="flex-1 h-12 px-3 outline-none"
+                  placeholder="81x-xxxx-xxxx"
+                  inputMode="numeric"
+                />
+              </div>
               <p className="text-xs text-outline mt-1">Diperlukan untuk kirim nota via WhatsApp</p>
             </div>
             <div className="flex gap-3">
