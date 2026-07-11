@@ -31,7 +31,7 @@ export default function ProductForm({
   initialCategory,
   initialImageUrl,
 }: Props) {
-  const { products, addProduct, updateProduct } = useProductStore();
+  const { addProduct, updateProduct } = useProductStore();
 
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
@@ -48,7 +48,7 @@ export default function ProductForm({
     if (!open) return;
 
     if (editId) {
-      const existing = products.find((p) => p.id === editId);
+      const existing = useProductStore.getState().products.find((p) => p.id === editId);
       if (existing) {
         setName(existing.name);
         setBrand(existing.brand || "");
@@ -73,7 +73,7 @@ export default function ProductForm({
     setSellPrice("");
     setStock("");
     setMinStock("0");
-  }, [open, editId, products, initialName, initialBrand, initialCategory, initialBarcode, initialImageUrl]);
+  }, [open, editId, initialName, initialBrand, initialCategory, initialBarcode, initialImageUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
