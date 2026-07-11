@@ -14,9 +14,12 @@
     "barcode-detector": "^3.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "common-tags": "^1.8.2",
     "firebase": "^12.15.0",
+    "idb": "^8.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "kolorist": "^1.8.0",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "react": "19.2.4",
@@ -28,7 +31,10 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@serwist/build": "9.5.10",
     "@serwist/turbopack": "9.5.10",
+    "@serwist/utils": "9.5.10",
+    "@serwist/window": "9.5.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -36,7 +42,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "serwist": "^9.5.10",
+    "serwist": "9.5.10",
     "tailwindcss": "^4",
     "typescript": "^5.9.3"
   }
