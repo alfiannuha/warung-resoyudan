@@ -17,6 +17,7 @@ export const PERIOD_OPTIONS: { label: string; value: PeriodFilter }[] = [
 export const NAV_ITEMS = [
   { label: "Kasir", href: "/", icon: "point_of_sale" as const },
   { label: "Dashboard", href: "/dashboard", icon: "dashboard" as const },
+  { label: "Transaksi", href: "/transaksi", icon: "receipt_long" as const },
   { label: "Produk", href: "/produk", icon: "inventory_2" as const },
   { label: "Kasbon", href: "/kasbon", icon: "menu_book" as const },
   { label: "Laporan", href: "/laporan", icon: "assessment" as const },
