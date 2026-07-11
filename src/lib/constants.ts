@@ -1,6 +1,11 @@
 import type { PeriodFilter } from "@/types";
 
-export const QUICK_NOMINALS = [50000, 100000, 200000] as const;
+export const PERIOD_LABELS: Record<string, string> = {
+  today: "Hari Ini",
+  week: "Minggu Ini",
+  month: "Bulan Ini",
+  custom: "Custom",
+};
 
 export const PERIOD_OPTIONS: { label: string; value: PeriodFilter }[] = [
   { label: "Hari Ini", value: "today" },

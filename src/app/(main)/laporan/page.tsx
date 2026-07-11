@@ -6,7 +6,8 @@ import { Icon } from "@/lib/icon-map";
 import { useReportStore } from "@/stores/use-report-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { formatCurrency, formatDateShort, getTodayISO } from "@/lib/formatters";
-import { exportAllData } from "@/lib/backup";
+import { PERIOD_LABELS } from "@/lib/constants";
+import { exportToExcel, exportToPDF } from "@/lib/export";
 
 function getDateRange(period: string, customStart?: string | null, customEnd?: string | null) {
   const today = getTodayISO();
@@ -245,14 +246,24 @@ export default function LaporanPage() {
       <div className="pb-4">
         <div className="flex justify-end gap-4">
           <button
-            onClick={() => exportAllData()}
+            onClick={exportToExcel}
             className="flex items-center gap-2 px-6 py-3 border border-border-standard text-primary rounded-lg font-bold hover:bg-surface-container-low transition-all active:scale-95"
           >
-            <Icon name="save" size={20} />
-            Export JSON
+            <Icon name="file_text" size={20} />
+            Export Excel
           </button>
           <button
-            onClick={() => {}}
+            onClick={() =>
+              exportToPDF({
+                periodLabel: PERIOD_LABELS[period] || period,
+                totalSales,
+                totalProfit,
+                totalCash,
+                totalKasbon,
+                transactionCount: transactions.length,
+                topProducts,
+              })
+            }
             className="flex items-center gap-2 px-6 py-3 bg-secondary text-on-secondary rounded-lg font-bold hover:bg-secondary-container transition-all active:scale-95"
           >
             <Icon name="picture_as_pdf" size={20} />
