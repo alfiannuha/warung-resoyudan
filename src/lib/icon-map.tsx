@@ -98,5 +98,5 @@ export function Icon({ name, className = "", size = 24, fill }: { name: string; 
     console.warn(`Unknown icon: ${name}`);
     return <span className={className}>?</span>;
   }
-  return <LucideIcon className={`inline-block ${className}`.trim()} size={size} fill={fill} />;
+  return <LucideIcon className={`inline-block ${className}`.trim()} size={size} {...(fill !== undefined ? { fill } : {})} />;
 }

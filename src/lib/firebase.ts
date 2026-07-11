@@ -1,7 +1,9 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
-  getFirestore,
-  enableMultiTabIndexedDbPersistence,
+  initializeFirestore,
+  CACHE_SIZE_UNLIMITED,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   type Firestore,
 } from "firebase/firestore";
 
@@ -15,17 +17,11 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db: Firestore = getFirestore(app);
-
-// Enable offline persistence (multi-tab safe)
-if (typeof window !== "undefined") {
-  enableMultiTabIndexedDbPersistence(db).catch((err) => {
-    if (err.code === "failed-precondition") {
-      // Multiple tabs open — persistence already enabled in another tab
-    } else if (err.code === "unimplemented") {
-      // Browser does not support IndexedDB
-    }
-  });
-}
+const db: Firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+  }),
+});
 
 export { db };
