@@ -10,3 +10,7 @@
 
 # language
 - Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.60
+
+# whatsapp
+- Use +62 prefix for WhatsApp phone numbers (not just 62). Confidence: 0.70
+- Format WhatsApp receipt display neatly, not like thermal printer receipts. Confidence: 0.75

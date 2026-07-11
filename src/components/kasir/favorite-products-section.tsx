@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useProductStore } from "@/stores/use-product-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
@@ -10,31 +11,66 @@ import type { Product } from "@/types";
 
 const MAX_VISIBLE = 20;
 
+function getTopProducts(
+  transactions: import("@/types").Transaction[],
+  start: string,
+  end: string,
+  limit: number,
+): { name: string; qty: number; revenue: number }[] {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+  const txns = transactions.filter((t) => {
+    const d = new Date(t.date);
+    return d >= startDate && d <= endDate;
+  });
+  const productMap = new Map<string, { name: string; qty: number; revenue: number }>();
+  txns.forEach((t) => {
+    t.items.forEach((item) => {
+      const existing = productMap.get(item.productId);
+      if (existing) {
+        existing.qty += item.quantity;
+        existing.revenue += item.subtotal;
+      } else {
+        productMap.set(item.productId, {
+          name: item.name,
+          qty: item.quantity,
+          revenue: item.subtotal,
+        });
+      }
+    });
+  });
+  return Array.from(productMap.values())
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, limit);
+}
+
 export default function FavoriteProductsSection() {
   const favorites = useProductStore(useShallow((s) => s.getFavoriteProducts()));
   const allProducts = useProductStore((s) => s.products);
+  const transactions = useTransactionStore((s) => s.transactions);
 
   const today = getTodayISO();
-  const topProducts = useTransactionStore((s) =>
-    s.getTopProducts(today, today, MAX_VISIBLE),
+  const topProducts = useMemo(
+    () => getTopProducts(transactions, today, today, MAX_VISIBLE),
+    [transactions, today],
   );
 
-  const favoriteIds = new Set(favorites.map((f) => f.id));
-
-  // Fill remaining slots with best-sellers (matched by name, excludes favorites)
-  const bestSellers: Product[] = [];
-  for (const tp of topProducts) {
-    if (bestSellers.length >= MAX_VISIBLE - favorites.length) break;
-    const match = allProducts.find(
-      (p) => p.name === tp.name && p.isActive && !favoriteIds.has(p.id),
-    );
-    if (match) {
-      bestSellers.push(match);
-      favoriteIds.add(match.id);
+  const { bestSellers, items } = useMemo(() => {
+    const favoriteIds = new Set(favorites.map((f) => f.id));
+    const bs: Product[] = [];
+    for (const tp of topProducts) {
+      if (bs.length >= MAX_VISIBLE - favorites.length) break;
+      const match = allProducts.find(
+        (p) => p.name === tp.name && p.isActive && !favoriteIds.has(p.id),
+      );
+      if (match) {
+        bs.push(match);
+        favoriteIds.add(match.id);
+      }
     }
-  }
-
-  const items = [...favorites, ...bestSellers];
+    return { bestSellers: bs, items: [...favorites, ...bs] };
+  }, [favorites, topProducts, allProducts]);
 
   if (items.length === 0) {
     return (
