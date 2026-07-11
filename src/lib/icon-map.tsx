@@ -38,6 +38,7 @@ import {
   Printer,
   MessageCircle,
   Bluetooth,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 
@@ -87,13 +88,15 @@ export const iconMap: Record<string, LucideIcon> = {
   message_circle: MessageCircle,
   receipt_long: Receipt,
   bluetooth: Bluetooth,
+  star: Star,
+  star_border: Star,
 };
 
-export function Icon({ name, className = "", size = 24 }: { name: string; className?: string; size?: number }) {
+export function Icon({ name, className = "", size = 24, fill }: { name: string; className?: string; size?: number; fill?: string }) {
   const LucideIcon = iconMap[name];
   if (!LucideIcon) {
     console.warn(`Unknown icon: ${name}`);
     return <span className={className}>?</span>;
   }
-  return <LucideIcon className={`inline-block ${className}`.trim()} size={size} />;
+  return <LucideIcon className={`inline-block ${className}`.trim()} size={size} fill={fill} />;
 }

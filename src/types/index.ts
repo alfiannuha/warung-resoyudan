@@ -10,6 +10,7 @@ export interface Product {
   stock: number;
   minStock: number;
   isActive: boolean;
+  is_favorite?: boolean;
   createdAt: string;
   updatedAt: string;
 }

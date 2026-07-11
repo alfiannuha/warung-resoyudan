@@ -1,0 +1,75 @@
+"use client";
+
+import { useShallow } from "zustand/react/shallow";
+import { useProductStore } from "@/stores/use-product-store";
+import { useTransactionStore } from "@/stores/use-transaction-store";
+import ProductCard from "./product-card";
+import { Icon } from "@/lib/icon-map";
+import { getTodayISO } from "@/lib/formatters";
+import type { Product } from "@/types";
+
+const MAX_VISIBLE = 20;
+
+export default function FavoriteProductsSection() {
+  const favorites = useProductStore(useShallow((s) => s.getFavoriteProducts()));
+  const allProducts = useProductStore((s) => s.products);
+
+  const today = getTodayISO();
+  const topProducts = useTransactionStore((s) =>
+    s.getTopProducts(today, today, MAX_VISIBLE),
+  );
+
+  const favoriteIds = new Set(favorites.map((f) => f.id));
+
+  // Fill remaining slots with best-sellers (matched by name, excludes favorites)
+  const bestSellers: Product[] = [];
+  for (const tp of topProducts) {
+    if (bestSellers.length >= MAX_VISIBLE - favorites.length) break;
+    const match = allProducts.find(
+      (p) => p.name === tp.name && p.isActive && !favoriteIds.has(p.id),
+    );
+    if (match) {
+      bestSellers.push(match);
+      favoriteIds.add(match.id);
+    }
+  }
+
+  const items = [...favorites, ...bestSellers];
+
+  if (items.length === 0) {
+    return (
+      <div className="px-container-padding py-6">
+        <div className="text-center py-10 text-on-surface-variant/50 bg-surface-container rounded-xl">
+          <Icon name="star_border" size={40} className="block mb-2 mx-auto" />
+          <p className="text-body-md">Belum ada produk favorit.</p>
+          <p className="text-label-md mt-1">
+            Tandai produk favorit dari menu Produk.
+          </p>
+        </div>
+        <hr className="mt-6 border-border-standard" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-container-padding py-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xl">🔥</span>
+        <h2 className="text-label-xl font-bold text-on-surface">
+          Produk Favorit
+        </h2>
+        {bestSellers.length > 0 && (
+          <span className="text-label-md text-outline font-normal">
+            {favorites.length} favorit · {bestSellers.length} terlaris
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {items.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+      <hr className="mt-6 border-border-standard" />
+    </div>
+  );
+}

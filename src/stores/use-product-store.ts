@@ -26,6 +26,7 @@ interface ProductStore {
   setSearchQuery: (q: string) => void;
   setSelectedCategory: (cat: string) => void;
   getFilteredProducts: () => Product[];
+  getFavoriteProducts: () => Product[];
   getProductById: (id: string) => Product | undefined;
   findProductByBarcode: (barcode: string) => Product | undefined;
   getLowStockProducts: () => Product[];
@@ -39,6 +40,7 @@ interface ProductStore {
   deleteProduct: (id: string) => Promise<void>;
   quickAddStock: (id: string, qty: number) => Promise<void>;
   reduceStock: (id: string, qty: number) => Promise<boolean>;
+  toggleFavorite: (id: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const productsCollection = collection(db, "products");
@@ -91,6 +93,12 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 
   getLowStockProducts: () =>
     get().products.filter((p) => p.isActive && p.stock <= p.minStock),
+
+  getFavoriteProducts: () => {
+    return get().products
+      .filter((p) => p.isActive && p.is_favorite === true)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
 
   addProduct: async (data) => {
     const docRef = await addDoc(productsCollection, {
@@ -166,5 +174,31 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     } catch {
       return false;
     }
+  },
+
+  toggleFavorite: async (id) => {
+    const product = get().products.find((p) => p.id === id);
+    if (!product) return { success: false, message: "Produk tidak ditemukan" };
+
+    if (!product.is_favorite) {
+      const favCount = get().products.filter((p) => p.is_favorite === true).length;
+      if (favCount >= 20) {
+        return { success: false, message: "Maksimal 20 produk favorit" };
+      }
+    }
+
+    await updateDoc(doc(productsCollection, id), {
+      is_favorite: !product.is_favorite,
+      updatedAt: serverTimestamp(),
+    });
+
+    await createAuditLog({
+      action: "update",
+      entity: "product",
+      entityId: id,
+      description: `${!product.is_favorite ? "Menandai" : "Menghapus"} produk "${product.name}" ${!product.is_favorite ? "sebagai" : "dari"} favorit`,
+    });
+
+    return { success: true };
   },
 }));

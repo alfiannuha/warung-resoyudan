@@ -26,11 +26,12 @@ export default function ProdukPage() {
   const [scannedCategory, setScannedCategory] = useState<string>("");
   const [scannedImageUrl, setScannedImageUrl] = useState<string>("");
 
-  const { products, quickAddStock, deleteProduct } = useProductStore(
+  const { products, quickAddStock, deleteProduct, toggleFavorite } = useProductStore(
     useShallow((s) => ({
       products: s.products,
       quickAddStock: s.quickAddStock,
       deleteProduct: s.deleteProduct,
+      toggleFavorite: s.toggleFavorite,
     }))
   );
   const { toast } = useToast();
@@ -261,6 +262,24 @@ export default function ProdukPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={async () => {
+                          const r = await toggleFavorite(product.id);
+                          if (!r.success) toast(r.message!, "error");
+                        }}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all ${
+                          product.is_favorite
+                            ? "text-warning-debt bg-warning-debt/10 border-warning-debt/30"
+                            : "text-outline hover:text-warning-debt"
+                        }`}
+                        title={product.is_favorite ? "Hapus dari favorit" : "Tandai favorit"}
+                      >
+                        <Icon
+                          name="star"
+                          size={16}
+                          fill={product.is_favorite ? "currentColor" : undefined}
+                        />
+                      </button>
+                      <button
                         onClick={() => handleEdit(product.id)}
                         className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-secondary"
                         title="Edit"
@@ -316,6 +335,22 @@ export default function ProdukPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const r = await toggleFavorite(product.id);
+                      if (!r.success) toast(r.message!, "error");
+                    }}
+                    className={`w-8 h-8 flex items-center justify-center ${
+                      product.is_favorite ? "text-warning-debt" : "text-outline"
+                    }`}
+                  >
+                    <Icon
+                      name="star"
+                      size={18}
+                      fill={product.is_favorite ? "currentColor" : undefined}
+                    />
+                  </button>
                   <StockBadge stock={product.stock} minStock={product.minStock} />
                   <div className="relative">
                     <button
