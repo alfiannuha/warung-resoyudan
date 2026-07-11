@@ -32,28 +32,48 @@ export default function ProductForm({
   initialImageUrl,
 }: Props) {
   const { products, addProduct, updateProduct } = useProductStore();
-  const existing = editId ? products.find((p) => p.id === editId) : null;
 
-  const [name, setName] = useState(existing?.name || initialName || "");
-  const [brand, setBrand] = useState(existing?.brand || initialBrand || "");
-  const [category, setCategory] = useState(existing?.category || initialCategory || "Makanan");
-  const [barcode, setBarcode] = useState(existing?.barcode || initialBarcode || "");
-  const [imageUrl, setImageUrl] = useState(existing?.image_url || initialImageUrl || "");
-  const [buyPrice, setBuyPrice] = useState(String(existing?.buyPrice || ""));
-  const [sellPrice, setSellPrice] = useState(String(existing?.sellPrice || ""));
-  const [stock, setStock] = useState(String(existing?.stock || ""));
-  const [minStock, setMinStock] = useState(String(existing?.minStock || "0"));
+  const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [category, setCategory] = useState("Makanan");
+  const [barcode, setBarcode] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [buyPrice, setBuyPrice] = useState("");
+  const [sellPrice, setSellPrice] = useState("");
+  const [stock, setStock] = useState("");
+  const [minStock, setMinStock] = useState("0");
 
-  // Sync initial values when dialog opens from scan
+  // Sync form fields when dialog opens (edit or scan)
   useEffect(() => {
-    if (open && !editId) {
-      if (initialBarcode) setBarcode(initialBarcode);
-      if (initialName) setName(initialName);
-      if (initialBrand) setBrand(initialBrand);
-      if (initialCategory) setCategory(initialCategory);
-      if (initialImageUrl) setImageUrl(initialImageUrl);
+    if (!open) return;
+
+    if (editId) {
+      const existing = products.find((p) => p.id === editId);
+      if (existing) {
+        setName(existing.name);
+        setBrand(existing.brand || "");
+        setCategory(existing.category || "Makanan");
+        setBarcode(existing.barcode || "");
+        setImageUrl(existing.image_url || "");
+        setBuyPrice(String(existing.buyPrice));
+        setSellPrice(String(existing.sellPrice));
+        setStock(String(existing.stock));
+        setMinStock(String(existing.minStock));
+        return;
+      }
     }
-  }, [open, initialBarcode, initialName, initialBrand, initialCategory, initialImageUrl, editId]);
+
+    // Add mode or fallback
+    setName(initialName || "");
+    setBrand(initialBrand || "");
+    setCategory(initialCategory || "Makanan");
+    setBarcode(initialBarcode || "");
+    setImageUrl(initialImageUrl || "");
+    setBuyPrice("");
+    setSellPrice("");
+    setStock("");
+    setMinStock("0");
+  }, [open, editId, products, initialName, initialBrand, initialCategory, initialBarcode, initialImageUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +91,7 @@ export default function ProductForm({
     };
 
     try {
-      if (editId && existing) {
+      if (editId) {
         await updateProduct(editId, data);
       } else {
         await addProduct(data);
