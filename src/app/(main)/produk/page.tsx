@@ -259,42 +259,28 @@ export default function ProdukPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1 relative">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleEdit(product.id)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-secondary"
+                        title="Edit"
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-danger-alert"
+                        title="Hapus"
+                      >
+                        <Icon name="delete" size={16} />
+                      </button>
                       <button
                         onClick={() => quickAddStock(product.id, 1)}
                         className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-secondary"
+                        title="Tambah stok"
                       >
                         <Icon name="add" size={16} />
                       </button>
-                      <div className="relative">
-                        <button
-                          onClick={() => setMenuOpenId(menuOpenId === product.id ? null : product.id)}
-                          className="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-primary transition-colors"
-                        >
-                          <Icon name="more_vert" size={18} />
-                        </button>
-                        {menuOpenId === product.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
-                            <div className="absolute right-0 top-full mt-1 bg-white border border-border-standard rounded-xl shadow-lg z-20 w-36 py-1">
-                              <button
-                                onClick={() => handleEdit(product.id)}
-                                className="w-full px-4 py-2.5 text-left text-body-md hover:bg-surface-container flex items-center gap-2"
-                              >
-                                <Icon name="edit" size={16} />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(product.id)}
-                                className="w-full px-4 py-2.5 text-left text-body-md hover:bg-surface-container flex items-center gap-2 text-danger-alert"
-                              >
-                                <Icon name="delete" size={16} />
-                                Hapus
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
                     </div>
                   </td>
                 </tr>
