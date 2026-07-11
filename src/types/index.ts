@@ -18,7 +18,6 @@ export const PRODUCT_CATEGORIES = [
   "Makanan",
   "Minuman",
   "Sembako",
-  "Rokok",
   "Kebutuhan Rumah",
 ] as const;
 

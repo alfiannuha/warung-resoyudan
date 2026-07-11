@@ -7,7 +7,7 @@ import { useReportStore } from "@/stores/use-report-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { formatCurrency, formatDateShort, getTodayISO } from "@/lib/formatters";
 import { PERIOD_LABELS } from "@/lib/constants";
-import { exportToExcel, exportToPDF } from "@/lib/export";
+import { exportToPDF } from "@/lib/export";
 
 function getDateRange(period: string, customStart?: string | null, customEnd?: string | null) {
   const today = getTodayISO();
@@ -244,14 +244,7 @@ export default function LaporanPage() {
 
       {/* Export Button */}
       <div className="pb-4">
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 px-6 py-3 border border-border-standard text-primary rounded-lg font-bold hover:bg-surface-container-low transition-all active:scale-95"
-          >
-            <Icon name="file_text" size={20} />
-            Export Excel
-          </button>
+        <div className="flex justify-end">
           <button
             onClick={() =>
               exportToPDF({
