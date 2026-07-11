@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -27,7 +28,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@serwist/turbopack": "^9.5.11",
+    "@serwist/turbopack": "9.5.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -35,8 +36,8 @@
     "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "serwist": "^9.5.11",
+    "serwist": "^9.5.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }
