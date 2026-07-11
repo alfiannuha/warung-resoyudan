@@ -38,13 +38,14 @@ export const useDebtPaymentStore = create<DebtPaymentStore>((set, get) => ({
     const unsub = onSnapshot(
       paymentsQuery,
       (snapshot) => {
-        const payments = snapshot.docs.map(
-          (d) =>
-            ({
-              id: d.id,
-              ...d.data(),
-            }) as DebtPayment,
-        );
+        const payments = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+          } as unknown as DebtPayment;
+        });
         set({ payments, loading: false, initialized: true });
       },
       () => {

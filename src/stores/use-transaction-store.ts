@@ -53,11 +53,14 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       transactionsQuery,
       (snapshot) => {
         const transactions = snapshot.docs.map(
-          (d) =>
-            ({
+          (d) => {
+            const data = d.data();
+            return {
               id: d.id,
-              ...d.data(),
-            }) as Transaction,
+              ...data,
+              createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+            } as Transaction;
+          },
         );
         set({ transactions, loading: false, initialized: true });
       },

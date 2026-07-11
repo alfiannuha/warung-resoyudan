@@ -47,11 +47,15 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       customersQuery,
       (snapshot) => {
         const customers = snapshot.docs.map(
-          (d) =>
-            ({
+          (d) => {
+            const data = d.data();
+            return {
               id: d.id,
-              ...d.data(),
-            }) as Customer,
+              ...data,
+              createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
+              updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? data.updatedAt,
+            } as Customer;
+          },
         );
         set({ customers, loading: false, initialized: true });
       },
