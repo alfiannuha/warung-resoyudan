@@ -20,7 +20,6 @@ import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
 import { generateReceiptNumber } from "@/lib/receipt-counter";
 import { buildReceiptText } from "@/utils/receipt";
-import TodayTransactions from "@/components/kasir/today-transactions";
 import { sendWhatsAppReceipt } from "@/utils/whatsapp";
 import { requestPrinter, reconnectPrinter, printReceipt } from "@/utils/bluetooth-printer";
 import { usePrinterStore } from "@/stores/use-printer-store";
@@ -295,10 +294,6 @@ export default function KasirPage() {
               ))}
             </div>
           )}
-          {/* Riwayat Hari Ini */}
-          <div className="border-t border-border-standard px-4 py-4">
-            <TodayTransactions />
-          </div>
         </div>
 
         {items.length > 0 && (

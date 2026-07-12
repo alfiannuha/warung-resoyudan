@@ -1,11 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useUIStore } from "@/stores/use-ui-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { PRODUCT_CATEGORIES } from "@/types";
 import { Icon } from "@/lib/icon-map";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import TodayTransactions from "./today-transactions";
 
 export default function KasirHeader() {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const toggleSideNav = useUIStore((s) => s.toggleSideNav);
   const searchQuery = useProductStore((s) => s.searchQuery);
   const setSearchQuery = useProductStore((s) => s.setSearchQuery);
@@ -14,7 +23,7 @@ export default function KasirHeader() {
 
   return (
     <header className="bg-surface border-b border-border-standard">
-      {/* Top row: hamburger + title (mobile only) */}
+      {/* Top row: hamburger + title (mobile only) + history button */}
       <div className="flex items-center gap-3 px-container-padding h-touch-target-min">
         <button
           onClick={toggleSideNav}
@@ -26,6 +35,15 @@ export default function KasirHeader() {
         <h1 className="text-headline-md-mobile font-bold text-on-surface md:hidden">
           Warung Resoyudan
         </h1>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setHistoryOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-secondary hover:bg-surface-container active:scale-95 transition-all"
+            aria-label="Riwayat Hari Ini"
+          >
+            <Icon name="history_edu" size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -76,6 +94,16 @@ export default function KasirHeader() {
           })}
         </div>
       </div>
+
+      {/* Riwayat Hari Ini Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="bg-white rounded-xl max-w-[480px] max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-headline-md font-bold">Riwayat Hari Ini</DialogTitle>
+          </DialogHeader>
+          <TodayTransactions />
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
