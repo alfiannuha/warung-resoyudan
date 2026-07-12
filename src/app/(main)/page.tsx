@@ -20,6 +20,7 @@ import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
 import { generateReceiptNumber } from "@/lib/receipt-counter";
 import { buildReceiptText } from "@/utils/receipt";
+import TodayTransactions from "@/components/kasir/today-transactions";
 import { sendWhatsAppReceipt } from "@/utils/whatsapp";
 import { requestPrinter, reconnectPrinter, printReceipt } from "@/utils/bluetooth-printer";
 import { usePrinterStore } from "@/stores/use-printer-store";
@@ -280,18 +281,24 @@ export default function KasirPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-border-standard">
+        <div className="flex-1 overflow-y-auto">
           {items.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center min-h-[200px]">
               <EmptyState icon="shopping_cart" message="Keranjang masih kosong" />
             </div>
           ) : (
-            items.map((item) => (
-              <div key={item.productId} className="px-4 py-4">
-                <CartItemRow item={item} />
-              </div>
-            ))
+            <div className="divide-y divide-border-standard">
+              {items.map((item) => (
+                <div key={item.productId} className="px-4 py-4">
+                  <CartItemRow item={item} />
+                </div>
+              ))}
+            </div>
           )}
+          {/* Riwayat Hari Ini */}
+          <div className="border-t border-border-standard px-4 py-4">
+            <TodayTransactions />
+          </div>
         </div>
 
         {items.length > 0 && (
