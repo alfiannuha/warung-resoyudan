@@ -50,7 +50,7 @@ export default function ProductCard({ product }: { product: Product }) {
         animating ? "animate-product-pop border-secondary" : "active:scale-[0.98]"
       }`}
     >
-      <div className="aspect-square bg-surface-container rounded-lg flex items-center justify-center overflow-hidden">
+      <div className="aspect-square bg-surface-container rounded-lg flex items-center justify-center overflow-hidden relative">
         {animating ? (
           <div className="w-full h-full bg-secondary/10 flex items-center justify-center">
             <Icon name="check_circle" size={40} className="text-secondary animate-badge-pulse" />
@@ -64,6 +64,11 @@ export default function ProductCard({ product }: { product: Product }) {
           />
         ) : (
           <Icon name="inventory_2" size={40} className="text-outline" />
+        )}
+        {product.is_favorite && (
+          <div className="absolute top-1 left-1 w-6 h-6 bg-warning-debt rounded-full flex items-center justify-center shadow-md">
+            <Icon name="star" size={14} fill="currentColor" className="text-white" />
+          </div>
         )}
       </div>
 
