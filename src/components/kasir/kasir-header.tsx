@@ -48,6 +48,16 @@ export default function KasirHeader() {
       {/* Category chips */}
       <div className="px-container-padding pb-3 overflow-x-auto hide-scrollbar">
         <div className="flex gap-2">
+          <button
+            onClick={() => setSelectedCategory("Semua")}
+            className={`whitespace-nowrap px-4 py-2 rounded-full text-label-md font-label-md transition-all active:scale-95 ${
+              selectedCategory === "Semua"
+                ? "bg-secondary text-on-secondary"
+                : "bg-surface-container-high text-on-surface border border-border-standard"
+            }`}
+          >
+            Semua
+          </button>
           {PRODUCT_CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
