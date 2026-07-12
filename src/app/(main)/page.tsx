@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import KasirHeader from "@/components/kasir/kasir-header";
 import ProductGrid from "@/components/kasir/product-grid";
 import CartBar from "@/components/kasir/cart-bar";
@@ -41,6 +41,11 @@ export default function KasirPage() {
   const [showQris, setShowQris] = useState(false);
   const [confirmCheckout, setConfirmCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+
+  // Auto-recover cart on mount
+  useEffect(() => {
+    useCartStore.getState().recoverCart();
+  }, []);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [showCashPayment, setShowCashPayment] = useState(false);
   const [showReceiptSuccess, setShowReceiptSuccess] = useState(false);
@@ -273,10 +278,19 @@ export default function KasirPage() {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border-standard shrink-0">
           <h2 className="text-headline-md font-bold">Keranjang</h2>
           {items.length > 0 && (
-            <button onClick={clearCart} className="text-error text-label-md font-bold flex items-center gap-1">
-              <Icon name="delete" size={16} />
-              Hapus
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
+                className="text-secondary text-label-md font-bold flex items-center gap-1"
+              >
+                <Icon name="receipt" size={16} />
+                Draft
+              </button>
+              <button onClick={clearCart} className="text-error text-label-md font-bold flex items-center gap-1">
+                <Icon name="delete" size={16} />
+                Hapus
+              </button>
+            </div>
           )}
         </div>
 

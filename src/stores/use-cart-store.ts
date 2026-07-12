@@ -1,6 +1,32 @@
 import { create } from "zustand";
 import type { CartItem, Product, PaymentMethod } from "@/types";
 
+const CART_RECOVERY_KEY = "cart_recovery";
+
+interface SavedCart {
+  items: CartItem[];
+  paymentMethod: PaymentMethod;
+  selectedCustomerId: string | null;
+}
+
+function saveRecovery(items: CartItem[], paymentMethod: PaymentMethod, selectedCustomerId: string | null) {
+  if (items.length > 0) {
+    localStorage.setItem(CART_RECOVERY_KEY, JSON.stringify({ items, paymentMethod, selectedCustomerId }));
+  } else {
+    localStorage.removeItem(CART_RECOVERY_KEY);
+  }
+}
+
+function loadRecovery(): SavedCart | null {
+  try {
+    const raw = localStorage.getItem(CART_RECOVERY_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    localStorage.removeItem(CART_RECOVERY_KEY);
+    return null;
+  }
+}
+
 interface CartStore {
   items: CartItem[];
   paymentMethod: PaymentMethod;
@@ -12,7 +38,10 @@ interface CartStore {
   setPaymentMethod: (method: PaymentMethod) => void;
   setCustomer: (id: string | null) => void;
   clearCart: () => void;
+  recoverCart: () => boolean;
 }
+
+const storage = typeof window !== "undefined" ? loadRecovery() : null;
 
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
@@ -80,6 +109,27 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   setCustomer: (id) => set({ selectedCustomerId: id }),
 
-  clearCart: () =>
-    set({ items: [], paymentMethod: "cash", selectedCustomerId: null }),
+  clearCart: () => {
+    set({ items: [], paymentMethod: "cash", selectedCustomerId: null });
+    saveRecovery([], "cash", null);
+  },
+
+  recoverCart: () => {
+    const saved = loadRecovery();
+    if (saved && saved.items.length > 0) {
+      set({
+        items: saved.items,
+        paymentMethod: saved.paymentMethod,
+        selectedCustomerId: saved.selectedCustomerId,
+      });
+      return true;
+    }
+    return false;
+  },
 }));
+
+// Auto-save cart recovery on every change
+const { subscribe } = useCartStore;
+subscribe((state) => {
+  saveRecovery(state.items, state.paymentMethod, state.selectedCustomerId);
+});

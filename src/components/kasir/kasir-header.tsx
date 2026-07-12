@@ -1,20 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUIStore } from "@/stores/use-ui-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { PRODUCT_CATEGORIES } from "@/types";
 import { Icon } from "@/lib/icon-map";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TodayTransactions from "./today-transactions";
+import DraftDialog from "./draft-dialog";
 
 export default function KasirHeader() {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setDraftOpen(true);
+    window.addEventListener("open-draft", handler);
+    return () => window.removeEventListener("open-draft", handler);
+  }, []);
   const toggleSideNav = useUIStore((s) => s.toggleSideNav);
   const searchQuery = useProductStore((s) => s.searchQuery);
   const setSearchQuery = useProductStore((s) => s.setSearchQuery);
@@ -42,6 +45,13 @@ export default function KasirHeader() {
             aria-label="Riwayat Hari Ini"
           >
             <Icon name="history_edu" size={20} />
+          </button>
+          <button
+            onClick={() => setDraftOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-secondary hover:bg-surface-container active:scale-95 transition-all"
+            aria-label="Draft Transaksi"
+          >
+            <Icon name="receipt" size={20} />
           </button>
         </div>
       </div>
@@ -104,6 +114,9 @@ export default function KasirHeader() {
           <TodayTransactions />
         </DialogContent>
       </Dialog>
+
+      {/* Draft Dialog */}
+      <DraftDialog open={draftOpen} onOpenChange={setDraftOpen} />
     </header>
   );
 }
