@@ -278,19 +278,10 @@ export default function KasirPage() {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border-standard shrink-0">
           <h2 className="text-headline-md font-bold">Keranjang</h2>
           {items.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
-                className="text-secondary text-label-md font-bold flex items-center gap-1"
-              >
-                <Icon name="receipt" size={16} />
-                Draft
-              </button>
-              <button onClick={clearCart} className="text-error text-label-md font-bold flex items-center gap-1">
-                <Icon name="delete" size={16} />
-                Hapus
-              </button>
-            </div>
+            <button onClick={clearCart} className="text-error text-label-md font-bold flex items-center gap-1">
+              <Icon name="delete" size={16} />
+              Hapus
+            </button>
           )}
         </div>
 
@@ -329,6 +320,13 @@ export default function KasirPage() {
             <PaymentMethod />
             <CustomerSelect />
             <div className="flex gap-2">
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
+                className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
+              >
+                <Icon name="save" size={20} />
+                Draft
+              </button>
               <button
                 onClick={() => setScannerOpen(true)}
                 className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
