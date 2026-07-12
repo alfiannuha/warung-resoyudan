@@ -269,7 +269,7 @@ export default function KasirPage() {
           className="md:hidden fixed bottom-24 right-4 w-14 h-14 bg-white border-2 border-secondary text-secondary rounded-2xl shadow-xl items-center justify-center z-30 active:scale-90 transition-transform hover:bg-secondary hover:text-on-secondary flex"
           aria-label="Scan barcode"
         >
-          <Icon name="qr_code_scanner" size={28} />
+          <Icon name="scan_barcode" size={28} />
         </button>
       </div>
 
@@ -322,17 +322,17 @@ export default function KasirPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
-                className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
+                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                title="Simpan Draft"
               >
                 <Icon name="save" size={20} />
-                Draft
               </button>
               <button
                 onClick={() => setScannerOpen(true)}
-                className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
+                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                title="Scan Barcode"
               >
-                <Icon name="qr_code_scanner" size={20} />
-                Scan
+                <Icon name="scan_barcode" size={20} />
               </button>
               <button
                 onClick={handleCheckoutStart}
@@ -352,7 +352,7 @@ export default function KasirPage() {
               onClick={() => setScannerOpen(true)}
               className="w-full h-touch-target-min rounded-xl border-2 border-secondary text-secondary font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
-              <Icon name="qr_code_scanner" size={24} />
+              <Icon name="scan_barcode" size={24} />
               Scan Barcode
             </button>
           </div>

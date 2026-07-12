@@ -39,6 +39,7 @@ import {
   MessageCircle,
   Bluetooth,
   Star,
+  ScanBarcode,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,7 +56,8 @@ export const iconMap: Record<string, LucideIcon> = {
   payments: BadgeDollarSign,
   menu_book: BookOpen,
   qr_code_2: QrCode,
-  qr_code_scanner: QrCode,
+  qr_code_scanner: ScanBarcode,
+  scan_barcode: ScanBarcode,
   dashboard: LayoutDashboard,
   inventory_2: Package,
   package: Package,

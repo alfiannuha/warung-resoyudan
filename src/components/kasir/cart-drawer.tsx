@@ -87,7 +87,7 @@ export default function CartDrawer({ open, onClose, onCheckout, onScan }: Props)
                 onClick={onScan}
                 className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
               >
-                <Icon name="qr_code_scanner" size={20} />
+                <Icon name="scan_barcode" size={20} />
                 Scan
               </button>
               <button

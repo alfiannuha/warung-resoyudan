@@ -191,7 +191,7 @@ export default function ProdukPage() {
             onClick={handleScanProduct}
             className="px-6 h-10 rounded-full border border-border-standard flex items-center gap-2 text-on-surface font-label-md hover:bg-surface-container active:scale-95 transition-all"
           >
-            <Icon name="qr_code_scanner" size={20} />
+            <Icon name="scan_barcode" size={20} />
             Scan Produk
           </button>
           <button
@@ -420,7 +420,7 @@ export default function ProdukPage() {
                 onClick={handleScanProduct}
                 className="flex items-center gap-2 bg-white border border-border-standard shadow-lg rounded-xl px-4 py-3 text-body-md font-bold active:scale-95 transition-transform"
               >
-                <Icon name="qr_code_scanner" size={20} className="text-secondary" />
+                <Icon name="scan_barcode" size={20} className="text-secondary" />
                 Scan Produk
               </button>
               <button
