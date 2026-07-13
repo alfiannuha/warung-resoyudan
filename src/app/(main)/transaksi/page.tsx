@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { formatCurrency, formatDateTime, getTodayISO } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
+import { useToast } from "@/components/shared/toast-provider";
 import ReprintButton from "@/components/kasbon/reprint-button";
 import type { Transaction, PaymentMethod } from "@/types";
 
@@ -14,6 +15,17 @@ export default function TransaksiPage() {
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | "all">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const { toast } = useToast();
+
+  const copyReceipt = useCallback(async (receiptNumber: string) => {
+    try {
+      await navigator.clipboard.writeText(receiptNumber);
+      toast("Nomor nota disalin.", "success");
+    } catch {
+      toast("Gagal menyalin nomor nota.", "error");
+    }
+  }, [toast]);
 
   const filtered = useMemo(() => {
     let result = transactions;
@@ -104,9 +116,20 @@ export default function TransaksiPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="min-w-0 flex-1">
-                      <p className="text-label-md text-secondary font-mono font-bold">
-                        {t.receiptNumber || "—"}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-label-md text-secondary font-mono font-bold">
+                          {t.receiptNumber || "—"}
+                        </p>
+                        {t.receiptNumber && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyReceipt(t.receiptNumber!); }}
+                            className="text-outline hover:text-secondary active:scale-90 transition-all"
+                            title="Salin nomor nota"
+                          >
+                            <Icon name="content_copy" size={14} />
+                          </button>
+                        )}
+                      </div>
                       <p className="text-xs text-outline mt-0.5">
                         {formatDateTime(t.date)}
                       </p>
@@ -123,9 +146,9 @@ export default function TransaksiPage() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="font-bold text-body-md">{formatCurrency(t.totalAmount)}</p>
-                      <div className="flex gap-1 mt-1 justify-end">
+                      <div className="flex gap-1 mt-1 justify-end flex-wrap">
                         <span
-                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
                             t.paymentMethod === "cash"
                               ? "bg-success-paid/10 text-success-paid"
                               : t.paymentMethod === "kasbon"
@@ -135,11 +158,15 @@ export default function TransaksiPage() {
                         >
                           {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
                         </span>
-                        {t.status === "debt" && (
-                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded font-bold bg-warning-debt/10 text-warning-debt">
-                            Utang
-                          </span>
-                        )}
+                        <span
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
+                            t.status === "paid"
+                              ? "bg-success-paid/10 text-success-paid"
+                              : "bg-warning-debt/10 text-warning-debt"
+                          }`}
+                        >
+                          {t.status === "paid" ? "Lunas" : "Belum Lunas"}
+                        </span>
                       </div>
                     </div>
                   </div>

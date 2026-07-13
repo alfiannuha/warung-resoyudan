@@ -41,6 +41,7 @@ import {
   Star,
   ScanBarcode,
   ShoppingBag,
+  Copy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -94,6 +95,7 @@ export const iconMap: Record<string, LucideIcon> = {
   star: Star,
   star_border: Star,
   shopping_bag: ShoppingBag,
+  content_copy: Copy,
 };
 
 export function Icon({ name, className = "", size = 24, fill }: { name: string; className?: string; size?: number; fill?: string }) {
