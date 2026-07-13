@@ -97,10 +97,36 @@ export default function ReprintButton({ transaction }: Props) {
       <div className="bg-white rounded-2xl max-w-[320px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
           <h3 className="text-headline-md font-bold">Cetak Ulang Nota</h3>
-          <p className="text-label-md text-on-surface-variant mt-1">
+          <p className="text-label-md text-on-surface-variant mt-1 font-mono">
             {transaction.receiptNumber || "Tanpa nomor nota"}
           </p>
         </div>
+
+        {/* Customer info */}
+        {customer && (
+          <div className="bg-surface-container-low rounded-xl p-3 space-y-1 text-sm">
+            <div className="flex items-center gap-2">
+              <Icon name="account_circle" size={16} className="text-outline shrink-0" />
+              <span className="font-medium">{customer.name}</span>
+            </div>
+            {customer.phone ? (
+              <a
+                href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-secondary hover:underline"
+              >
+                <Icon name="message_circle" size={16} className="shrink-0" />
+                <span>{customer.phone}</span>
+              </a>
+            ) : (
+              <p className="text-xs text-outline flex items-center gap-1">
+                <Icon name="warning" size={14} />
+                Tambahkan nomor telepon di menu Pelanggan
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2">
           <button
@@ -113,7 +139,7 @@ export default function ReprintButton({ transaction }: Props) {
           </button>
           <button
             onClick={handleWhatsApp}
-            disabled={loading === "wa"}
+            disabled={loading === "wa" || !customerPhone}
             className={`w-full h-touch-target-min rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50 ${
               customerPhone
                 ? "border-2 border-secondary text-secondary"

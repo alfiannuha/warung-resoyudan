@@ -123,17 +123,24 @@ export default function TransaksiPage() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="font-bold text-body-md">{formatCurrency(t.totalAmount)}</p>
-                      <span
-                        className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold mt-1 ${
-                          t.paymentMethod === "cash"
-                            ? "bg-success-paid/10 text-success-paid"
-                            : t.paymentMethod === "kasbon"
-                            ? "bg-warning-debt/10 text-warning-debt"
-                            : "bg-secondary/10 text-secondary"
-                        }`}
-                      >
-                        {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
-                      </span>
+                      <div className="flex gap-1 mt-1 justify-end">
+                        <span
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                            t.paymentMethod === "cash"
+                              ? "bg-success-paid/10 text-success-paid"
+                              : t.paymentMethod === "kasbon"
+                              ? "bg-warning-debt/10 text-warning-debt"
+                              : "bg-secondary/10 text-secondary"
+                          }`}
+                        >
+                          {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
+                        </span>
+                        {t.status === "debt" && (
+                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded font-bold bg-warning-debt/10 text-warning-debt">
+                            Utang
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -141,6 +148,34 @@ export default function TransaksiPage() {
                 {/* Expanded detail */}
                 {isExpanded && (
                   <div className="bg-surface-container-low border border-border-standard rounded-xl mx-2 mt-1 p-4 space-y-3 text-sm">
+                    {/* Customer info */}
+                    {customer && (
+                      <div className="bg-surface-container rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Icon name="account_circle" size={16} className="text-outline shrink-0" />
+                          <span className="font-medium">{customer.name}</span>
+                        </div>
+                        {customer.phone && (
+                          <a
+                            href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-secondary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Icon name="message_circle" size={16} className="shrink-0" />
+                            <span>{customer.phone}</span>
+                          </a>
+                        )}
+                        {t.paymentMethod === "kasbon" && customer.currentDebt > 0 && (
+                          <div className="flex items-center gap-2 text-warning-debt">
+                            <Icon name="menu_book" size={16} className="shrink-0" />
+                            <span>Utang: {formatCurrency(customer.currentDebt)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {t.items.map((item, i) => (
                       <div key={i} className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
@@ -156,7 +191,11 @@ export default function TransaksiPage() {
                         <span className="text-outline">Subtotal</span>
                         <span className="font-medium">{formatCurrency(t.totalAmount)}</span>
                       </div>
-                      {t.paymentMethod === "cash" && t.amountPaid > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-outline">Laba</span>
+                        <span className="text-success-paid font-medium">{formatCurrency(t.totalProfit)}</span>
+                      </div>
+                      {(t.amountPaid > 0) && (
                         <>
                           <div className="flex justify-between items-center">
                             <span className="text-outline">Bayar</span>
@@ -174,7 +213,10 @@ export default function TransaksiPage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-2 border-t border-border-standard">
+                    <div className="flex items-center justify-between pt-2 border-t border-border-standard">
+                      <span className="text-[10px] text-outline font-mono">
+                        {t.receiptNumber || "—"}
+                      </span>
                       <ReprintButton transaction={t} />
                     </div>
                   </div>
