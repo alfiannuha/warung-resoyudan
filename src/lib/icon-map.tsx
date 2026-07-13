@@ -40,6 +40,7 @@ import {
   Bluetooth,
   Star,
   ScanBarcode,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react";
 
@@ -92,6 +93,7 @@ export const iconMap: Record<string, LucideIcon> = {
   bluetooth: Bluetooth,
   star: Star,
   star_border: Star,
+  shopping_bag: ShoppingBag,
 };
 
 export function Icon({ name, className = "", size = 24, fill }: { name: string; className?: string; size?: number; fill?: string }) {

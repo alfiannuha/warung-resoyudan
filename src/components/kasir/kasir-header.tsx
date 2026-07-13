@@ -51,7 +51,7 @@ export default function KasirHeader() {
             className="w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-secondary hover:bg-surface-container active:scale-95 transition-all"
             aria-label="Draft Transaksi"
           >
-            <Icon name="receipt" size={20} />
+            <Icon name="shopping_bag" size={20} />
           </button>
         </div>
       </div>
