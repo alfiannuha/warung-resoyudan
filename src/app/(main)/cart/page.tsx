@@ -263,13 +263,29 @@ export default function CartPage() {
           </span>
         </div>
 
-        <button
-          onClick={handleCheckoutStart}
-          className="w-full touch-target bg-secondary text-white font-bold text-body-lg rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-        >
-          <Icon name="check_circle" />
-          {paymentMethod === "qris" ? "Bayar QRIS" : "Simpan Transaksi"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
+            className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+            title="Simpan Draft"
+          >
+            <Icon name="save" size={20} />
+          </button>
+          <button
+            onClick={() => router.push("/")}
+            className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+            title="Scan Barcode"
+          >
+            <Icon name="scan_barcode" size={20} />
+          </button>
+          <button
+            onClick={handleCheckoutStart}
+            className="flex-1 h-touch-target-min bg-secondary text-white font-bold text-body-lg rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          >
+            <Icon name="check_circle" />
+            {paymentMethod === "qris" ? "Bayar QRIS" : "Simpan Transaksi"}
+          </button>
+        </div>
       </div>
 
       {/* Cash Payment Dialog */}

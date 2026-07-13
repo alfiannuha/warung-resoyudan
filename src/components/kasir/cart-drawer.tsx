@@ -84,11 +84,18 @@ export default function CartDrawer({ open, onClose, onCheckout, onScan }: Props)
 
             <div className="flex gap-2">
               <button
+                onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
+                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                title="Simpan Draft"
+              >
+                <Icon name="save" size={20} />
+              </button>
+              <button
                 onClick={onScan}
-                className="h-touch-target-min px-4 rounded-xl border border-border-standard font-label-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shrink-0"
+                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                title="Scan Barcode"
               >
                 <Icon name="scan_barcode" size={20} />
-                Scan
               </button>
               <button
                 onClick={onCheckout}
