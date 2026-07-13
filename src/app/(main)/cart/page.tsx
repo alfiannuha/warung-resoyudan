@@ -138,7 +138,7 @@ export default function CartPage() {
       totalProfit,
       paymentMethod: "cash",
       status: "paid",
-      customerId: null,
+      customerId: selectedCustomerId,
       receiptNumber,
       amountPaid: paid,
       change: chg,

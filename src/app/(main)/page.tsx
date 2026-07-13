@@ -153,7 +153,7 @@ export default function KasirPage() {
       totalProfit,
       paymentMethod: "cash",
       status: "paid",
-      customerId: null,
+      customerId: selectedCustomerId,
       receiptNumber,
       amountPaid: paid,
       change: chg,
