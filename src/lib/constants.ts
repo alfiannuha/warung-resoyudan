@@ -2,6 +2,7 @@ import type { PeriodFilter } from "@/types";
 
 export const PERIOD_LABELS: Record<string, string> = {
   today: "Hari Ini",
+  yesterday: "Kemarin",
   week: "Minggu Ini",
   month: "Bulan Ini",
   custom: "Custom",
@@ -9,6 +10,7 @@ export const PERIOD_LABELS: Record<string, string> = {
 
 export const PERIOD_OPTIONS: { label: string; value: PeriodFilter }[] = [
   { label: "Hari Ini", value: "today" },
+  { label: "Kemarin", value: "yesterday" },
   { label: "Minggu Ini", value: "week" },
   { label: "Bulan Ini", value: "month" },
   { label: "Custom", value: "custom" },
@@ -19,6 +21,8 @@ export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: "dashboard" as const },
   { label: "Transaksi", href: "/transaksi", icon: "receipt_long" as const },
   { label: "Produk", href: "/produk", icon: "inventory_2" as const },
+  { label: "Pelanggan", href: "/pelanggan", icon: "account_circle" as const },
+  { label: "Pengeluaran", href: "/pengeluaran", icon: "receipt_long" as const },
   { label: "Kasbon", href: "/kasbon", icon: "menu_book" as const },
   { label: "Laporan", href: "/laporan", icon: "assessment" as const },
   { label: "Pengaturan", href: "/settings", icon: "settings" as const },

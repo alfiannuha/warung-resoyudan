@@ -32,6 +32,7 @@ interface CartStore {
   paymentMethod: PaymentMethod;
   selectedCustomerId: string | null;
   lastAddedItemId: string | null;
+  pendingKasbon: boolean;
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, qty: number) => void;
@@ -39,6 +40,7 @@ interface CartStore {
   setCustomer: (id: string | null) => void;
   clearCart: () => void;
   recoverCart: () => boolean;
+  consumeKasbon: () => void;
 }
 
 const storage = typeof window !== "undefined" ? loadRecovery() : null;
@@ -48,6 +50,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
   paymentMethod: "cash",
   selectedCustomerId: null,
   lastAddedItemId: null,
+  pendingKasbon: false,
 
   addToCart: (product) => {
     const existing = get().items.find(
@@ -125,6 +128,16 @@ export const useCartStore = create<CartStore>((set, get) => ({
       return true;
     }
     return false;
+  },
+
+  consumeKasbon: () => {
+    set((s) => {
+      // Apply the pending kasbon flag: force payment method to kasbon.
+      const apply = s.pendingKasbon;
+      return apply
+        ? { paymentMethod: "kasbon", pendingKasbon: false }
+        : {};
+    });
   },
 }));
 

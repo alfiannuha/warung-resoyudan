@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 
@@ -10,7 +11,27 @@ interface Props {
   onClose: () => void;
 }
 
+/** Deterministic pseudo-random from a seed so the QR placeholder is stable across renders. */
+function seededRandom(seed: number) {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+}
+
 export default function QrisPaymentDialog({ open, amount, onConfirm, onClose }: Props) {
+  const qrRects = useMemo(
+    () =>
+      Array.from({ length: 25 }, (_, i) => {
+        const r1 = seededRandom(i * 7 + 13);
+        const r2 = seededRandom(i * 13 + 7);
+        return {
+          x: Math.floor(r1 * 12) * 8 + 2,
+          y: Math.floor(r2 * 12) * 8 + 2,
+          key: i,
+        };
+      }),
+    [amount]
+  );
+
   if (!open) return null;
 
   return (
@@ -28,11 +49,11 @@ export default function QrisPaymentDialog({ open, amount, onConfirm, onClose }: 
         <div className="w-48 h-48 mx-auto bg-white border-2 border-border-standard rounded-xl flex items-center justify-center">
           <div className="w-40 h-40 bg-surface-container rounded-lg flex items-center justify-center">
             <svg className="w-32 h-32" viewBox="0 0 100 100">
-              {Array.from({ length: 25 }).map((_, i) => (
+              {qrRects.map((r) => (
                 <rect
-                  key={i}
-                  x={Math.floor(Math.random() * 12) * 8 + 2}
-                  y={Math.floor(Math.random() * 12) * 8 + 2}
+                  key={r.key}
+                  x={r.x}
+                  y={r.y}
                   width="6"
                   height="6"
                   fill="currentColor"

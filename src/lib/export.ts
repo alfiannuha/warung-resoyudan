@@ -1,9 +1,10 @@
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
-import { formatCurrency } from "./formatters";
+import { formatCurrency, formatDate, formatDateShort, formatTime } from "./formatters";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import type { PaymentMethod } from "@/types";
 
 const COLLECTIONS = [
   "products",
@@ -36,42 +37,96 @@ export async function exportToExcel(): Promise<void> {
 
 // ── PDF ──
 
-interface PDFReportData {
+export interface PDFTransactionRow {
+  receiptNumber: string | null;
+  date: string;
+  customerName: string | null;
+  paymentMethod: PaymentMethod;
+  status: string;
+  totalAmount: number;
+}
+
+export interface PDFExpenseRow {
+  expenseNumber: string;
+  expenseDate: string;
+  title: string;
+  totalAmount: number;
+}
+
+export interface PDFCashAdvanceSummary {
+  activeCount: number;
+  activeTotal: number;
+  paidCount: number;
+  paidTotal: number;
+}
+
+export interface PDFReportData {
   periodLabel: string;
+  startDate: string;
+  endDate: string;
   totalSales: number;
   totalProfit: number;
+  totalExpenses: number;
   totalCash: number;
   totalKasbon: number;
   transactionCount: number;
   topProducts: { name: string; qty: number; revenue: number }[];
+  cashAdvanceSummary: PDFCashAdvanceSummary;
+  transactions: PDFTransactionRow[];
+  expenses: PDFExpenseRow[];
 }
+
+const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  cash: "Tunai",
+  kasbon: "Kasbon",
+  qris: "QRIS",
+};
 
 export async function exportToPDF(data: PDFReportData): Promise<void> {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 14;
 
-  // Title
+  // ── Report Header ──
   doc.setFontSize(18);
   doc.text("Warung Resoyudan", pageW / 2, 20, { align: "center" });
-  doc.setFontSize(11);
-  doc.text(`Laporan ${data.periodLabel}`, pageW / 2, 28, { align: "center" });
-  doc.text(`Dicetak: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, pageW / 2, 35, { align: "center" });
-
-  // Summary
   doc.setFontSize(12);
-  doc.text("Ringkasan", 14, 48);
+  doc.text(`Laporan ${data.periodLabel}`, pageW / 2, 28, { align: "center" });
+  doc.setFontSize(10);
+  doc.setTextColor(90);
+  doc.text(
+    `Periode: ${formatDate(data.startDate)} – ${formatDate(data.endDate)}`,
+    pageW / 2,
+    35,
+    { align: "center" }
+  );
+  doc.text(
+    `Dicetak: ${formatDate(new Date().toISOString())} ${formatTime(new Date().toISOString())}`,
+    pageW / 2,
+    41,
+    { align: "center" }
+  );
+  doc.setTextColor(0);
+
+  // ── Financial Summary ──
+  doc.setFontSize(12);
+  doc.text("Ringkasan Keuangan", marginX, 52);
   doc.setFontSize(10);
 
+  const netProfit = data.totalProfit - data.totalExpenses;
+
   const summaryRows = [
+    ["Total Transaksi", String(data.transactionCount)],
     ["Total Penjualan", formatCurrency(data.totalSales)],
-    ["Laba Bersih", formatCurrency(data.totalProfit)],
-    ["Tunai", formatCurrency(data.totalCash)],
-    ["Kasbon", formatCurrency(data.totalKasbon)],
-    ["Jumlah Transaksi", String(data.transactionCount)],
+    ["Penjualan Tunai", formatCurrency(data.totalCash)],
+    ["Penjualan Kredit (Kasbon)", formatCurrency(data.totalKasbon)],
+    ["Laba Kotor", formatCurrency(data.totalProfit)],
+    ["Total Pengeluaran", formatCurrency(data.totalExpenses)],
+    ["Laba Bersih", formatCurrency(netProfit)],
   ];
 
   autoTable(doc, {
-    startY: 52,
+    startY: 56,
     head: [["Metrik", "Nilai"]],
     body: summaryRows,
     theme: "striped",
@@ -79,11 +134,88 @@ export async function exportToPDF(data: PDFReportData): Promise<void> {
     headStyles: { fillColor: [0, 81, 213] },
   });
 
-  // Top Products
-  if (data.topProducts.length > 0) {
-    const y = (doc as any).lastAutoTable.finalY + 12;
+  let finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 100;
+
+  // ── Cash Advance Summary ──
+  if (data.cashAdvanceSummary) {
+    const { activeCount, activeTotal, paidCount, paidTotal } = data.cashAdvanceSummary;
+    const y = finalY + 12;
     doc.setFontSize(12);
-    doc.text("Produk Terlaris", 14, y);
+    doc.text("Ringkasan Kasbon", marginX, y);
+
+    autoTable(doc, {
+      startY: y + 4,
+      head: [["Metrik", "Jumlah", "Nilai"]],
+      body: [
+        ["Kasbon Aktif", String(activeCount), formatCurrency(activeTotal)],
+        ["Kasbon Lunas", String(paidCount), formatCurrency(paidTotal)],
+        ["Saldo Belum Tertagih", "—", formatCurrency(activeTotal)],
+      ],
+      theme: "striped",
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [0, 81, 213] },
+    });
+
+    finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+  }
+
+  // ── Expense Summary ──
+  if (data.expenses.length > 0) {
+    const y = finalY + 12;
+    doc.setFontSize(12);
+    doc.text("Detail Pengeluaran", marginX, y);
+
+    const expenseRows = data.expenses.map((e) => [
+      e.expenseNumber,
+      formatDateShort(e.expenseDate),
+      e.title,
+      formatCurrency(e.totalAmount),
+    ]);
+
+    autoTable(doc, {
+      startY: y + 4,
+      head: [["No. Pengeluaran", "Tanggal", "Judul", "Biaya"]],
+      body: expenseRows,
+      theme: "striped",
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [0, 81, 213] },
+    });
+
+    finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+  }
+
+  // ── Transaction List ──
+  if (data.transactions.length > 0) {
+    const y = finalY + 12;
+    doc.setFontSize(12);
+    doc.text("Daftar Transaksi", marginX, y);
+
+    const txnRows = data.transactions.map((t) => [
+      t.receiptNumber || "—",
+      formatDateShort(t.date),
+      t.customerName || "—",
+      PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod,
+      t.status,
+      formatCurrency(t.totalAmount),
+    ]);
+
+    autoTable(doc, {
+      startY: y + 4,
+      head: [["No. Nota", "Tanggal", "Pelanggan", "Metode", "Status", "Total"]],
+      body: txnRows,
+      theme: "striped",
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [0, 81, 213] },
+    });
+
+    finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+  }
+
+  // ── Top Products ──
+  if (data.topProducts.length > 0) {
+    const y = finalY + 12;
+    doc.setFontSize(12);
+    doc.text("Produk Terlaris", marginX, y);
 
     const productRows = data.topProducts.map((p) => [
       p.name,
@@ -99,13 +231,14 @@ export async function exportToPDF(data: PDFReportData): Promise<void> {
       styles: { fontSize: 10 },
       headStyles: { fillColor: [0, 81, 213] },
     });
+
+    finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
   }
 
-  // Footer
-  const finalY = (doc as any).lastAutoTable?.finalY ?? 280;
+  // ── Footer ──
   doc.setFontSize(9);
   doc.setTextColor(150);
   doc.text("Dibuat oleh Warung Resoyudan — Catat. Kelola. Tumbuh.", pageW / 2, finalY + 16, { align: "center" });
 
-  doc.save(`laporan-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`laporan-${data.startDate}.pdf`);
 }

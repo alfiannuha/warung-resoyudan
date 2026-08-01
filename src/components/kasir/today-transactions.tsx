@@ -58,6 +58,21 @@ export default function TodayTransactions({ variant = "inline" }: Props) {
         notes: "Pelunasan via Riwayat Hari Ini",
       });
       await updateDebt(customerId, -payConfirm.totalAmount);
+
+      // Jika hutang lunas, tandai semua transaksi kasbon yang belum lunas
+      // Hitung sisa hutang dari nilai yang diketahui (snapshot mungkin belum ter-update).
+      const updatedCustomer = useCustomerStore.getState().getCustomerById(customerId);
+      const remainingDebt = Math.max(0, (updatedCustomer?.currentDebt ?? 0) - payConfirm.totalAmount);
+      if (remainingDebt <= 0) {
+        const debtTxns = useTransactionStore
+          .getState()
+          .getTransactionsByCustomer(customerId)
+          .filter((t) => t.paymentMethod === "kasbon" && t.status === "debt");
+        for (const txn of debtTxns) {
+          await useTransactionStore.getState().updateTransactionStatus(txn.id, "paid");
+        }
+      }
+
       toast("Kasbon berhasil dilunasi.", "success");
       setPayConfirm(null);
     } catch {

@@ -7,6 +7,8 @@ import { formatCurrency, formatDateTime, getTodayISO } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import { useToast } from "@/components/shared/toast-provider";
 import ReprintButton from "@/components/kasbon/reprint-button";
+import PinDialog from "@/components/transaksi/pin-dialog";
+import EditTransactionDialog from "@/components/transaksi/edit-transaction-dialog";
 import type { Transaction, PaymentMethod } from "@/types";
 
 export default function TransaksiPage() {
@@ -15,6 +17,9 @@ export default function TransaksiPage() {
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | "all">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -213,6 +218,15 @@ export default function TransaksiPage() {
                       </div>
                     ))}
 
+                    {t.notes && (
+                      <div className="bg-surface-container rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <Icon name="lightbulb" size={16} className="text-outline shrink-0 mt-0.5" />
+                          <p className="text-sm text-on-surface-variant whitespace-pre-wrap">{t.notes}</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="border-t border-border-standard pt-2 space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-outline">Subtotal</span>
@@ -244,7 +258,20 @@ export default function TransaksiPage() {
                       <span className="text-[10px] text-outline font-mono">
                         {t.receiptNumber || "—"}
                       </span>
-                      <ReprintButton transaction={t} />
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditTarget(t);
+                            setPinOpen(true);
+                          }}
+                          className="text-secondary font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <Icon name="edit" size={16} />
+                          Edit
+                        </button>
+                        <ReprintButton transaction={t} />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -253,6 +280,24 @@ export default function TransaksiPage() {
           })
         )}
       </div>
+
+      {/* PIN dialog — gates the edit flow */}
+      <PinDialog
+        open={pinOpen}
+        onOpenChange={setPinOpen}
+        onSuccess={() => {
+          setEditOpen(true);
+        }}
+      />
+
+      {/* Edit Transaction dialog — remounted per transaction so form state
+          is initialized fresh from the transaction being edited. */}
+      <EditTransactionDialog
+        key={editTarget?.id ?? "none"}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        transaction={editTarget}
+      />
     </div>
   );
 }

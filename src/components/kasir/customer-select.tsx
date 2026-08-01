@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useCartStore } from "@/stores/use-cart-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
+import { useToast } from "@/components/shared/toast-provider";
 import { Icon } from "@/lib/icon-map";
 
 export default function CustomerSelect() {
@@ -16,21 +17,31 @@ export default function CustomerSelect() {
       addCustomer: s.addCustomer,
     }))
   );
+  const { toast } = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
-    if (!newName.trim()) return;
-    const id = await addCustomer({
-      name: newName.trim(),
-      phone: newPhone.trim() || "",
-      currentDebt: 0,
-    });
-    setCustomer(id);
-    setNewName("");
-    setNewPhone("");
-    setAddOpen(false);
+    if (saving || !newName.trim()) return;
+    setSaving(true);
+    try {
+      const id = await addCustomer({
+        name: newName.trim(),
+        phone: newPhone.trim() || "",
+        currentDebt: 0,
+      });
+      setCustomer(id);
+      setNewName("");
+      setNewPhone("");
+      setAddOpen(false);
+      toast("Pelanggan berhasil ditambahkan.", "success");
+    } catch {
+      toast("Gagal menambahkan pelanggan.", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -47,7 +58,7 @@ export default function CustomerSelect() {
           <option value="">{paymentMethod === "kasbon" ? "Pilih pelanggan..." : "Tanpa pelanggan"}</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}{c.phone ? ` (${c.phone})` : ""} — {c.currentDebt > 0 ? `Rp ${c.currentDebt.toLocaleString("id-ID")}` : "Lunas"}
+              {c.name}
             </option>
           ))}
         </select>
@@ -102,10 +113,10 @@ export default function CustomerSelect() {
               </button>
               <button
                 onClick={handleAdd}
-                disabled={!newName.trim()}
+                disabled={saving || !newName.trim()}
                 className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
               >
-                Tambah
+                {saving ? "Menyimpan..." : "Tambah"}
               </button>
             </div>
           </div>

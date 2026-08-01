@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/lib/icon-map";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useDebtPaymentStore } from "@/stores/use-debt-payment-store";
+import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useToast } from "@/components/shared/toast-provider";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 
@@ -14,6 +15,7 @@ interface Props {
 export default function PaymentInput({ customerId }: Props) {
   const [amount, setAmount] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const updateDebt = useCustomerStore((s) => s.updateDebt);
   const addPayment = useDebtPaymentStore((s) => s.addPayment);
   const customer = useCustomerStore((s) => s.getCustomerById(customerId));
@@ -44,17 +46,39 @@ export default function PaymentInput({ customerId }: Props) {
   const handleConfirmPayment = async () => {
     const paymentAmount = Number(amount);
     setConfirmOpen(false);
+    if (saving) return;
+    setSaving(true);
+    try {
+      await addPayment({
+        customerId,
+        amount: paymentAmount,
+        paymentDate: new Date().toISOString(),
+        notes: "Pembayaran hutang",
+      });
 
-    await addPayment({
-      customerId,
-      amount: paymentAmount,
-      paymentDate: new Date().toISOString(),
-      notes: "Pembayaran hutang",
-    });
+      await updateDebt(customerId, -paymentAmount);
 
-    await updateDebt(customerId, -paymentAmount);
-    setAmount("");
-    toast("Pembayaran berhasil!");
+      // Jika hutang lunas, tandai semua transaksi kasbon yang belum lunas
+      // Hitung sisa hutang dari nilai yang diketahui (snapshot mungkin belum ter-update).
+      const updatedCustomer = useCustomerStore.getState().getCustomerById(customerId);
+      const remainingDebt = Math.max(0, (updatedCustomer?.currentDebt ?? 0) - paymentAmount);
+      if (remainingDebt <= 0) {
+        const debtTxns = useTransactionStore
+          .getState()
+          .getTransactionsByCustomer(customerId)
+          .filter((t) => t.paymentMethod === "kasbon" && t.status === "debt");
+        for (const txn of debtTxns) {
+          await useTransactionStore.getState().updateTransactionStatus(txn.id, "paid");
+        }
+      }
+
+      setAmount("");
+      toast("Pembayaran berhasil!");
+    } catch {
+      toast("Gagal menyimpan pembayaran.", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -95,10 +119,11 @@ export default function PaymentInput({ customerId }: Props) {
       </div>
       <button
         type="submit"
-        className="w-full h-touch-target-min bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-secondary/20"
+        disabled={saving}
+        className="w-full h-touch-target-min bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg shadow-secondary/20 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <Icon name="save" />
-        Simpan Pembayaran
+        {saving ? "Menyimpan..." : "Simpan Pembayaran"}
       </button>
 
       <ConfirmDialog
@@ -106,7 +131,8 @@ export default function PaymentInput({ customerId }: Props) {
         onOpenChange={setConfirmOpen}
         title="Konfirmasi Pembayaran"
         description={`Bayar ${Number(amount).toLocaleString("id-ID")} dari total hutang ${currentDebt.toLocaleString("id-ID")}?`}
-        confirmLabel="Bayar"
+        confirmLabel={saving ? "Menyimpan..." : "Bayar"}
+        confirmDisabled={saving}
         onConfirm={handleConfirmPayment}
       />
     </form>

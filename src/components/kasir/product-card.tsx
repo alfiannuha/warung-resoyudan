@@ -72,18 +72,20 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
       </div>
 
-      <div className="flex flex-col flex-1 gap-1">
-        <span className="text-label-md text-label-md text-on-surface-variant">
+      <div className="flex flex-col flex-1 gap-1 min-w-0">
+        <span className="text-[11px] text-on-surface-variant truncate">
           {product.category}
         </span>
-        <h3 className="text-body-md text-body-md text-on-surface font-bold line-clamp-1">
+        <h3 className="text-[13px] leading-snug text-on-surface font-bold line-clamp-2 min-h-[34px]">
           {product.name}
         </h3>
-        <div className="flex justify-between items-end mt-auto pt-1">
-          <span className="text-label-xl font-bold text-primary">
+        <div className="flex justify-between items-end gap-2 mt-auto pt-1">
+          <span className="text-label-xl font-bold text-primary truncate min-w-0">
             {formatCurrency(product.sellPrice)}
           </span>
-          <span className="text-[12px] text-outline font-medium">Stok: {product.stock}</span>
+          <span className="text-[12px] text-outline font-medium whitespace-nowrap shrink-0">
+            Stok: {product.stock}
+          </span>
         </div>
       </div>
 

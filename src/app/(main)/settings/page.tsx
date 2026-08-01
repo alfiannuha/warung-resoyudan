@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { requestPrinter, reconnectPrinter, testPrint } from "@/utils/bluetooth-printer";
 import { useToast } from "@/components/shared/toast-provider";
+import { useSettingsStore, DEFAULT_EDIT_PIN } from "@/stores/use-settings-store";
 import { Icon } from "@/lib/icon-map";
 import { useRouter } from "next/navigation";
 
@@ -18,9 +19,12 @@ export default function SettingsPage() {
     setPaperWidth,
     setSavedDevice,
   } = usePrinterStore();
+  const setEditPin = useSettingsStore((s) => s.setEditPin);
   const { toast } = useToast();
   const [connecting, setConnecting] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [savingPin, setSavingPin] = useState(false);
 
   const isConnected = !!savedDeviceId;
 
@@ -69,6 +73,22 @@ export default function SettingsPage() {
       );
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleSavePin = () => {
+    const pin = pinInput.trim();
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      toast("PIN harus 4 digit angka.", "error");
+      return;
+    }
+    setSavingPin(true);
+    try {
+      setEditPin(pin);
+      setPinInput("");
+      toast("PIN edit transaksi diperbarui.", "success");
+    } finally {
+      setSavingPin(false);
     }
   };
 
@@ -126,6 +146,37 @@ export default function SettingsPage() {
           >
             <Icon name="receipt" size={18} />
             80 mm
+          </button>
+        </div>
+      </section>
+
+      {/* PIN Edit Transaksi */}
+      <section className="space-y-2">
+        <label className="text-label-md text-on-surface-variant font-bold block">
+          PIN Edit Transaksi
+        </label>
+        <p className="text-xs text-on-surface-variant">
+          Digunakan untuk mengedit transaksi. Default: {DEFAULT_EDIT_PIN}
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={pinInput}
+            onChange={(e) =>
+              setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))
+            }
+            inputMode="numeric"
+            type="password"
+            className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none text-body-md tracking-[0.5em] text-center font-bold"
+            placeholder="••••"
+            maxLength={4}
+          />
+          <button
+            onClick={handleSavePin}
+            disabled={savingPin || pinInput.length !== 4}
+            className="h-12 px-5 bg-secondary text-on-secondary rounded-xl font-bold flex items-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
+          >
+            <Icon name="lock" size={16} />
+            {savingPin ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
       </section>

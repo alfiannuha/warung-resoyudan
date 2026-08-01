@@ -40,6 +40,7 @@ export default function CartPage() {
   const [receiptNumber, setReceiptNumber] = useState("");
   const [amountPaid, setAmountPaid] = useState(0);
   const [change, setChange] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
   const totalProfit = items.reduce((sum, i) => sum + i.profit, 0);
@@ -73,78 +74,98 @@ export default function CartPage() {
   const handleConfirmTransaction = async () => {
     setConfirmCheckout(false);
     if (checkoutError) return;
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const rn = await generateReceiptNumber();
-    setReceiptNumber(rn);
-    setAmountPaid(0);
-    setChange(0);
+    try {
+      const rn = await generateReceiptNumber();
+      setReceiptNumber(rn);
+      setAmountPaid(0);
+      setChange(0);
 
-    if (paymentMethod === "cash") {
-      setShowCashPayment(true);
-      return;
-    }
-
-    for (const item of items) {
-      const ok = await reduceStock(item.productId, item.quantity);
-      if (!ok) {
-        toast(`Stok ${item.name} tidak mencukupi.`, "error");
+      if (paymentMethod === "cash") {
+        setShowCashPayment(true);
         return;
       }
+
+      for (const item of items) {
+        const ok = await reduceStock(item.productId, item.quantity);
+        if (!ok) {
+          toast(`Stok ${item.name} tidak mencukupi.`, "error");
+          return;
+        }
+      }
+
+      await addTransaction({
+        date: new Date().toISOString(),
+        items: items.map((i) => ({ ...i })),
+        totalAmount,
+        totalProfit,
+        paymentMethod,
+        status: paymentMethod === "kasbon" ? "debt" : "paid",
+        customerId: selectedCustomerId,
+        receiptNumber: rn,
+        amountPaid: 0,
+        change: 0,
+      });
+
+      if (paymentMethod === "kasbon" && selectedCustomerId) {
+        await updateDebt(selectedCustomerId, totalAmount);
+      }
+
+      if (paymentMethod === "qris") {
+        toast("Transaksi berhasil disimpan!");
+        setShowQris(true);
+        return;
+      }
+
+      toast("Transaksi berhasil disimpan!");
+      setShowReceiptSuccess(true);
+    } catch {
+      toast("Gagal menyimpan transaksi.", "error");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    await addTransaction({
-      date: new Date().toISOString(),
-      items: items.map((i) => ({ ...i })),
-      totalAmount,
-      totalProfit,
-      paymentMethod,
-      status: paymentMethod === "kasbon" ? "debt" : "paid",
-      customerId: selectedCustomerId,
-      receiptNumber: rn,
-      amountPaid: 0,
-      change: 0,
-    });
-
-    if (paymentMethod === "kasbon" && selectedCustomerId) {
-      await updateDebt(selectedCustomerId, totalAmount);
-    }
-
-    if (paymentMethod === "qris") {
-      setShowQris(true);
-      return;
-    }
-
-    setShowReceiptSuccess(true);
   };
 
   const handleCashPaymentConfirm = async (paid: number) => {
-    setShowCashPayment(false);
-    const chg = paid - totalAmount;
-    setAmountPaid(paid);
-    setChange(chg);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    for (const item of items) {
-      const ok = await reduceStock(item.productId, item.quantity);
-      if (!ok) {
-        toast(`Stok ${item.name} tidak mencukupi.`, "error");
-        return;
+    try {
+      setShowCashPayment(false);
+      const chg = paid - totalAmount;
+      setAmountPaid(paid);
+      setChange(chg);
+
+      for (const item of items) {
+        const ok = await reduceStock(item.productId, item.quantity);
+        if (!ok) {
+          toast(`Stok ${item.name} tidak mencukupi.`, "error");
+          return;
+        }
       }
+
+      await addTransaction({
+        date: new Date().toISOString(),
+        items: items.map((i) => ({ ...i })),
+        totalAmount,
+        totalProfit,
+        paymentMethod: "cash",
+        status: "paid",
+        customerId: selectedCustomerId,
+        receiptNumber,
+        amountPaid: paid,
+        change: chg,
+      });
+
+      toast("Transaksi berhasil disimpan!");
+      setShowReceiptSuccess(true);
+    } catch {
+      toast("Gagal menyimpan transaksi.", "error");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    await addTransaction({
-      date: new Date().toISOString(),
-      items: items.map((i) => ({ ...i })),
-      totalAmount,
-      totalProfit,
-      paymentMethod: "cash",
-      status: "paid",
-      customerId: selectedCustomerId,
-      receiptNumber,
-      amountPaid: paid,
-      change: chg,
-    });
-
-    setShowReceiptSuccess(true);
   };
 
   const handleQrisConfirm = () => {
@@ -163,7 +184,6 @@ export default function CartPage() {
     clearCart();
     setShowReceiptSuccess(false);
     router.push("/");
-    toast("Transaksi berhasil disimpan!");
   };
 
   const handlePrint = async () => {
@@ -290,6 +310,7 @@ export default function CartPage() {
 
       {/* Cash Payment Dialog */}
       <CashPaymentDialog
+        key={showCashPayment ? "open" : "closed"}
         open={showCashPayment}
         totalAmount={totalAmount}
         onConfirm={handleCashPaymentConfirm}
@@ -324,7 +345,8 @@ export default function CartPage() {
         onOpenChange={setConfirmCheckout}
         title={checkoutError ? "Perhatian" : "Konfirmasi Transaksi"}
         description={checkoutMessage}
-        confirmLabel={checkoutError ? "Tutup" : "Simpan"}
+        confirmLabel={checkoutError ? "Tutup" : isSubmitting ? "Menyimpan..." : "Simpan"}
+        confirmDisabled={isSubmitting && !checkoutError}
         variant={checkoutError ? "danger" : "default"}
         onConfirm={handleConfirmTransaction}
       />

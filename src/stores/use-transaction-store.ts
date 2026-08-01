@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Transaction, DailyReport } from "@/types";
+import type { Transaction, DailyReport, TransactionStatus, CartItem, PaymentMethod } from "@/types";
 import { getTodayISO } from "@/lib/formatters";
 import {
   collection,
@@ -10,10 +10,23 @@ import {
   query,
   orderBy,
   where,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createAuditLog } from "@/lib/audit-log";
+import { useProductStore } from "@/stores/use-product-store";
+import { useCustomerStore } from "@/stores/use-customer-store";
+
+interface EditTransactionChanges {
+  items: CartItem[];
+  totalAmount: number;
+  totalProfit: number;
+  paymentMethod: PaymentMethod;
+  customerId: string | null;
+  status: TransactionStatus;
+  notes?: string | null;
+}
 
 interface TransactionStore {
   transactions: Transaction[];
@@ -29,6 +42,15 @@ interface TransactionStore {
     end: string,
   ) => Transaction[];
   getTransactionsByCustomer: (customerId: string) => Transaction[];
+  getDebtTransactions: () => Transaction[];
+  updateTransactionStatus: (
+    id: string,
+    status: TransactionStatus,
+  ) => Promise<void>;
+  updateTransaction: (
+    id: string,
+    changes: EditTransactionChanges,
+  ) => Promise<{ ok: boolean; error?: string }>;
   getDailyReport: (date: string) => DailyReport;
   getTopProducts: (
     start: string,
@@ -104,6 +126,148 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
   getTransactionsByCustomer: (customerId) =>
     get().transactions.filter((t) => t.customerId === customerId),
+
+  getDebtTransactions: () =>
+    get().transactions.filter(
+      (t) => t.paymentMethod === "kasbon" && t.status === "debt",
+    ),
+
+  updateTransactionStatus: async (id, status) => {
+    const ref = doc(transactionsCollection, id);
+    await updateDoc(ref, { status });
+
+    await createAuditLog({
+      action: "update",
+      entity: "transaction",
+      entityId: id,
+      description: `Transaksi ${id} ditandai ${status === "paid" ? "lunas" : "hutang"}`,
+    });
+  },
+
+  updateTransaction: async (id, changes) => {
+    const oldTxn = get().transactions.find((t) => t.id === id);
+    if (!oldTxn) {
+      return { ok: false, error: "Transaksi tidak ditemukan" };
+    }
+
+    const productStore = useProductStore.getState();
+    const customerStore = useCustomerStore.getState();
+
+    // 1. Stock reconciliation — net delta per product, applied once.
+    //    positive delta = deduct stock; negative delta = add back.
+    const oldQtyMap = new Map<string, number>();
+    oldTxn.items.forEach((i) => {
+      oldQtyMap.set(i.productId, (oldQtyMap.get(i.productId) ?? 0) + i.quantity);
+    });
+    const newQtyMap = new Map<string, number>();
+    changes.items.forEach((i) => {
+      newQtyMap.set(i.productId, (newQtyMap.get(i.productId) ?? 0) + i.quantity);
+    });
+
+    const allProductIds = new Set([...oldQtyMap.keys(), ...newQtyMap.keys()]);
+    const appliedReductions: { productId: string; qty: number }[] = [];
+
+    for (const productId of allProductIds) {
+      const delta = (newQtyMap.get(productId) ?? 0) - (oldQtyMap.get(productId) ?? 0);
+      if (delta === 0) continue;
+      if (delta > 0) {
+        const ok = await productStore.reduceStock(productId, delta);
+        if (!ok) {
+          // Roll back applied reductions.
+          for (const r of appliedReductions) {
+            await productStore.quickAddStock(r.productId, r.qty);
+          }
+          return { ok: false, error: "Stok tidak mencukupi" };
+        }
+        appliedReductions.push({ productId, qty: delta });
+      } else {
+        await productStore.quickAddStock(productId, -delta);
+      }
+    }
+
+    // 2. Debt reconciliation — net change to customer currentDebt.
+    const wasKasbon = oldTxn.paymentMethod === "kasbon";
+    const isKasbon = changes.paymentMethod === "kasbon";
+    const oldCustomerId = oldTxn.customerId;
+    const newCustomerId = changes.customerId;
+    const oldAmount = oldTxn.totalAmount;
+    const newAmount = changes.totalAmount;
+
+    const debtOps: { customerId: string; delta: number }[] = [];
+    if (wasKasbon && oldCustomerId) {
+      if (oldCustomerId === newCustomerId) {
+        if (isKasbon) {
+          debtOps.push({ customerId: oldCustomerId, delta: newAmount - oldAmount });
+        } else {
+          debtOps.push({ customerId: oldCustomerId, delta: -oldAmount });
+        }
+      } else {
+        // Old kasbon, different customer: remove from old, add to new if kasbon.
+        debtOps.push({ customerId: oldCustomerId, delta: -oldAmount });
+        if (isKasbon && newCustomerId) {
+          debtOps.push({ customerId: newCustomerId, delta: newAmount });
+        }
+      }
+    } else if (!wasKasbon && isKasbon && newCustomerId) {
+      debtOps.push({ customerId: newCustomerId, delta: newAmount });
+    }
+
+    for (const op of debtOps) {
+      await customerStore.updateDebt(op.customerId, op.delta);
+    }
+
+    // 3. Write transaction (non-editable fields untouched).
+    const cleanChanges: Partial<Transaction> = {
+      items: changes.items,
+      totalAmount: changes.totalAmount,
+      totalProfit: changes.totalProfit,
+      paymentMethod: changes.paymentMethod,
+      customerId: changes.customerId,
+      status: changes.status,
+    };
+    if (changes.notes !== undefined) {
+      cleanChanges.notes = changes.notes;
+    }
+    await updateDoc(doc(transactionsCollection, id), {
+      ...cleanChanges,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 4. Audit log with edited fields + previous/new values.
+    await createAuditLog({
+      action: "update",
+      entity: "transaction",
+      entityId: id,
+      description: `Transaksi ${oldTxn.receiptNumber || id} diedit`,
+      details: {
+        receiptNumber: oldTxn.receiptNumber || null,
+        editedFields: [
+          "items",
+          "totalAmount",
+          "totalProfit",
+          "paymentMethod",
+          "customerId",
+          ...(changes.notes !== undefined ? ["notes"] : []),
+        ],
+        previous: {
+          items: oldTxn.items,
+          totalAmount: oldTxn.totalAmount,
+          totalProfit: oldTxn.totalProfit,
+          paymentMethod: oldTxn.paymentMethod,
+          customerId: oldTxn.customerId,
+        },
+        new: {
+          items: changes.items,
+          totalAmount: changes.totalAmount,
+          totalProfit: changes.totalProfit,
+          paymentMethod: changes.paymentMethod,
+          customerId: changes.customerId,
+        },
+      },
+    });
+
+    return { ok: true };
+  },
 
   getDailyReport: (date) => {
     const dayTx = get().transactions.filter((t) =>

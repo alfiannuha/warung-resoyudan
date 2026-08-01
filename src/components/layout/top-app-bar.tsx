@@ -9,6 +9,8 @@ const pageTitles: Record<string, string> = {
   "/": "Warung Resoyudan",
   "/dashboard": "Dashboard",
   "/produk": "Produk",
+  "/pelanggan": "Pelanggan",
+  "/pengeluaran": "Pengeluaran",
   "/kasbon": "Kasbon",
   "/laporan": "Laporan",
 };

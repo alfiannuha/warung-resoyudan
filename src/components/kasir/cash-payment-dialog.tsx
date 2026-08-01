@@ -21,13 +21,11 @@ export default function CashPaymentDialog({ open, totalAmount, onConfirm, onCanc
   const change = Math.max(0, amountPaid - totalAmount);
   const isValid = amountPaid >= totalAmount;
 
+  // Focus the input shortly after the dialog mounts (parent remounts via key on open).
   useEffect(() => {
-    if (open) {
-      setAmountStr("");
-      // Focus input after render
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [open]);
+    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleQuickNominal = (nominal: number) => {
     setAmountStr(String(nominal));

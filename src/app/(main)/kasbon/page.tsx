@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCustomerStore } from "@/stores/use-customer-store";
+import { useCartStore } from "@/stores/use-cart-store";
 import { formatCurrency, getRelativeTime } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import TransactionHistory from "@/components/kasbon/transaction-history";
@@ -13,34 +15,31 @@ import {
 import type { Customer } from "@/types";
 
 export default function KasbonPage() {
-  const { customers, addCustomer } = useCustomerStore();
+  const { customers } = useCustomerStore();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
 
   const totalPiutang = customers.reduce((s, c) => s + c.currentDebt, 0);
   const activeCount = customers.filter((c) => c.currentDebt > 0).length;
 
-  const filtered = search.trim()
+  // Hanya tampilkan pelanggan yang memiliki hutang aktif
+  const filtered = (search.trim()
     ? customers.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase())
       )
-    : customers;
+    : customers).filter((c) => c.currentDebt > 0);
 
   const handleOpenDetail = (customer: Customer) => {
     setSelectedCustomer(customer);
     setDetailOpen(true);
   };
 
-  const handleAddCustomer = async () => {
-    if (!newName.trim()) return;
-    await addCustomer({ name: newName.trim(), phone: newPhone.trim(), currentDebt: 0 });
-    setNewName("");
-    setNewPhone("");
-    setAddOpen(false);
+  const handleAddCashAdvance = () => {
+    // Prepare kasir flow for a new cash advance transaction.
+    useCartStore.setState({ pendingKasbon: true });
+    router.push("/");
   };
 
   return (
@@ -82,7 +81,7 @@ export default function KasbonPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-12 text-on-surface-variant/50">
               <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
-              <p>Tidak ada pelanggan</p>
+              <p>Tidak ada kasbon aktif</p>
             </div>
           ) : (
             filtered.map((customer) => {
@@ -129,11 +128,11 @@ export default function KasbonPage() {
 
         {/* FAB */}
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={handleAddCashAdvance}
           className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
-          aria-label="Tambah pelanggan"
+          aria-label="Tambah kasbon baru"
         >
-          <Icon name="person_add" size={28} />
+          <Icon name="add" size={28} />
         </button>
 
         {/* Mobile: Detail Bottom Sheet */}
@@ -164,7 +163,7 @@ export default function KasbonPage() {
             {filtered.length === 0 ? (
               <div className="text-center py-12 text-on-surface-variant/50">
                 <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
-                <p>Tidak ada pelanggan</p>
+                <p>Tidak ada kasbon aktif</p>
               </div>
             ) : (
               filtered.map((customer) => {
@@ -201,11 +200,11 @@ export default function KasbonPage() {
           </div>
           <div className="p-4 border-t border-border-standard">
             <button
-              onClick={() => setAddOpen(true)}
+              onClick={handleAddCashAdvance}
               className="w-full py-3 bg-secondary text-on-secondary rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
             >
               <Icon name="add" size={20} />
-              Tambah Pelanggan
+              Tambah Kasbon
             </button>
           </div>
         </aside>
@@ -225,55 +224,6 @@ export default function KasbonPage() {
         </section>
       </div>
 
-      {/* ===== ADD CUSTOMER DIALOG (shared) ===== */}
-      {addOpen && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setAddOpen(false)}>
-          <div className="bg-white rounded-xl max-w-[360px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-headline-md font-bold">Tambah Pelanggan</h3>
-            <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">Nama Pelanggan</label>
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
-                placeholder="Nama"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">
-                Nomor WhatsApp <span className="text-outline">(opsional)</span>
-              </label>
-              <div className="flex border border-border-standard rounded-xl focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/20 overflow-hidden transition-all">
-                <span className="flex items-center px-3 text-body-md font-bold bg-surface-container text-on-surface-variant shrink-0">
-                  +62
-                </span>
-                <input
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
-                  className="flex-1 h-12 px-3 outline-none"
-                  placeholder="81x-xxxx-xxxx"
-                  inputMode="numeric"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setAddOpen(false)}
-                className="flex-1 h-12 border border-border-standard rounded-xl font-bold"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleAddCustomer}
-                className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform"
-              >
-                Simpan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

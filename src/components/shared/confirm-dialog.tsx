@@ -16,6 +16,7 @@ interface Props {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "danger";
+  confirmDisabled?: boolean;
   onConfirm: () => void;
 }
 
@@ -27,6 +28,7 @@ export default function ConfirmDialog({
   confirmLabel = "Konfirmasi",
   cancelLabel = "Batal",
   variant = "default",
+  confirmDisabled = false,
   onConfirm,
 }: Props) {
   return (
@@ -47,14 +49,16 @@ export default function ConfirmDialog({
           </button>
           <button
             onClick={() => {
+              if (confirmDisabled) return;
               onConfirm();
               onOpenChange(false);
             }}
+            disabled={confirmDisabled}
             className={`flex-1 h-12 rounded-xl font-bold active:scale-[0.98] transition-transform ${
               variant === "danger"
                 ? "bg-danger-alert text-white"
                 : "bg-secondary text-on-secondary"
-            }`}
+            } ${confirmDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             {confirmLabel}
           </button>

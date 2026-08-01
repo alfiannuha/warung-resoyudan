@@ -49,6 +49,7 @@ export interface Transaction {
   receiptNumber: string | null;
   amountPaid: number;
   change: number;
+  notes?: string | null;
 }
 
 export interface Customer {
@@ -68,6 +69,18 @@ export interface DebtPayment {
   notes: string;
 }
 
+export interface Expense {
+  id: string;
+  expenseNumber: string; // EXP-YYYYMMDD-XXX
+  expenseDate: string; // ISO (YYYY-MM-DD)
+  title: string;
+  description: string;
+  totalAmount: number;
+  receiptImage: string | null; // base64 data-URL
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DailyReport {
   date: string;
   totalSales: number;
@@ -77,4 +90,4 @@ export interface DailyReport {
   transactionCount: number;
 }
 
-export type PeriodFilter = "today" | "week" | "month" | "custom";
+export type PeriodFilter = "today" | "yesterday" | "week" | "month" | "custom";

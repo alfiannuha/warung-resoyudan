@@ -10,6 +10,10 @@
 
 # language
 - Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.60
+- Write all UI strings in Indonesian (Bahasa) for the app interface. Confidence: 0.65
+
+# package-management
+- Use pnpm for all package manager commands (install, lint, tsc, build). Confidence: 0.60
 
 # whatsapp
 - Use +62 prefix for WhatsApp phone numbers (not just 62). Confidence: 0.70

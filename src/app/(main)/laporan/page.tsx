@@ -5,15 +5,28 @@ import PeriodFilter from "@/components/laporan/period-filter";
 import { Icon } from "@/lib/icon-map";
 import { useReportStore } from "@/stores/use-report-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
+import { useCustomerStore } from "@/stores/use-customer-store";
+import { useExpenseStore } from "@/stores/use-expense-store";
 import { formatCurrency, formatDateShort, getTodayISO } from "@/lib/formatters";
 import { PERIOD_LABELS } from "@/lib/constants";
 import { exportToPDF } from "@/lib/export";
+import LineChart from "@/components/laporan/line-chart";
+import type { Transaction } from "@/types";
 
 function getDateRange(period: string, customStart?: string | null, customEnd?: string | null) {
   const today = getTodayISO();
   switch (period) {
     case "today":
       return { start: today, end: today };
+    case "yesterday": {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const date = `${y}-${m}-${day}`;
+      return { start: date, end: date };
+    }
     case "week": {
       const start = new Date();
       start.setDate(start.getDate() - 6);
@@ -21,8 +34,17 @@ function getDateRange(period: string, customStart?: string | null, customEnd?: s
     }
     case "month": {
       const now = new Date();
+      // First day of current month
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: start.toISOString().split("T")[0], end: today };
+      // Last day of current month (day 0 of next month)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const fmt = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      return { start: fmt(start), end: fmt(end) };
     }
     case "custom":
       return { start: customStart || today, end: customEnd || today };
@@ -31,17 +53,33 @@ function getDateRange(period: string, customStart?: string | null, customEnd?: s
   }
 }
 
-function generateChartData(start: string, end: string) {
+/** Local-time YYYY-MM-DD stepping forward from `start`. */
+function getDateOffsetISO(base: string, offsetDays: number): string {
+  const d = new Date(`${base}T00:00:00`);
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function generateChartData(
+  start: string,
+  end: string,
+  transactions: Transaction[],
+) {
   const days = Math.ceil(
-    (new Date(end).getTime() - new Date(start).getTime()) / 86400000
+    (new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000,
   );
   const numPoints = Math.min(days + 1, 30);
   return Array.from({ length: numPoints }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
+    const day = getDateOffsetISO(start, i);
+    const value = transactions
+      .filter((t) => t.date.startsWith(day))
+      .reduce((sum, t) => sum + t.totalAmount, 0);
     return {
-      label: formatDateShort(d.toISOString().split("T")[0]),
-      value: Math.floor(Math.random() * 3000000) + 500000,
+      label: formatDateShort(day),
+      value,
     };
   });
 }
@@ -52,36 +90,59 @@ export default function LaporanPage() {
   const customEnd = useReportStore((s) => s.customEnd);
   const getTransactionsByDateRange = useTransactionStore((s) => s.getTransactionsByDateRange);
   const getTopProducts = useTransactionStore((s) => s.getTopProducts);
+  const transactions = useTransactionStore((s) => s.transactions);
+  const getCustomerById = useCustomerStore((s) => s.getCustomerById);
+  const expenses = useExpenseStore((s) => s.expenses);
 
   const { start, end } = useMemo(
     () => getDateRange(period, customStart, customEnd),
     [period, customStart, customEnd]
   );
 
-  const transactions = useMemo(
+  const filteredTransactions = useMemo(
     () => getTransactionsByDateRange(start, end),
     [start, end, getTransactionsByDateRange]
   );
 
-  const totalSales = transactions.reduce((s, t) => s + t.totalAmount, 0);
-  const totalProfit = transactions.reduce((s, t) => s + t.totalProfit, 0);
-  const totalCash = transactions
+  const totalSales = filteredTransactions.reduce((s, t) => s + t.totalAmount, 0);
+  const totalProfit = filteredTransactions.reduce((s, t) => s + t.totalProfit, 0);
+  const totalCash = filteredTransactions
     .filter((t) => t.paymentMethod === "cash")
     .reduce((s, t) => s + t.totalAmount, 0);
-  const totalKasbon = transactions
+  const totalKasbon = filteredTransactions
     .filter((t) => t.paymentMethod === "kasbon")
     .reduce((s, t) => s + t.totalAmount, 0);
+  const totalExpenses = expenses
+    .filter((e) => e.expenseDate >= start && e.expenseDate <= end)
+    .reduce((s, e) => s + e.totalAmount, 0);
+  const netProfit = totalProfit - totalExpenses;
 
-  const chartData = useMemo(() => generateChartData(start, end), [start, end]);
+  const chartData = useMemo(
+    () => generateChartData(start, end, transactions),
+    [start, end, transactions]
+  );
 
   const topProducts = useMemo(
     () => getTopProducts(start, end),
     [start, end, getTopProducts]
   );
 
-  const maxValue = Math.max(...chartData.map((d) => d.value), 1);
+  // Cash advance (kasbon) summary for the PDF: active = unpaid kasbon txns,
+  const kasbonTxns = filteredTransactions.filter((t) => t.paymentMethod === "kasbon");
+  const activeKasbonTxns = kasbonTxns.filter((t) => t.status === "debt");
+  const paidKasbonTxns = kasbonTxns.filter((t) => t.status === "paid");
+  const cashAdvanceSummary = {
+    activeCount: activeKasbonTxns.length,
+    activeTotal: activeKasbonTxns.reduce((s, t) => s + t.totalAmount, 0),
+    paidCount: paidKasbonTxns.length,
+    paidTotal: paidKasbonTxns.reduce((s, t) => s + t.totalAmount, 0),
+  };
 
-  const profitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
+  const filteredExpenses = expenses
+    .filter((e) => e.expenseDate >= start && e.expenseDate <= end)
+    .sort((a, b) => a.expenseDate.localeCompare(b.expenseDate));
+
+  const profitMargin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -94,31 +155,31 @@ export default function LaporanPage() {
           <h3 className="text-numeric-display font-bold text-primary mt-1">{formatCurrency(totalSales)}</h3>
           <div className="flex items-center gap-1 mt-3 text-success-paid text-sm">
             <Icon name="trending_up" size={16} />
-            <span>+12% vs bln lalu</span>
+            <span>{PERIOD_LABELS[period] || period}</span>
+          </div>
+        </div>
+        <div className="bg-white border border-border-standard p-5 rounded-lg">
+          <p className="text-label-md text-on-surface-variant">Laba Kotor</p>
+          <h3 className="text-numeric-display font-bold text-secondary mt-1">{formatCurrency(totalProfit)}</h3>
+          <div className="flex items-center gap-1 mt-3 text-on-surface-variant text-sm">
+            <Icon name="trending_up" size={16} />
+            <span>Penjualan − HPP</span>
+          </div>
+        </div>
+        <div className="bg-white border border-border-standard p-5 rounded-lg">
+          <p className="text-label-md text-on-surface-variant">Total Pengeluaran</p>
+          <h3 className="text-numeric-display font-bold text-danger-alert mt-1">{formatCurrency(totalExpenses)}</h3>
+          <div className="flex items-center gap-1 mt-3 text-on-surface-variant text-sm">
+            <Icon name="receipt_long" size={16} />
+            <span>{filteredExpenses.length} pengeluaran</span>
           </div>
         </div>
         <div className="bg-white border border-border-standard p-5 rounded-lg">
           <p className="text-label-md text-on-surface-variant">Laba Bersih</p>
-          <h3 className="text-numeric-display font-bold text-secondary mt-1">{formatCurrency(totalProfit)}</h3>
-          <div className="flex items-center gap-1 mt-3 text-success-paid text-sm">
-            <Icon name="trending_up" size={16} />
-            <span>+5% vs bln lalu</span>
-          </div>
-        </div>
-        <div className="bg-white border border-border-standard p-5 rounded-lg">
-          <p className="text-label-md text-on-surface-variant">Total Transaksi</p>
-          <h3 className="text-numeric-display font-bold text-primary mt-1">{transactions.length}</h3>
+          <h3 className={`text-numeric-display font-bold mt-1 ${netProfit < 0 ? "text-danger-alert" : "text-secondary"}`}>{formatCurrency(netProfit)}</h3>
           <div className="flex items-center gap-1 mt-3 text-on-surface-variant text-sm">
-            <Icon name="history_edu" size={16} />
-            <span>Rata-rata {Math.max(1, Math.round(transactions.length / Math.max(1, chartData.length)))}/hari</span>
-          </div>
-        </div>
-        <div className="bg-white border border-border-standard p-5 rounded-lg">
-          <p className="text-label-md text-on-surface-variant">Kasbon Aktif</p>
-          <h3 className="text-numeric-display font-bold text-warning-debt mt-1">{formatCurrency(totalKasbon)}</h3>
-          <div className="flex items-center gap-1 mt-3 text-danger-alert text-sm">
-            <Icon name="warning" size={16} />
-            <span>Belum dibayar</span>
+            <Icon name="trending_up" size={16} />
+            <span>Laba Kotor − Pengeluaran</span>
           </div>
         </div>
       </section>
@@ -134,33 +195,15 @@ export default function LaporanPage() {
               <span className="text-label-md text-on-surface-variant">Pendapatan</span>
             </div>
           </div>
-          {chartData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-on-surface-variant/50">
-              Belum ada data
-            </div>
-          ) : (
-            <div className="h-64 w-full flex items-end gap-1 pb-6 relative">
-              <div className="absolute inset-0 grid grid-rows-4 pointer-events-none">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="border-t border-surface-variant"></div>
-                ))}
-              </div>
-              {chartData.map((point, i) => {
-                const height = (point.value / maxValue) * 100;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                    <div
-                      className={`w-full rounded-t-sm transition-all hover:opacity-80 ${
-                        point.value === maxValue ? "bg-secondary" : "bg-secondary opacity-40 hover:opacity-60"
-                      }`}
-                      style={{ height: `${Math.max(height, 4)}%` }}
-                    ></div>
-                    <span className="text-[10px] text-outline text-center absolute bottom-0">
-                      {point.label}
-                    </span>
-                  </div>
-                );
-              })}
+          <LineChart data={chartData} />
+          {/* X-axis labels */}
+          {chartData.length > 0 && chartData.some((d) => d.value > 0) && (
+            <div className="flex justify-between mt-2 px-0">
+              {chartData.map((point, i) => (
+                <span key={i} className="text-[9px] text-outline truncate">
+                  {point.label}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -179,7 +222,7 @@ export default function LaporanPage() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-2xl font-bold text-primary">{profitMargin}%</span>
-                <span className="text-xs text-on-surface-variant">Margin</span>
+                <span className="text-xs text-on-surface-variant">Margin Bersih</span>
               </div>
             </div>
             <div className="w-full space-y-3">
@@ -193,7 +236,7 @@ export default function LaporanPage() {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary"></div>
-                  <span className="text-label-md">Modal</span>
+                  <span className="text-label-md">Biaya (Modal + Pengeluaran)</span>
                 </div>
                 <span className="text-label-md">{100 - profitMargin}%</span>
               </div>
@@ -249,12 +292,32 @@ export default function LaporanPage() {
             onClick={() =>
               exportToPDF({
                 periodLabel: PERIOD_LABELS[period] || period,
+                startDate: start,
+                endDate: end,
                 totalSales,
                 totalProfit,
+                totalExpenses,
                 totalCash,
                 totalKasbon,
-                transactionCount: transactions.length,
+                transactionCount: filteredTransactions.length,
                 topProducts,
+                cashAdvanceSummary,
+                transactions: filteredTransactions.map((t) => ({
+                  receiptNumber: t.receiptNumber,
+                  date: t.date,
+                  customerName: t.customerId
+                    ? getCustomerById(t.customerId)?.name ?? null
+                    : null,
+                  paymentMethod: t.paymentMethod,
+                  status: t.status === "paid" ? "Lunas" : "Belum Lunas",
+                  totalAmount: t.totalAmount,
+                })),
+                expenses: filteredExpenses.map((e) => ({
+                  expenseNumber: e.expenseNumber,
+                  expenseDate: e.expenseDate,
+                  title: e.title,
+                  totalAmount: e.totalAmount,
+                })),
               })
             }
             className="flex items-center gap-2 px-6 py-3 bg-secondary text-on-secondary rounded-lg font-bold hover:bg-secondary-container transition-all active:scale-95"

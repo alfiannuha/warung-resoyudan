@@ -5,6 +5,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   getDocs,
   onSnapshot,
   query,
@@ -12,6 +13,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createAuditLog } from "@/lib/audit-log";
 
 interface CustomerStore {
   customers: Customer[];
@@ -28,7 +30,9 @@ interface CustomerStore {
   getCustomerById: (id: string) => Customer | undefined;
   getDebtors: () => Customer[];
   getAllCustomers: () => Customer[];
+  getActiveDebtSummary: () => { count: number; total: number };
   updateDebt: (id: string, delta: number) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
 }
 
 const customersCollection = collection(db, "customers");
@@ -88,6 +92,14 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
   getAllCustomers: () => get().customers,
 
+  getActiveDebtSummary: () => {
+    const debtors = get().customers.filter((c) => c.currentDebt > 0);
+    return {
+      count: debtors.length,
+      total: debtors.reduce((sum, c) => sum + c.currentDebt, 0),
+    };
+  },
+
   updateDebt: async (id, delta) => {
     const ref = doc(customersCollection, id);
     const customer = get().customers.find((c) => c.id === id);
@@ -96,6 +108,18 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
     await updateDoc(ref, {
       currentDebt: newDebt,
       updatedAt: serverTimestamp(),
+    });
+  },
+
+  deleteCustomer: async (id) => {
+    const customer = get().customers.find((c) => c.id === id);
+    await deleteDoc(doc(customersCollection, id));
+
+    await createAuditLog({
+      action: "delete",
+      entity: "customer",
+      entityId: id,
+      description: `Menghapus pelanggan "${customer?.name || id}"`,
     });
   },
 }));
