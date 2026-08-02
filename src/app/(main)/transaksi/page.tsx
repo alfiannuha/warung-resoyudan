@@ -467,12 +467,20 @@ function SwipeableRow({
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     setDragging(true);
+    if (isSwiped) setDragX(-ACTION_W);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (startX.current === null) return;
     const dx = e.touches[0].clientX - startX.current;
-    if (dx < 0) {
+    if (isSwiped) {
+      // Swipe right to close the revealed actions.
+      if (dx > 0) {
+        setDragX(Math.min(dx - ACTION_W, 0));
+      } else {
+        setDragX(Math.max(dx, -ACTION_W));
+      }
+    } else if (dx < 0) {
       setDragX(Math.max(dx, -ACTION_W));
     }
   };
@@ -489,7 +497,7 @@ function SwipeableRow({
     }
   };
 
-  const offset = isSwiped ? -ACTION_W : dragX;
+  const offset = dragging ? dragX : isSwiped ? -ACTION_W : 0;
 
   return (
     <div className="relative overflow-hidden rounded-xl">
