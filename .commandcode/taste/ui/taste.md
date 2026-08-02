@@ -5,3 +5,4 @@
 - All action buttons in a dialog must be visible without scrolling — compact the layout (shrink image, tighten padding/spacing, reduce container width) so no action is hidden below the fold; avoid scrolling to reach buttons. Confidence: 0.7
 - Button color semantics in dialogs: destructive/cancel actions use red (danger-alert), pending/unpaid status actions use orange (warning-debt) — e.g., "Batalkan Transaksi" red, "Belum Dibayar" orange. Confidence: 0.7
 - Status action buttons in a detail view should only be shown when applicable to the current state — e.g., a paid QRIS transaction shows no "Belum Dibayar" (mark-as-unpaid) action, since reverting a completed payment is not offered. Confidence: 0.55
+- Avoid cluttered inline action rows in detail/list views; when a row has many actions (edit, delete, etc.), use a mobile-style swipe-to-reveal (slide left) gesture to expose them, mirroring the companion Android app's interaction patterns. Confidence: 0.6

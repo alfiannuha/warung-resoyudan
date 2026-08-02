@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { formatCurrency, formatDateTime, getTodayISO } from "@/lib/formatters";
@@ -21,6 +21,7 @@ export default function TransaksiPage() {
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | "all">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -164,68 +165,91 @@ export default function TransaksiPage() {
 
             return (
               <div key={t.id}>
-                {/* Row */}
-                <div
-                  onClick={() => setExpandedId(isExpanded ? null : t.id)}
-                  className="bg-white border border-border-standard rounded-xl p-4 active:scale-[0.99] transition-transform cursor-pointer"
+                <SwipeableRow
+                  id={t.id}
+                  isSwiped={swipedId === t.id}
+                  onSwipedChange={(id) => {
+                    setSwipedId(id);
+                    if (id && expandedId) setExpandedId(null);
+                  }}
+                  onEdit={() => {
+                    setSwipedId(null);
+                    setEditTarget(t);
+                    setPinOpen(true);
+                  }}
+                  onDelete={() => {
+                    setSwipedId(null);
+                    setDeleteTarget(t);
+                  }}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-label-md text-secondary font-mono font-bold">
-                          {t.receiptNumber || "—"}
+                  {/* Row */}
+                  <div
+                    onClick={() => {
+                      if (swipedId === t.id) {
+                        setSwipedId(null);
+                        return;
+                      }
+                      setExpandedId(isExpanded ? null : t.id);
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-label-md text-secondary font-mono font-bold">
+                            {t.receiptNumber || "—"}
+                          </p>
+                          {t.receiptNumber && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copyReceipt(t.receiptNumber!); }}
+                              className="text-outline hover:text-secondary active:scale-90 transition-all"
+                              title="Salin nomor nota"
+                            >
+                              <Icon name="content_copy" size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-outline mt-0.5">
+                          {formatDateTime(t.date)}
                         </p>
-                        {t.receiptNumber && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); copyReceipt(t.receiptNumber!); }}
-                            className="text-outline hover:text-secondary active:scale-90 transition-all"
-                            title="Salin nomor nota"
-                          >
-                            <Icon name="content_copy" size={14} />
-                          </button>
+                        {customer && (
+                          <p className="text-xs text-on-surface-variant mt-0.5">
+                            {customer.name}
+                          </p>
+                        )}
+                        {t.items.length > 0 && (
+                          <p className="text-xs text-outline mt-0.5 truncate">
+                            {t.items.map((i) => i.name).join(", ")}
+                          </p>
                         )}
                       </div>
-                      <p className="text-xs text-outline mt-0.5">
-                        {formatDateTime(t.date)}
-                      </p>
-                      {customer && (
-                        <p className="text-xs text-on-surface-variant mt-0.5">
-                          {customer.name}
-                        </p>
-                      )}
-                      {t.items.length > 0 && (
-                        <p className="text-xs text-outline mt-0.5 truncate">
-                          {t.items.map((i) => i.name).join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <p className="font-bold text-body-md">{formatCurrency(t.totalAmount)}</p>
-                      <div className="flex gap-1 mt-1 justify-end flex-wrap">
-                        <span
-                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
-                            t.paymentMethod === "cash"
-                              ? "bg-success-paid/10 text-success-paid"
-                              : t.paymentMethod === "kasbon"
-                              ? "bg-warning-debt/10 text-warning-debt"
-                              : "bg-secondary/10 text-secondary"
-                          }`}
-                        >
-                          {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
-                        </span>
-                        <span
-                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
-                            t.status === "paid"
-                              ? "bg-success-paid/10 text-success-paid"
-                              : "bg-warning-debt/10 text-warning-debt"
-                          }`}
-                        >
-                          {t.status === "paid" ? "Lunas" : "Belum Lunas"}
-                        </span>
+                      <div className="text-right shrink-0 ml-3">
+                        <p className="font-bold text-body-md">{formatCurrency(t.totalAmount)}</p>
+                        <div className="flex gap-1 mt-1 justify-end flex-wrap">
+                          <span
+                            className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
+                              t.paymentMethod === "cash"
+                                ? "bg-success-paid/10 text-success-paid"
+                                : t.paymentMethod === "kasbon"
+                                ? "bg-warning-debt/10 text-warning-debt"
+                                : "bg-secondary/10 text-secondary"
+                            }`}
+                          >
+                            {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
+                          </span>
+                          <span
+                            className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
+                              t.status === "paid"
+                                ? "bg-success-paid/10 text-success-paid"
+                                : "bg-warning-debt/10 text-warning-debt"
+                            }`}
+                          >
+                            {t.status === "paid" ? "Lunas" : "Belum Lunas"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </SwipeableRow>
 
                 {/* Expanded detail */}
                 {isExpanded && (
@@ -321,27 +345,6 @@ export default function TransaksiPage() {
                             Show QRIS
                           </button>
                         )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditTarget(t);
-                            setPinOpen(true);
-                          }}
-                          className="text-secondary font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
-                        >
-                          <Icon name="edit" size={16} />
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(t);
-                          }}
-                          className="text-danger-alert font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
-                        >
-                          <Icon name="delete" size={16} />
-                          Hapus
-                        </button>
                         <ReprintButton transaction={t} />
                       </div>
                     </div>
@@ -436,6 +439,91 @@ export default function TransaksiPage() {
         confirmDisabled={deleting}
         onConfirm={handleDelete}
       />
+    </div>
+  );
+}
+
+/* Swipe-to-reveal row (Android-style): swipe left to reveal Edit & Delete actions. */
+function SwipeableRow({
+  id,
+  isSwiped,
+  onSwipedChange,
+  onEdit,
+  onDelete,
+  children,
+}: {
+  id: string;
+  isSwiped: boolean;
+  onSwipedChange: (id: string | null) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  children: React.ReactNode;
+}) {
+  const startX = useRef<number | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const ACTION_W = 160; // total width of revealed actions (Edit + Delete)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    setDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (startX.current === null) return;
+    const dx = e.touches[0].clientX - startX.current;
+    if (dx < 0) {
+      setDragX(Math.max(dx, -ACTION_W));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    startX.current = null;
+    setDragging(false);
+    if (dragX < -ACTION_W / 2) {
+      setDragX(-ACTION_W);
+      onSwipedChange(id);
+    } else {
+      setDragX(0);
+      onSwipedChange(null);
+    }
+  };
+
+  const offset = isSwiped ? -ACTION_W : dragX;
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Actions behind the row */}
+      <div className="absolute inset-y-0 right-0 flex">
+        <button
+          onClick={onEdit}
+          className="w-20 bg-secondary text-on-secondary flex flex-col items-center justify-center gap-0.5 font-bold text-xs"
+          aria-label="Edit"
+        >
+          <Icon name="edit" size={20} />
+          Edit
+        </button>
+        <button
+          onClick={onDelete}
+          className="w-20 bg-danger-alert text-white flex flex-col items-center justify-center gap-0.5 font-bold text-xs"
+          aria-label="Hapus"
+        >
+          <Icon name="delete" size={20} />
+          Hapus
+        </button>
+      </div>
+
+      {/* Foreground row */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 0.2s ease" }}
+        className="relative bg-white border border-border-standard p-4 active:scale-[0.99] transition-transform cursor-pointer touch-pan-y select-none"
+      >
+        {children}
+      </div>
     </div>
   );
 }
