@@ -31,11 +31,6 @@
 - Any user-initiated destructive action that cancels/aborts a pending transaction flow needs its own confirmation dialog before executing. Confidence: 0.6
 
 # ui
-- Customer-facing QR codes (e.g., QRIS payment images) must be large enough to scan easily on both tablets and mobile devices — use fluid widths (w-full + max-w) so they scale up on bigger screens. Confidence: 0.65
-- Customer-facing images like the QRIS code should be clickable/tappable to open a fullscreen overlay showing the full-size image, so customers can zoom in and scan more easily. Confidence: 0.7
-- Dialogs must never overlap/overflow the screen on small devices — cap content height (e.g., max-h-[90vh] with overflow-y-auto) and size embedded images conservatively (e.g., max-w-[300px]) so all content fits and remains scrollable when vertical space is limited. Confidence: 0.65
-- All action buttons in a dialog must be visible without scrolling — compact the layout (shrink image, tighten padding/spacing, reduce container width) so no action is hidden below the fold; avoid scrolling to reach buttons. Confidence: 0.7
-- Button color semantics in dialogs: destructive/cancel actions use red (danger-alert), pending/unpaid status actions use orange (warning-debt) — e.g., "Batalkan Transaksi" red, "Belum Dibayar" orange. Confidence: 0.7
-
+See [ui/taste.md](ui/taste.md)
 # business-rules
 - Unpaid/unconfirmed transactions (e.g., QRIS "Belum Dibayar") must not count as sales revenue in reports, dashboard, charts, or PDF, and stock should only be deducted once payment is confirmed — not when the transaction is created. Confidence: 0.75

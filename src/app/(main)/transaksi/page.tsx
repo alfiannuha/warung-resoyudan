@@ -346,34 +346,20 @@ export default function TransaksiPage() {
                       </div>
                     </div>
 
-                    {/* QRIS status actions */}
-                    {t.paymentMethod === "qris" && (
+                    {/* QRIS status actions — only for unpaid QRIS */}
+                    {t.paymentMethod === "qris" && t.status === "debt" && (
                       <div className="flex gap-2 pt-1">
-                        {t.status === "debt" ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatusTarget(t);
-                              setStatusAction("paid");
-                            }}
-                            className="flex-1 h-11 bg-success-paid text-white rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
-                          >
-                            <Icon name="check_circle" size={16} />
-                            Sudah Dibayar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStatusTarget(t);
-                              setStatusAction("debt");
-                            }}
-                            className="flex-1 h-11 border border-warning-debt text-warning-debt rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
-                          >
-                            <Icon name="close" size={16} />
-                            Belum Dibayar
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusTarget(t);
+                            setStatusAction("paid");
+                          }}
+                          className="flex-1 h-11 bg-success-paid text-white rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                        >
+                          <Icon name="check_circle" size={16} />
+                          Sudah Dibayar
+                        </button>
                       </div>
                     )}
                   </div>
