@@ -11,6 +11,7 @@ import {
   orderBy,
   where,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -51,6 +52,7 @@ interface TransactionStore {
     id: string,
     changes: EditTransactionChanges,
   ) => Promise<{ ok: boolean; error?: string }>;
+  deleteTransaction: (id: string) => Promise<void>;
   getDailyReport: (date: string) => DailyReport;
   getTopProducts: (
     start: string,
@@ -133,7 +135,34 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     ),
 
   updateTransactionStatus: async (id, status) => {
+    const txn = get().transactions.find((t) => t.id === id);
     const ref = doc(transactionsCollection, id);
+
+    // QRIS stock reconciliation: stock is held until payment is confirmed.
+    //   debt → paid : deduct stock
+    //   paid → debt : restore stock
+    if (txn?.paymentMethod === "qris" && txn.status !== status) {
+      const productStore = useProductStore.getState();
+      if (status === "paid") {
+        const applied: { productId: string; qty: number }[] = [];
+        for (const item of txn.items) {
+          const ok = await productStore.reduceStock(item.productId, item.quantity);
+          if (!ok) {
+            // Roll back applied reductions.
+            for (const r of applied) {
+              await productStore.quickAddStock(r.productId, r.qty);
+            }
+            throw new Error("Stok tidak mencukupi");
+          }
+          applied.push({ productId: item.productId, qty: item.quantity });
+        }
+      } else {
+        for (const item of txn.items) {
+          await productStore.quickAddStock(item.productId, item.quantity);
+        }
+      }
+    }
+
     await updateDoc(ref, { status });
 
     await createAuditLog({
@@ -269,9 +298,52 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     return { ok: true };
   },
 
+  deleteTransaction: async (id) => {
+    const txn = get().transactions.find((t) => t.id === id);
+    if (!txn) throw new Error("Transaksi tidak ditemukan");
+
+    const productStore = useProductStore.getState();
+    const customerStore = useCustomerStore.getState();
+
+    // 1. Restore stock (unless the QRIS payment was never confirmed — in
+    //    that case stock was never deducted).
+    const stockDeducted = !(txn.paymentMethod === "qris" && txn.status === "debt");
+    if (stockDeducted) {
+      for (const item of txn.items) {
+        await productStore.quickAddStock(item.productId, item.quantity);
+      }
+    }
+
+    // 2. Debt reconciliation — kasbon transactions reduce the customer's debt.
+    if (txn.paymentMethod === "kasbon" && txn.customerId) {
+      await customerStore.updateDebt(txn.customerId, -txn.totalAmount);
+    }
+
+    // 3. Delete the transaction document.
+    await deleteDoc(doc(transactionsCollection, id));
+
+    // 4. Audit log.
+    await createAuditLog({
+      action: "delete",
+      entity: "transaction",
+      entityId: id,
+      description: `Menghapus transaksi ${txn.receiptNumber || id} sebesar ${txn.totalAmount} (${txn.paymentMethod})`,
+      details: {
+        receiptNumber: txn.receiptNumber || null,
+        totalAmount: txn.totalAmount,
+        paymentMethod: txn.paymentMethod,
+        status: txn.status,
+        customerId: txn.customerId,
+      },
+    });
+  },
+
   getDailyReport: (date) => {
-    const dayTx = get().transactions.filter((t) =>
-      t.date.startsWith(date),
+    const dayTx = get().transactions.filter(
+      (t) =>
+        t.date.startsWith(date) &&
+        // Unpaid QRIS is not yet revenue — exclude from sales totals.
+        !(t.paymentMethod === "qris" && t.status === "debt"),
     );
     return {
       date,
@@ -288,7 +360,9 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   },
 
   getTopProducts: (start, end, limit = 5) => {
-    const txns = get().getTransactionsByDateRange(start, end);
+    const txns = get()
+      .getTransactionsByDateRange(start, end)
+      .filter((t) => !(t.paymentMethod === "qris" && t.status === "debt"));
     const productMap = new Map<
       string,
       { name: string; qty: number; revenue: number }

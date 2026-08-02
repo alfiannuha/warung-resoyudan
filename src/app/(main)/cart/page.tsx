@@ -29,10 +29,12 @@ export default function CartPage() {
   const products = useProductStore((s) => s.products);
   const reduceStock = useProductStore((s) => s.reduceStock);
   const addTransaction = useTransactionStore((s) => s.addTransaction);
+  const updateTransactionStatus = useTransactionStore((s) => s.updateTransactionStatus);
   const updateDebt = useCustomerStore((s) => s.updateDebt);
   const { toast } = useToast();
   const { paperWidth, savedDeviceId } = usePrinterStore();
   const [showQris, setShowQris] = useState(false);
+  const [qrisTransactionId, setQrisTransactionId] = useState<string | null>(null);
   const [confirmCheckout, setConfirmCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [showCashPayment, setShowCashPayment] = useState(false);
@@ -88,6 +90,26 @@ export default function CartPage() {
         return;
       }
 
+      if (paymentMethod === "qris") {
+        // QRIS: save as unpaid (debt). Stock is reduced only when the
+        // cashier confirms the payment has been received.
+        const txnId = await addTransaction({
+          date: new Date().toISOString(),
+          items: items.map((i) => ({ ...i })),
+          totalAmount,
+          totalProfit,
+          paymentMethod,
+          status: "debt",
+          customerId: selectedCustomerId,
+          receiptNumber: rn,
+          amountPaid: 0,
+          change: 0,
+        });
+        setQrisTransactionId(txnId);
+        setShowQris(true);
+        return;
+      }
+
       for (const item of items) {
         const ok = await reduceStock(item.productId, item.quantity);
         if (!ok) {
@@ -111,12 +133,6 @@ export default function CartPage() {
 
       if (paymentMethod === "kasbon" && selectedCustomerId) {
         await updateDebt(selectedCustomerId, totalAmount);
-      }
-
-      if (paymentMethod === "qris") {
-        toast("Transaksi berhasil disimpan!");
-        setShowQris(true);
-        return;
       }
 
       toast("Transaksi berhasil disimpan!");
@@ -168,16 +184,28 @@ export default function CartPage() {
     }
   };
 
-  const handleQrisConfirm = () => {
-    setShowQris(false);
-    setShowReceiptSuccess(true);
+  const handleQrisConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // Stock is reduced inside updateTransactionStatus (qris debt → paid).
+      if (!qrisTransactionId) return;
+      await updateTransactionStatus(qrisTransactionId, "paid");
+      setShowQris(false);
+      setShowReceiptSuccess(true);
+    } catch {
+      toast("Gagal mengonfirmasi pembayaran.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleQrisClose = () => {
     setShowQris(false);
     clearCart();
+    setQrisTransactionId(null);
     router.push("/");
-    toast("Transaksi QRIS dibatalkan.", "info");
+    toast("Transaksi QRIS disimpan sebagai Belum Dibayar.", "info");
   };
 
   const handleReceiptDone = () => {

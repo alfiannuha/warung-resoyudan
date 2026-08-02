@@ -34,11 +34,13 @@ export default function KasirPage() {
   const reduceStock = useProductStore((s) => s.reduceStock);
   const findProductByBarcode = useProductStore((s) => s.findProductByBarcode);
   const addTransaction = useTransactionStore((s) => s.addTransaction);
+  const updateTransactionStatus = useTransactionStore((s) => s.updateTransactionStatus);
   const updateDebt = useCustomerStore((s) => s.updateDebt);
   const { toast } = useToast();
   const { paperWidth, savedDeviceId } = usePrinterStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [showQris, setShowQris] = useState(false);
+  const [qrisTransactionId, setQrisTransactionId] = useState<string | null>(null);
   const [confirmCheckout, setConfirmCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -103,7 +105,27 @@ export default function KasirPage() {
         return;
       }
 
-      // Non-cash: reduce stock and save
+      if (paymentMethod === "qris") {
+        // QRIS: save as unpaid (debt). Stock is reduced only when the
+        // cashier confirms the payment has been received.
+        const txnId = await addTransaction({
+          date: new Date().toISOString(),
+          items: items.map((i) => ({ ...i })),
+          totalAmount,
+          totalProfit,
+          paymentMethod,
+          status: "debt",
+          customerId: selectedCustomerId,
+          receiptNumber: rn,
+          amountPaid: 0,
+          change: 0,
+        });
+        setQrisTransactionId(txnId);
+        setShowQris(true);
+        return;
+      }
+
+      // Non-cash (kasbon): reduce stock and save
       for (const item of items) {
         const ok = await reduceStock(item.productId, item.quantity);
         if (!ok) {
@@ -127,12 +149,6 @@ export default function KasirPage() {
 
       if (paymentMethod === "kasbon" && selectedCustomerId) {
         await updateDebt(selectedCustomerId, totalAmount);
-      }
-
-      if (paymentMethod === "qris") {
-        toast("Transaksi berhasil disimpan!");
-        setShowQris(true);
-        return;
       }
 
       // Kasbon
@@ -185,16 +201,28 @@ export default function KasirPage() {
     }
   };
 
-  const handleQrisConfirm = () => {
-    setShowQris(false);
-    setShowReceiptSuccess(true);
+  const handleQrisConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // Stock is reduced inside updateTransactionStatus (qris debt → paid).
+      if (!qrisTransactionId) return;
+      await updateTransactionStatus(qrisTransactionId, "paid");
+      setShowQris(false);
+      setShowReceiptSuccess(true);
+    } catch {
+      toast("Gagal mengonfirmasi pembayaran.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleQrisClose = () => {
     setShowQris(false);
     clearCart();
     setCartOpen(false);
-    toast("Transaksi QRIS dibatalkan.", "info");
+    setQrisTransactionId(null);
+    toast("Transaksi QRIS disimpan sebagai Belum Dibayar.", "info");
   };
 
   const handleReceiptDone = () => {

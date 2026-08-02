@@ -9,10 +9,14 @@ import { useToast } from "@/components/shared/toast-provider";
 import ReprintButton from "@/components/kasbon/reprint-button";
 import PinDialog from "@/components/transaksi/pin-dialog";
 import EditTransactionDialog from "@/components/transaksi/edit-transaction-dialog";
-import type { Transaction, PaymentMethod } from "@/types";
+import QrisImageDialog from "@/components/transaksi/qris-image-dialog";
+import ConfirmDialog from "@/components/shared/confirm-dialog";
+import type { Transaction, PaymentMethod, TransactionStatus } from "@/types";
 
 export default function TransaksiPage() {
   const transactions = useTransactionStore((s) => s.transactions);
+  const updateTransactionStatus = useTransactionStore((s) => s.updateTransactionStatus);
+  const deleteTransaction = useTransactionStore((s) => s.deleteTransaction);
   const { getCustomerById } = useCustomerStore();
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | "all">("all");
@@ -20,6 +24,13 @@ export default function TransaksiPage() {
   const [pinOpen, setPinOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [qrisImageOpen, setQrisImageOpen] = useState(false);
+  const [qrisImageTarget, setQrisImageTarget] = useState<Transaction | null>(null);
+  const [statusTarget, setStatusTarget] = useState<Transaction | null>(null);
+  const [statusAction, setStatusAction] = useState<TransactionStatus>("paid");
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { toast } = useToast();
 
@@ -31,6 +42,45 @@ export default function TransaksiPage() {
       toast("Gagal menyalin nomor nota.", "error");
     }
   }, [toast]);
+
+  const handleStatusChange = async () => {
+    if (!statusTarget || statusBusy) return;
+    setStatusBusy(true);
+    try {
+      await updateTransactionStatus(statusTarget.id, statusAction);
+      toast(
+        statusAction === "paid"
+          ? "Transaksi ditandai Sudah Dibayar."
+          : "Transaksi ditandai Belum Dibayar.",
+        "success"
+      );
+    } catch {
+      toast("Gagal mengubah status transaksi.", "error");
+    } finally {
+      setStatusBusy(false);
+      setStatusTarget(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteTransaction(deleteTarget.id);
+      toast("Transaksi berhasil dihapus.", "success");
+      if (expandedId === deleteTarget.id) setExpandedId(null);
+      setDeleteTarget(null);
+    } catch {
+      toast("Gagal menghapus transaksi.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openQrisImage = (t: Transaction) => {
+    setQrisImageTarget(t);
+    setQrisImageOpen(true);
+  };
 
   const filtered = useMemo(() => {
     let result = transactions;
@@ -259,6 +309,18 @@ export default function TransaksiPage() {
                         {t.receiptNumber || "—"}
                       </span>
                       <div className="flex items-center gap-4">
+                        {t.paymentMethod === "qris" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openQrisImage(t);
+                            }}
+                            className="text-secondary font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
+                          >
+                            <Icon name="qr_code_2" size={16} />
+                            Show QRIS
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -270,9 +332,50 @@ export default function TransaksiPage() {
                           <Icon name="edit" size={16} />
                           Edit
                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(t);
+                          }}
+                          className="text-danger-alert font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
+                        >
+                          <Icon name="delete" size={16} />
+                          Hapus
+                        </button>
                         <ReprintButton transaction={t} />
                       </div>
                     </div>
+
+                    {/* QRIS status actions */}
+                    {t.paymentMethod === "qris" && (
+                      <div className="flex gap-2 pt-1">
+                        {t.status === "debt" ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatusTarget(t);
+                              setStatusAction("paid");
+                            }}
+                            className="flex-1 h-11 bg-success-paid text-white rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                          >
+                            <Icon name="check_circle" size={16} />
+                            Sudah Dibayar
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatusTarget(t);
+                              setStatusAction("debt");
+                            }}
+                            className="flex-1 h-11 border border-warning-debt text-warning-debt rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                          >
+                            <Icon name="close" size={16} />
+                            Belum Dibayar
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -297,6 +400,55 @@ export default function TransaksiPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         transaction={editTarget}
+      />
+
+      {/* Show QRIS (re-scan) dialog */}
+      <QrisImageDialog
+        open={qrisImageOpen}
+        onClose={() => setQrisImageOpen(false)}
+        amount={qrisImageTarget?.totalAmount}
+        receiptNumber={qrisImageTarget?.receiptNumber}
+      />
+
+      {/* QRIS status change confirmation */}
+      <ConfirmDialog
+        open={statusTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setStatusTarget(null);
+        }}
+        title={statusAction === "paid" ? "Tandai Sudah Dibayar?" : "Tandai Belum Dibayar?"}
+        description={
+          statusTarget
+            ? `Transaksi ${statusTarget.receiptNumber || statusTarget.id} sebesar ${formatCurrency(
+                statusTarget.totalAmount
+              )} akan ditandai ${
+                statusAction === "paid" ? "Sudah Dibayar" : "Belum Dibayar"
+              }.`
+            : ""
+        }
+        confirmLabel={statusBusy ? "Menyimpan..." : "Ya"}
+        confirmDisabled={statusBusy}
+        onConfirm={handleStatusChange}
+      />
+
+      {/* Delete Transaction confirmation */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteTarget(null);
+        }}
+        title="Hapus Transaksi"
+        description={
+          deleteTarget
+            ? `Yakin ingin menghapus transaksi ${deleteTarget.receiptNumber || deleteTarget.id} sebesar ${formatCurrency(
+                deleteTarget.totalAmount
+              )}? Stok produk akan dikembalikan. Tindakan ini tidak dapat dibatalkan.`
+            : ""
+        }
+        confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+        variant="danger"
+        confirmDisabled={deleting}
+        onConfirm={handleDelete}
       />
     </div>
   );

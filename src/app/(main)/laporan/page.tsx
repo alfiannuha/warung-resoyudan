@@ -7,6 +7,7 @@ import { useReportStore } from "@/stores/use-report-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useExpenseStore } from "@/stores/use-expense-store";
+import { useCapitalStore } from "@/stores/use-capital-store";
 import { formatCurrency, formatDateShort, getTodayISO } from "@/lib/formatters";
 import { PERIOD_LABELS } from "@/lib/constants";
 import { exportToPDF } from "@/lib/export";
@@ -104,12 +105,21 @@ export default function LaporanPage() {
     [start, end, getTransactionsByDateRange]
   );
 
-  const totalSales = filteredTransactions.reduce((s, t) => s + t.totalAmount, 0);
-  const totalProfit = filteredTransactions.reduce((s, t) => s + t.totalProfit, 0);
-  const totalCash = filteredTransactions
+  // Unpaid QRIS is not yet revenue — exclude from sales metrics & charts.
+  const reportedTransactions = useMemo(
+    () =>
+      filteredTransactions.filter(
+        (t) => !(t.paymentMethod === "qris" && t.status === "debt")
+      ),
+    [filteredTransactions]
+  );
+
+  const totalSales = reportedTransactions.reduce((s, t) => s + t.totalAmount, 0);
+  const totalProfit = reportedTransactions.reduce((s, t) => s + t.totalProfit, 0);
+  const totalCash = reportedTransactions
     .filter((t) => t.paymentMethod === "cash")
     .reduce((s, t) => s + t.totalAmount, 0);
-  const totalKasbon = filteredTransactions
+  const totalKasbon = reportedTransactions
     .filter((t) => t.paymentMethod === "kasbon")
     .reduce((s, t) => s + t.totalAmount, 0);
   const totalExpenses = expenses
@@ -117,9 +127,32 @@ export default function LaporanPage() {
     .reduce((s, e) => s + e.totalAmount, 0);
   const netProfit = totalProfit - totalExpenses;
 
+  // ── Capital summary (lifetime values, not period-scoped) ──
+  const capitalTransactions = useCapitalStore((s) => s.capitalTransactions);
+  const currentCapital = capitalTransactions.reduce((sum, t) => {
+    return t.type === "withdrawal" ? sum - t.amount : sum + t.amount;
+  }, 0);
+  const initialCapital = capitalTransactions
+    .filter((t) => t.type === "initial")
+    .reduce((s, t) => s + t.amount, 0);
+  const additionCapital = capitalTransactions
+    .filter((t) => t.type === "addition")
+    .reduce((s, t) => s + t.amount, 0);
+  const withdrawalCapital = capitalTransactions
+    .filter((t) => t.type === "withdrawal")
+    .reduce((s, t) => s + t.amount, 0);
+  const lifetimeProfit = transactions
+    .filter((t) => !(t.paymentMethod === "qris" && t.status === "debt"))
+    .reduce((s, t) => s + t.totalProfit, 0);
+  const lifetimeExpenses = expenses.reduce((s, e) => s + e.totalAmount, 0);
+  const lifetimeNetProfit = lifetimeProfit - lifetimeExpenses;
+  const breakEvenPercent =
+    currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
+  const remainingCapital = currentCapital - lifetimeNetProfit;
+
   const chartData = useMemo(
-    () => generateChartData(start, end, transactions),
-    [start, end, transactions]
+    () => generateChartData(start, end, reportedTransactions),
+    [start, end, reportedTransactions]
   );
 
   const topProducts = useMemo(
@@ -245,6 +278,77 @@ export default function LaporanPage() {
         </div>
       </section>
 
+      {/* Capital Summary */}
+      <section className="bg-white border border-border-standard rounded-lg overflow-hidden">
+        <div className="px-6 py-5 border-b border-border-standard flex justify-between items-center">
+          <h4 className="text-label-xl font-bold">Ringkasan Modal</h4>
+          <a href="/capital" className="text-secondary text-label-md hover:underline">
+            Lihat Semua
+          </a>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-standard">
+          <div className="bg-white p-5">
+            <p className="text-label-md text-on-surface-variant">Modal Awal</p>
+            <p className="text-numeric-display font-bold text-primary mt-1">
+              {formatCurrency(initialCapital)}
+            </p>
+          </div>
+          <div className="bg-white p-5">
+            <p className="text-label-md text-on-surface-variant">Penambahan Modal</p>
+            <p className="text-numeric-display font-bold text-success-paid mt-1">
+              {formatCurrency(additionCapital)}
+            </p>
+          </div>
+          <div className="bg-white p-5">
+            <p className="text-label-md text-on-surface-variant">Penarikan Modal</p>
+            <p className="text-numeric-display font-bold text-danger-alert mt-1">
+              {formatCurrency(withdrawalCapital)}
+            </p>
+          </div>
+          <div className="bg-white p-5">
+            <p className="text-label-md text-on-surface-variant">Total Modal Aktif</p>
+            <p className="text-numeric-display font-bold text-secondary mt-1">
+              {formatCurrency(currentCapital)}
+            </p>
+          </div>
+        </div>
+        <div className="border-t border-border-standard px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-label-md text-on-surface-variant">Laba Bersih (Kumulatif)</p>
+            <p className={`text-numeric-display font-bold mt-1 ${lifetimeNetProfit < 0 ? "text-danger-alert" : "text-secondary"}`}>
+              {formatCurrency(lifetimeNetProfit)}
+            </p>
+          </div>
+          <div>
+            <p className="text-label-md text-on-surface-variant">Break-even Progress</p>
+            <p className="text-numeric-display font-bold text-primary mt-1">
+              {Math.round(breakEvenPercent)}%
+            </p>
+            <div className="h-1.5 bg-surface-variant rounded-full mt-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${breakEvenPercent >= 100 ? "bg-success-paid" : "bg-secondary"}`}
+                style={{ width: `${Math.min(breakEvenPercent, 100)}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <p className="text-label-md text-on-surface-variant">Remaining Capital</p>
+            <p className={`text-numeric-display font-bold mt-1 ${remainingCapital < 0 ? "text-danger-alert" : "text-primary"}`}>
+              {formatCurrency(remainingCapital)}
+            </p>
+            {breakEvenPercent >= 100 ? (
+              <p className="text-xs text-success-paid font-bold mt-1">
+                ✅ Business has reached Break-even Point
+              </p>
+            ) : (
+              <p className="text-xs text-on-surface-variant mt-1">
+                Perlu {formatCurrency(remainingCapital)} lagi untuk balik modal
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Top Products Table */}
       <section className="bg-white border border-border-standard rounded-lg overflow-hidden">
         <div className="px-6 py-5 border-b border-border-standard flex justify-between items-center">
@@ -299,9 +403,18 @@ export default function LaporanPage() {
                 totalExpenses,
                 totalCash,
                 totalKasbon,
-                transactionCount: filteredTransactions.length,
+                transactionCount: reportedTransactions.length,
                 topProducts,
                 cashAdvanceSummary,
+                capitalSummary: {
+                  initialCapital,
+                  additionCapital,
+                  withdrawalCapital,
+                  currentCapital,
+                  netProfit: lifetimeNetProfit,
+                  breakEvenPercent,
+                  remainingCapital,
+                },
                 transactions: filteredTransactions.map((t) => ({
                   receiptNumber: t.receiptNumber,
                   date: t.date,

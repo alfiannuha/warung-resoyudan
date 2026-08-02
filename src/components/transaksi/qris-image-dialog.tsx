@@ -8,12 +8,13 @@ import QrisFullscreenDialog from "@/components/transaksi/qris-fullscreen-dialog"
 
 interface Props {
   open: boolean;
-  amount: number;
-  onConfirm: () => void;
   onClose: () => void;
+  amount?: number;
+  receiptNumber?: string | null;
 }
 
-export default function QrisPaymentDialog({ open, amount, onConfirm, onClose }: Props) {
+/** Displays the store's QRIS image for re-scanning (e.g. from the Transaksi page). */
+export default function QrisImageDialog({ open, onClose, amount, receiptNumber }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
 
   if (!open) return null;
@@ -25,8 +26,12 @@ export default function QrisPaymentDialog({ open, amount, onConfirm, onClose }: 
           <div className="w-14 h-14 rounded-full bg-secondary-container/20 flex items-center justify-center mx-auto">
             <Icon name="qr_code_2" size={28} className="text-secondary" />
           </div>
-          <h3 className="text-headline-md font-bold">Pembayaran QRIS</h3>
-          <p className="text-on-surface-variant text-body-md">Scan QRIS berikut untuk membayar</p>
+          <h3 className="text-headline-md font-bold">Scan Ulang QRIS</h3>
+          {receiptNumber && (
+            <p className="text-label-md text-on-surface-variant font-mono">
+              {receiptNumber}
+            </p>
+          )}
         </div>
 
         {/* QR Code Image — click to open fullscreen */}
@@ -47,29 +52,20 @@ export default function QrisPaymentDialog({ open, amount, onConfirm, onClose }: 
         </button>
         <p className="text-[10px] text-outline -mt-2">Ketuk gambar untuk memperbesar</p>
 
-        {/* Amount */}
-        <div className="p-3 bg-surface-container rounded-xl">
-          <p className="text-label-md text-on-surface-variant">Total Pembayaran</p>
-          <p className="text-headline-md font-extrabold text-secondary">{formatCurrency(amount)}</p>
-        </div>
+        {amount !== undefined && (
+          <div className="p-4 bg-surface-container rounded-xl">
+            <p className="text-label-md text-on-surface-variant">Total Pembayaran</p>
+            <p className="text-headline-md font-extrabold text-secondary">{formatCurrency(amount)}</p>
+          </div>
+        )}
 
-        {/* Actions */}
-        <div className="space-y-2.5">
-          <button
-            onClick={onConfirm}
-            className="w-full h-touch-target-min bg-success-paid text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-          >
-            <Icon name="check_circle" size={20} />
-            Sudah Dibayar
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full h-touch-target-min bg-warning-debt text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-          >
-            <Icon name="history_edu" size={20} />
-            Belum Dibayar
-          </button>
-        </div>
+        <button
+          onClick={onClose}
+          className="w-full h-touch-target-min bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+        >
+          <Icon name="close" size={20} />
+          Tutup
+        </button>
       </div>
 
       {/* Fullscreen QRIS */}

@@ -81,6 +81,19 @@ export interface Expense {
   updatedAt: string;
 }
 
+export type CapitalType = "initial" | "addition" | "withdrawal";
+
+export interface CapitalTransaction {
+  id: string;
+  capitalNumber: string; // CAP-YYYYMMDD-XXX
+  transactionDate: string; // ISO (YYYY-MM-DD)
+  type: CapitalType;
+  amount: number;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DailyReport {
   date: string;
   totalSales: number;

@@ -7,6 +7,7 @@ import { useCustomerStore } from "@/stores/use-customer-store";
 import { useDebtPaymentStore } from "@/stores/use-debt-payment-store";
 import { useDraftStore } from "@/stores/use-draft-store";
 import { useExpenseStore } from "@/stores/use-expense-store";
+import { useCapitalStore } from "@/stores/use-capital-store";
 
 export default function FirestoreProvider({
   children,
@@ -25,6 +26,7 @@ export default function FirestoreProvider({
     const unsubPayments = useDebtPaymentStore.getState().loadPayments();
     const unsubDrafts = useDraftStore.getState().loadDrafts();
     const unsubExpenses = useExpenseStore.getState().loadExpenses();
+    const unsubCapital = useCapitalStore.getState().loadCapitalTransactions();
 
     return () => {
       unsubProducts();
@@ -33,6 +35,7 @@ export default function FirestoreProvider({
       unsubPayments();
       unsubDrafts();
       unsubExpenses();
+      unsubCapital();
     };
   }, []);
 

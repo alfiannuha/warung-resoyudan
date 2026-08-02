@@ -12,6 +12,7 @@ import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { useExpenseStore } from "@/stores/use-expense-store";
+import { useCapitalStore } from "@/stores/use-capital-store";
 import { useShallow } from "zustand/react/shallow";
 import { Icon } from "@/lib/icon-map";
 
@@ -52,13 +53,34 @@ export default function DashboardPage() {
     .reduce((s, e) => s + e.totalAmount, 0);
   const netProfit = report.totalProfit - todayExpenses;
 
-  // Sales trend: last 7 days (local time)
+  // ── Capital / Break-even ──
+  const currentCapital = useCapitalStore(useShallow((s) => s.getCurrentCapital()));
+  const capitalTransactions = useCapitalStore(
+    useShallow((s) => s.capitalTransactions)
+  );
+  // Lifetime net profit (all transactions, excluding unpaid QRIS) minus expenses.
+  const lifetimeNetProfit = useMemo(() => {
+    const profit = transactions
+      .filter((t) => !(t.paymentMethod === "qris" && t.status === "debt"))
+      .reduce((s, t) => s + t.totalProfit, 0);
+    return profit - expenses.reduce((s, e) => s + e.totalAmount, 0);
+  }, [transactions, expenses]);
+  const breakEvenPercent =
+    currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
+  const remainingCapital = currentCapital - lifetimeNetProfit;
+  const isBreakEven = breakEvenPercent >= 100;
+
+  // Sales trend: last 7 days (local time) — unpaid QRIS excluded from revenue.
   const chart = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => getDateOffsetISO(6 - i));
     const values = days.map(
       (day) =>
         transactions
-          .filter((t) => t.date.startsWith(day))
+          .filter(
+            (t) =>
+              t.date.startsWith(day) &&
+              !(t.paymentMethod === "qris" && t.status === "debt")
+          )
           .reduce((sum, t) => sum + t.totalAmount, 0)
     );
     return { days, values };
@@ -146,6 +168,68 @@ export default function DashboardPage() {
           </div>
           <p className="text-label-md text-on-surface-variant uppercase tracking-wide">Laba Bersih</p>
           <h3 className={`text-numeric-display font-bold mt-1 ${netProfit < 0 ? "text-danger-alert" : "text-primary"}`}>{formatCurrency(netProfit)}</h3>
+        </div>
+      </section>
+
+      {/* Capital / Break-even Summary */}
+      <section className="bg-white border border-border-standard rounded-xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-2">
+            <Icon name="account_balance_wallet" size={24} className="text-secondary" />
+            <h4 className="text-label-xl font-bold">Modal & Balik Modal</h4>
+          </div>
+          <a href="/capital" className="text-secondary text-label-md hover:underline">
+            Lihat Semua
+          </a>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl border border-border-standard">
+            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              Current Capital
+            </p>
+            <p className="text-numeric-display font-bold text-primary mt-1">
+              {formatCurrency(currentCapital)}
+            </p>
+            <p className="text-[10px] text-on-surface-variant mt-1">
+              {capitalTransactions.length} transaksi modal
+            </p>
+          </div>
+          <div className="p-4 rounded-xl border border-border-standard">
+            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              Break-even Progress
+            </p>
+            <p className="text-numeric-display font-bold text-secondary mt-1">
+              {Math.round(breakEvenPercent)}%
+            </p>
+            <div className="h-1.5 bg-surface-variant rounded-full mt-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${isBreakEven ? "bg-success-paid" : "bg-secondary"}`}
+                style={{ width: `${Math.min(breakEvenPercent, 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className="p-4 rounded-xl border border-border-standard">
+            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              Remaining Capital
+            </p>
+            <p className={`text-numeric-display font-bold mt-1 ${remainingCapital < 0 ? "text-danger-alert" : "text-primary"}`}>
+              {formatCurrency(remainingCapital)}
+            </p>
+            <p className="text-[10px] text-on-surface-variant mt-1">Modal − Laba bersih</p>
+          </div>
+          <div className="p-4 rounded-xl border border-border-standard bg-surface-container-low flex items-center">
+            {isBreakEven ? (
+              <p className="text-label-md font-bold text-success-paid">
+                ✅ Business has reached Break-even Point
+              </p>
+            ) : (
+              <p className="text-label-md font-bold text-on-surface-variant">
+                {currentCapital > 0
+                  ? `Perlu ${formatCurrency(remainingCapital)} lagi untuk balik modal`
+                  : "Belum ada modal tercatat"}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 

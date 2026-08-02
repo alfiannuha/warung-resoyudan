@@ -2,7 +2,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 export type AuditAction = "create" | "update" | "delete";
-export type AuditEntity = "product" | "transaction" | "debt" | "customer" | "expense";
+export type AuditEntity = "product" | "transaction" | "debt" | "customer" | "expense" | "capital";
 
 export async function createAuditLog(params: {
   action: AuditAction;
