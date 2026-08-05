@@ -114,7 +114,7 @@ class PrinterManager {
     }
   }
 
-  /** Re-requests the saved bonded device and connects to it. */
+  /** Reconnects to the saved device WITHOUT showing the chooser. */
   private async connectSaved(
     savedId: string,
   ): Promise<BluetoothRemoteGATTCharacteristic | null> {
@@ -124,16 +124,29 @@ class PrinterManager {
     }
 
     try {
-      // filters:[] with acceptAllDevices avoids the full chooser for a
-      // device the browser already knows; Web Bluetooth still surfaces it
-      // in the device picker, but Android's pairing dialog is skipped for
-      // an existing bond.
+      // Preferred path: find the already-granted device via getDevices() —
+      // this never shows the pairing/chooser dialog.
+      const known = await navigator.bluetooth.getDevices();
+      const saved = known.find((d) => d.id === savedId);
+
+      if (saved) {
+        try {
+          return await this.connect(saved);
+        } catch {
+          // Connect failed (printer off / out of range) — don't show a
+          // chooser; report the failure to the caller.
+          this.setStatus("disconnected");
+          return null;
+        }
+      }
+
+      // Fallback: the device was forgotten by the browser — the chooser is
+      // the only way to re-grant access (first-time pairing).
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [...PRINT_SERVICE_UUIDS],
       });
 
-      // The user picked a different device than our saved one.
       if (savedId && device.id !== savedId) {
         usePrinterStore.getState().setSavedDevice(device.id, device.name ?? null);
       }

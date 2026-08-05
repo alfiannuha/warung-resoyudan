@@ -6,6 +6,10 @@ interface Navigator {
 
 interface Bluetooth {
   requestDevice(options: RequestDeviceOptions): Promise<BluetoothDevice>;
+  /** Returns devices the page has been granted access to (no chooser). */
+  getDevices(): Promise<BluetoothDevice[]>;
+  /** Starts watching advertisements for already-known devices. */
+  watchAdvertisements(device: BluetoothDevice): Promise<void>;
 }
 
 interface RequestDeviceOptions {

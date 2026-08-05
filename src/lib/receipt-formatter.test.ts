@@ -57,7 +57,7 @@ describe("receipt formatter", () => {
   });
 
   it("centers text", () => {
-    expect(centerText("x", 5)).toBe("  x");
+    expect(centerText("x", 5)).toBe("  x  ");
   });
 
   it("wraps long names without breaking layout", () => {

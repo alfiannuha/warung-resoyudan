@@ -7,6 +7,7 @@ import { printerManager, type PrinterStatus } from "@/lib/printer-manager";
 import { testPrintJob, PrintProgressDialog, type PrintJobState, type PrintPhase } from "@/components/shared/print-progress-dialog";
 import { useToast } from "@/components/shared/toast-provider";
 import { useSettingsStore, DEFAULT_EDIT_PIN } from "@/stores/use-settings-store";
+import { APP_NAME, STORE_ADDRESS } from "@/lib/constants";
 import { Icon } from "@/lib/icon-map";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exportToExcel } from "@/lib/export";
@@ -40,13 +41,10 @@ export default function SettingsPage() {
     savedDeviceId,
     savedDeviceName,
     density,
-    storeAddress,
-    storePhone,
     setPrinterName,
     setPaperWidth,
     setSavedDevice,
     setDensity,
-    setStoreInfo,
   } = usePrinterStore();
   const setEditPin = useSettingsStore((s) => s.setEditPin);
   const { toast } = useToast();
@@ -268,24 +266,18 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* Store Info */}
+          {/* Store Info (fixed) */}
           <section className="space-y-2">
             <label className="block text-label-md font-semibold text-on-surface-variant">
-              Info Toko di Nota <span className="text-on-surface-variant/60">(opsional)</span>
+              Info Toko di Nota
             </label>
-            <input
-              value={storeAddress}
-              onChange={(e) => setStoreInfo(e.target.value, storePhone)}
-              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
-              placeholder="Alamat, mis. Jl. Resoyudan No. 12, Yogyakarta"
-            />
-            <input
-              value={storePhone}
-              onChange={(e) => setStoreInfo(storeAddress, e.target.value)}
-              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
-              placeholder="No. Telepon, mis. 0812-3456-7890"
-              inputMode="tel"
-            />
+            <div className="rounded-lg border border-border-standard bg-surface-container-low p-4">
+              <p className="text-body-sm font-semibold text-on-surface">{printerName || APP_NAME}</p>
+              <p className="mt-1 text-caption text-on-surface-variant">{STORE_ADDRESS}</p>
+            </div>
+            <p className="text-caption text-on-surface-variant">
+              Alamat toko ditampilkan otomatis di setiap nota.
+            </p>
           </section>
 
           {/* PIN Edit Transaksi */}

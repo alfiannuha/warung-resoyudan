@@ -1,5 +1,6 @@
 import type { CartItem, PaymentMethod, PaperWidth } from "@/types";
 import { formatCurrency, formatCurrencyInline } from "@/lib/formatters";
+import { STORE_ADDRESS, STORE_PHONE } from "@/lib/constants";
 
 /**
  * Receipt layout engine — pure text rendering shared by the thermal
@@ -44,11 +45,13 @@ export function padRight(text: string, w: number): string {
   return " ".repeat(w - text.length) + text;
 }
 
+/** Centers text within `w` chars, balancing padding on both sides. */
 export function centerText(text: string, w: number, padChar = " "): string {
   if (text.length >= w) return text;
   const total = w - text.length;
   const left = Math.floor(total / 2);
-  return padChar.repeat(left) + text;
+  const right = total - left;
+  return padChar.repeat(left) + text + padChar.repeat(right);
 }
 
 export function separatorLine(w: number, char = "-"): string {
@@ -122,15 +125,30 @@ function addMeta(lines: string[], label: string, value: string, w: number) {
 
 function addItems(lines: string[], items: CartItem[], w: number) {
   for (const item of items) {
-    const nameLines = wrapText(item.name, w);
+    // Item name wraps to a slightly narrower column so a long name never
+    // runs edge-to-edge; continuation lines are indented for readability.
+    const nameLines = wrapText(item.name, w - 2);
     nameLines.forEach((l, idx) => lines.push(idx === 0 ? l : `  ${l}`));
+    // Compact qty × price on the left, subtotal right-aligned.
     const qtyPrice = `${item.quantity} x ${formatCurrencyInline(item.sellPrice)}`;
-    lines.push(pairLine("  " + qtyPrice, formatCurrencyInline(item.subtotal), w));
+    lines.push(pairLine(" " + qtyPrice, formatCurrencyInline(item.subtotal), w));
   }
 }
 
 function addTotal(lines: string[], label: string, value: string, w: number, big = false) {
-  lines.push(big ? pairLine(label, value, w).toUpperCase() : pairLine(label, value, w));
+  if (!big) {
+    lines.push(pairLine(label, value, w));
+    return;
+  }
+  // Grand total: emphasize the label (uppercase) but keep the currency
+  // value as-is ("Rp 39.000", not "RP 39.000").
+  const pair = pairLine(label, value, w);
+  const split = pair.split("\n");
+  if (split.length > 1) {
+    lines.push(split[0].toUpperCase(), split[1]);
+  } else {
+    lines.push(pairLine(label.toUpperCase(), value, w));
+  }
 }
 
 /* ── Date helpers ── */
@@ -161,8 +179,8 @@ export function buildThermalReceiptText(params: ReceiptParams): string {
     customerName,
     paperWidth,
     storeName = "WARUNG RESOYUDAN",
-    storeAddress,
-    storePhone,
+    storeAddress = STORE_ADDRESS,
+    storePhone = STORE_PHONE,
     cashierName,
   } = params;
   const w = lineWidth(paperWidth);
@@ -174,12 +192,15 @@ export function buildThermalReceiptText(params: ReceiptParams): string {
 
   // ── Header ──
   addBlank(lines);
-  lines.push(centerText(storeName, w));
+  // Header lines are emitted unpadded; the ESC/POS renderer centers them
+  // with ESC a 1 so they're never double-padded (which would push the text
+  // toward the middle of the line).
+  lines.push(storeName);
   if (storeAddress) {
-    wrapText(storeAddress, w).forEach((l) => lines.push(centerText(l, w)));
+    wrapText(storeAddress, w).forEach((l) => lines.push(l));
   }
   if (storePhone) {
-    lines.push(centerText(`Telp: ${storePhone}`, w));
+    lines.push(`Telp: ${storePhone}`);
   }
   addBlank(lines);
   addSep(lines, w, "=");
@@ -255,8 +276,8 @@ export function buildWhatsAppReceiptText(params: ReceiptParams): string {
     customerName,
     paperWidth,
     storeName = "WARUNG RESOYUDAN",
-    storeAddress,
-    storePhone,
+    storeAddress = STORE_ADDRESS,
+    storePhone = STORE_PHONE,
   } = params;
   const w = lineWidth(paperWidth);
   const isKasbon = paymentMethod === "kasbon";

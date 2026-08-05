@@ -39,3 +39,10 @@ export const BOTTOM_NAV_ITEMS = [
 ];
 
 export const APP_NAME = "Warung Resoyudan";
+
+/** Default store address printed on receipts. */
+export const STORE_ADDRESS =
+  "Brumbung RT 11, Kebayanan I, Ngandul, Sumberlawang, Sragen Regency, Central Java 57272";
+
+/** Default store phone printed on receipts (blank = omitted). */
+export const STORE_PHONE = "";

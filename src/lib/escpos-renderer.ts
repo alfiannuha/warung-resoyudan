@@ -225,7 +225,10 @@ export function renderReceipt(text: string, opts: RenderOptions): Uint8Array {
 
   // Split into physical lines (blank lines preserved as LF-only).
   const lines = text.split("\n");
-  let firstHeaderLine = true;
+  // Header state: 0 = before store name, 1 = store name (bold/double),
+  // 2 = address/phone lines right after the store name (centered),
+  // 3 = past the header (everything else left-aligned).
+  let headerState = 0;
 
   for (const raw of lines) {
     const line = raw.trimEnd();
@@ -233,23 +236,35 @@ export function renderReceipt(text: string, opts: RenderOptions): Uint8Array {
 
     if (line === "") {
       chunks.push(escPos(LF));
+      // A blank line ends the centered header block (if we were in it).
+      if (headerState > 0) headerState = 3;
       continue;
     }
 
-    // Store name header — first non-blank line, center + bold + double.
-    const isStoreName = firstHeaderLine && trimmed.length > 0;
-    if (isStoreName) firstHeaderLine = false;
-
-    if (isStoreName) {
-      chunks.push(
-        renderLine(line, { center: true, bold: true, big: true }),
-      );
-    } else {
-      // Everything else — alignment is already baked into the text.
-      // Total / Cash / Change lines print at normal size and weight; the
-      // grand total is emphasized visually by the uppercase layout.
-      chunks.push(renderLine(line, {}));
+    if (headerState === 0) {
+      // Store name — first non-blank line: center + bold + double.
+      headerState = 1;
+      chunks.push(renderLine(line, { center: true, bold: true, big: true }));
+      continue;
     }
+
+    if (headerState === 1 || headerState === 2) {
+      // Address / phone lines directly after the store name are centered.
+      const isSeparator = /^[=\-]{4,}$/.test(trimmed);
+      const looksLikeMeta = trimmed.includes(":");
+      if (isSeparator || looksLikeMeta) {
+        headerState = 3;
+        chunks.push(renderLine(line, {}));
+        continue;
+      }
+      // Address/phone — center them.
+      headerState = 2;
+      chunks.push(renderLine(line, { center: true }));
+      continue;
+    }
+
+    // Everything else — alignment is already baked into the text.
+    chunks.push(renderLine(line, {}));
   }
 
   chunks.push(finishSequence());
