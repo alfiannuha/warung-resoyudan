@@ -16,8 +16,10 @@ import PageHeader from "@/components/shared/page-header";
 import SearchInput from "@/components/shared/search-input";
 import KpiCard from "@/components/shared/kpi-card";
 import EmptyState from "@/components/shared/empty-state";
+import StatusBadge from "@/components/shared/status-badge";
+import { useInventoryAnalytics, VELOCITY_META, type SalesVelocity } from "@/hooks/use-inventory-analytics";
 
-type Filter = "semua" | "stok-tipis" | "favorit";
+type Filter = "semua" | "stok-tipis" | "favorit" | SalesVelocity;
 
 export default function ProdukPage() {
   const [search, setSearch] = useState("");
@@ -48,18 +50,28 @@ export default function ProdukPage() {
   const lowStockCount = allActive.filter((p) => p.stock <= p.minStock).length;
   const totalStockValue = allActive.reduce((s, p) => s + p.buyPrice * p.stock, 0);
 
+  // Inventory analytics: velocity + reorder suggestion per active product.
+  const analytics = useInventoryAnalytics(allActive);
+  const analyticsByProduct = useMemo(
+    () => new Map(analytics.map((a) => [a.product.id, a])),
+    [analytics],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allActive.filter((p) => {
       if (filter === "stok-tipis" && p.stock > p.minStock) return false;
       if (filter === "favorit" && !p.is_favorite) return false;
+      if (filter === "fast" || filter === "normal" || filter === "slow" || filter === "dead") {
+        if (analyticsByProduct.get(p.id)?.velocity !== filter) return false;
+      }
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
         (p.barcode?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [allActive, search, filter]);
+  }, [allActive, search, filter, analyticsByProduct]);
 
   const handleEdit = (id: string) => {
     setEditId(id);
@@ -142,6 +154,9 @@ export default function ProdukPage() {
     { id: "semua", label: "Semua" },
     { id: "stok-tipis", label: "Stok Menipis" },
     { id: "favorit", label: "Favorit" },
+    { id: "fast", label: "Laris" },
+    { id: "slow", label: "Lambat" },
+    { id: "dead", label: "Tidak Laku" },
   ];
 
   return (
@@ -228,13 +243,14 @@ export default function ProdukPage() {
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Beli</th>
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Jual</th>
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Stok</th>
+              <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Pesanan Disarankan</th>
               <th className="px-5 py-3 text-right text-label-md text-on-surface-variant">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-standard">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12">
+                <td colSpan={6} className="px-6 py-12">
                   <EmptyState
                     icon="inventory_2"
                     title="Tidak ada produk"
@@ -276,6 +292,24 @@ export default function ProdukPage() {
                     <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
                       {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
                     </span>
+                  </td>
+                  <td className="px-5 py-4 text-center">
+                    {(() => {
+                      const a = analyticsByProduct.get(product.id);
+                      if (!a) return <span className="text-caption text-on-surface-variant">—</span>;
+                      return (
+                        <div className="flex flex-col items-center gap-1">
+                          <StatusBadge label={VELOCITY_META[a.velocity].label} variant={VELOCITY_META[a.velocity].badge} />
+                          {a.reorderQty > 0 ? (
+                            <span className="text-caption font-semibold text-secondary">
+                              +{a.reorderQty} pcs
+                            </span>
+                          ) : (
+                            <span className="text-caption text-on-surface-variant">Cukup</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -426,7 +460,7 @@ export default function ProdukPage() {
       </div>
 
       {/* Mobile: FAB Speed Dial */}
-      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3 md:hidden">
+      <div className="fixed bottom-20 right-6 z-30 flex flex-col items-end gap-3 md:hidden md:bottom-6">
         {speedDialOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setSpeedDialOpen(false)} />
@@ -470,6 +504,7 @@ export default function ProdukPage() {
 
       {/* Product Form */}
       <ProductForm
+        key={`${editId ?? "new"}-${formOpen}`}
         open={formOpen}
         onOpenChange={handleFormClose}
         editId={editId || undefined}

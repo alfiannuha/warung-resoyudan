@@ -9,6 +9,7 @@ import CashPaymentDialog from "@/components/kasir/cash-payment-dialog";
 import ReceiptSuccessDialog from "@/components/kasir/receipt-success-dialog";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import EmptyState from "@/components/shared/empty-state";
+import { PrintProgressDialog } from "@/components/shared/print-progress-dialog";
 import { useCheckout } from "@/hooks/use-checkout";
 import { useCartStore } from "@/stores/use-cart-store";
 import { Icon } from "@/lib/icon-map";
@@ -144,6 +145,14 @@ export default function CartPage() {
         confirmDisabled={c.isSubmitting && !c.checkoutError}
         variant={c.checkoutError ? "danger" : "default"}
         onConfirm={c.handleConfirmTransaction}
+      />
+
+      {/* Print progress + retry */}
+      <PrintProgressDialog
+        open={c.printOpen}
+        state={c.printState}
+        onRetry={c.retryPrint}
+        onClose={c.closePrint}
       />
     </div>
   );

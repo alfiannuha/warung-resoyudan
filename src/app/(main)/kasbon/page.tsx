@@ -112,7 +112,7 @@ export default function KasbonPage() {
         {/* FAB */}
         <button
           onClick={handleAddCashAdvance}
-          className="fixed bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
+          className="fixed bottom-20 right-6 z-30 md:bottom-6 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
           aria-label="Tambah kasbon baru"
         >
           <Plus className="size-7" />

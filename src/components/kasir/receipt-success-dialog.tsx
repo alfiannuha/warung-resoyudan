@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Printer, MessageCircle } from "lucide-react";
+import { CheckCircle2, Printer, MessageCircle, RefreshCw } from "lucide-react";
 import type { PaymentMethod } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 import {
@@ -21,6 +21,7 @@ interface Props {
   customerPhone?: string;
   onPrint: () => void;
   onWhatsApp: () => void;
+  onRepeat?: () => void;
   onDone: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function ReceiptSuccessDialog({
   customerPhone,
   onPrint,
   onWhatsApp,
+  onRepeat,
   onDone,
 }: Props) {
   const isKasbon = paymentMethod === "kasbon";
@@ -83,6 +85,15 @@ export default function ReceiptSuccessDialog({
 
         {/* Actions */}
         <div className="space-y-3">
+          {onRepeat && (
+            <button
+              onClick={onRepeat}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border-2 border-secondary bg-card font-semibold text-secondary transition-all active:scale-[0.98]"
+            >
+              <RefreshCw className="size-5" />
+              Ulangi Pesanan
+            </button>
+          )}
           <button
             onClick={onPrint}
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"

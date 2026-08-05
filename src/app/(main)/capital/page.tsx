@@ -252,15 +252,6 @@ export default function CapitalPage() {
           )}
         </div>
 
-        {/* FAB */}
-        <button
-          onClick={openAdd}
-          className="fixed bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
-          aria-label="Tambah transaksi modal"
-        >
-          <Icon name="add" size={28} />
-        </button>
-
         {/* Mobile: Detail Bottom Sheet */}
         <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
           <SheetContent

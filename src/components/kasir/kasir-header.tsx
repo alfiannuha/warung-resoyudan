@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUIStore } from "@/stores/use-ui-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { PRODUCT_CATEGORIES } from "@/types";
@@ -13,12 +13,32 @@ import DraftDialog from "./draft-dialog";
 export default function KasirHeader() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
+  const [scannerHotkey, setScannerHotkey] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = () => setDraftOpen(true);
     window.addEventListener("open-draft", handler);
     return () => window.removeEventListener("open-draft", handler);
   }, []);
+
+  // Desktop keyboard shortcuts: "/" focuses search, F2 opens scanner.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName);
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        setScannerHotkey(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const toggleSideNav = useUIStore((s) => s.toggleSideNav);
   const searchQuery = useProductStore((s) => s.searchQuery);
   const setSearchQuery = useProductStore((s) => s.setSearchQuery);
@@ -40,10 +60,11 @@ export default function KasirHeader() {
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-on-surface-variant" />
           <input
+            ref={searchRef}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-11 w-full rounded-md border border-border-standard bg-card pl-11 pr-4 text-base text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50 focus:border-secondary focus:ring-4 focus:ring-secondary/15"
-            placeholder="Cari produk…"
+            placeholder="Cari produk… (/)"
             type="text"
           />
         </div>
@@ -110,6 +131,20 @@ export default function KasirHeader() {
 
       {/* Draft Dialog */}
       <DraftDialog open={draftOpen} onOpenChange={setDraftOpen} />
+
+      {/* Scanner via F2 — reuse the kasir page's scanner by dispatching a custom event */}
+      <F2ScannerBridge active={scannerHotkey} onClose={() => setScannerHotkey(false)} />
     </header>
   );
+}
+
+/** Bridges the F2 shortcut to the scanner by dispatching the same custom event the kasir page listens for. */
+function F2ScannerBridge({ active, onClose }: { active: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (active) {
+      window.dispatchEvent(new CustomEvent("open-scanner"));
+      onClose();
+    }
+  }, [active, onClose]);
+  return null;
 }

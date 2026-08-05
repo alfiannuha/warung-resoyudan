@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,47 +33,23 @@ export default function ProductForm({
 }: Props) {
   const { addProduct, updateProduct } = useProductStore();
 
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
-  const [category, setCategory] = useState("Makanan");
-  const [barcode, setBarcode] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [buyPrice, setBuyPrice] = useState("");
-  const [sellPrice, setSellPrice] = useState("");
-  const [stock, setStock] = useState("");
-  const [minStock, setMinStock] = useState("0");
+  // Initialized from props; the parent remounts this dialog (via `key`)
+  // every time it opens, so state is always fresh for the edit/scan target.
+  const existing = editId
+    ? useProductStore.getState().products.find((p) => p.id === editId)
+    : undefined;
 
-  // Sync form fields when dialog opens (edit or scan)
-  useEffect(() => {
-    if (!open) return;
-
-    if (editId) {
-      const existing = useProductStore.getState().products.find((p) => p.id === editId);
-      if (existing) {
-        setName(existing.name);
-        setBrand(existing.brand || "");
-        setCategory(existing.category || "Makanan");
-        setBarcode(existing.barcode || "");
-        setImageUrl(existing.image_url || "");
-        setBuyPrice(String(existing.buyPrice));
-        setSellPrice(String(existing.sellPrice));
-        setStock(String(existing.stock));
-        setMinStock(String(existing.minStock));
-        return;
-      }
-    }
-
-    // Add mode or fallback
-    setName(initialName || "");
-    setBrand(initialBrand || "");
-    setCategory(initialCategory || "Makanan");
-    setBarcode(initialBarcode || "");
-    setImageUrl(initialImageUrl || "");
-    setBuyPrice("");
-    setSellPrice("");
-    setStock("");
-    setMinStock("0");
-  }, [open, editId, initialName, initialBrand, initialCategory, initialBarcode, initialImageUrl]);
+  const [name, setName] = useState(existing?.name ?? initialName ?? "");
+  const [brand, setBrand] = useState(existing?.brand ?? initialBrand ?? "");
+  const [category, setCategory] = useState(
+    existing?.category ?? initialCategory ?? "Makanan",
+  );
+  const [barcode, setBarcode] = useState(existing?.barcode ?? initialBarcode ?? "");
+  const [imageUrl, setImageUrl] = useState(existing?.image_url ?? initialImageUrl ?? "");
+  const [buyPrice, setBuyPrice] = useState(existing ? String(existing.buyPrice) : "");
+  const [sellPrice, setSellPrice] = useState(existing ? String(existing.sellPrice) : "");
+  const [stock, setStock] = useState(existing ? String(existing.stock) : "");
+  const [minStock, setMinStock] = useState(existing ? String(existing.minStock) : "0");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,22 +73,9 @@ export default function ProductForm({
         await addProduct(data);
       }
       onOpenChange(false);
-      resetForm();
     } catch {
       // Silently fail — Firestore will retry via offline persistence
     }
-  };
-
-  const resetForm = () => {
-    setName("");
-    setBrand("");
-    setCategory("Makanan");
-    setBarcode("");
-    setImageUrl("");
-    setBuyPrice("");
-    setSellPrice("");
-    setStock("");
-    setMinStock("0");
   };
 
   return (

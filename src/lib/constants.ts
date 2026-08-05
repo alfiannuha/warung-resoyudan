@@ -29,4 +29,13 @@ export const NAV_ITEMS = [
   { label: "Pengaturan", href: "/settings", icon: "settings" as const },
 ];
 
+/** Top 5 most-used routes shown in the mobile bottom navigation. */
+export const BOTTOM_NAV_ITEMS = [
+  { label: "Kasir", href: "/", icon: "point_of_sale" as const },
+  { label: "Dashboard", href: "/dashboard", icon: "dashboard" as const },
+  { label: "Transaksi", href: "/transaksi", icon: "receipt_long" as const },
+  { label: "Produk", href: "/produk", icon: "inventory_2" as const },
+  { label: "Pengaturan", href: "/settings", icon: "settings" as const },
+];
+
 export const APP_NAME = "Warung Resoyudan";

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Transaction, DailyReport, TransactionStatus, CartItem, PaymentMethod } from "@/types";
 import { getTodayISO } from "@/lib/formatters";
+import { toDateKey } from "@/lib/period-metrics";
 import {
   collection,
   doc,
@@ -113,7 +114,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
   getTodayTransactions: () => {
     const today = getTodayISO();
-    return get().transactions.filter((t) => t.date.startsWith(today));
+    return get().transactions.filter((t) => toDateKey(t.date) === today);
   },
 
   getTransactionsByDateRange: (start, end) => {
@@ -121,7 +122,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     const endDate = new Date(end);
     endDate.setHours(23, 59, 59, 999);
     return get().transactions.filter((t) => {
-      const d = new Date(t.date);
+      const d = new Date(`${toDateKey(t.date)}T00:00:00`);
       return d >= startDate && d <= endDate;
     });
   },
@@ -341,7 +342,7 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   getDailyReport: (date) => {
     const dayTx = get().transactions.filter(
       (t) =>
-        t.date.startsWith(date) &&
+        toDateKey(t.date) === date &&
         // Unpaid QRIS is not yet revenue — exclude from sales totals.
         !(t.paymentMethod === "qris" && t.status === "debt"),
     );

@@ -1,72 +1,43 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import PeriodFilter from "@/components/laporan/period-filter";
+import { useShallow } from "zustand/react/shallow";
+import QuickFilter from "@/components/shared/quick-filter";
 import { Icon } from "@/lib/icon-map";
 import { useReportStore } from "@/stores/use-report-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
+import { useProductStore } from "@/stores/use-product-store";
 import { useExpenseStore } from "@/stores/use-expense-store";
 import { useCapitalStore } from "@/stores/use-capital-store";
+import { useDebtPaymentStore } from "@/stores/use-debt-payment-store";
 import { formatCurrency, formatDateShort, getTodayISO } from "@/lib/formatters";
 import { PERIOD_LABELS } from "@/lib/constants";
 import { exportToPDF } from "@/lib/export";
 import LineChart from "@/components/laporan/line-chart";
+import ChartCard from "@/components/shared/chart-card";
 import PageHeader from "@/components/shared/page-header";
+import KpiGrid from "@/components/shared/kpi-grid";
 import KpiCard from "@/components/shared/kpi-card";
+import InsightCard from "@/components/shared/insight-card";
+import BusinessPerformanceCard from "@/components/laporan/business-performance-card";
+import FinancialDetailsCard from "@/components/laporan/financial-details-card";
+import TopProductsTable from "@/components/laporan/top-products-table";
+import { generateInsights } from "@/lib/insights";
 import { useToast } from "@/components/shared/toast-provider";
 import type { Transaction } from "@/types";
-
-function getDateRange(period: string, customStart?: string | null, customEnd?: string | null) {
-  const today = getTodayISO();
-  switch (period) {
-    case "today":
-      return { start: today, end: today };
-    case "yesterday": {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const date = `${y}-${m}-${day}`;
-      return { start: date, end: date };
-    }
-    case "week": {
-      const start = new Date();
-      start.setDate(start.getDate() - 6);
-      // Local time, matching the other periods.
-      const y = start.getFullYear();
-      const m = String(start.getMonth() + 1).padStart(2, "0");
-      const day = String(start.getDate()).padStart(2, "0");
-      return { start: `${y}-${m}-${day}`, end: today };
-    }
-    case "month": {
-      const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const fmt = (d: Date) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      };
-      return { start: fmt(start), end: fmt(end) };
-    }
-    case "custom":
-      return { start: customStart || today, end: customEnd || today };
-    default:
-      return { start: today, end: today };
-  }
-}
+import {
+  getDateRange,
+  getDateOffsetFromISO,
+  growthPercent,
+  isReportedTransaction,
+  sumExpensesInRange,
+  toDateKey,
+} from "@/lib/period-metrics";
 
 /** Local-time YYYY-MM-DD stepping forward from `start`. */
 function getDateOffsetISO(base: string, offsetDays: number): string {
-  const d = new Date(`${base}T00:00:00`);
-  d.setDate(d.getDate() + offsetDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return getDateOffsetFromISO(base, offsetDays);
 }
 
 function generateChartData(
@@ -81,7 +52,7 @@ function generateChartData(
   return Array.from({ length: numPoints }, (_, i) => {
     const day = getDateOffsetISO(start, i);
     const value = transactions
-      .filter((t) => t.date.startsWith(day))
+      .filter((t) => toDateKey(t.date) === day)
       .reduce((sum, t) => sum + t.totalAmount, 0);
     return {
       label: formatDateShort(day),
@@ -100,6 +71,8 @@ export default function LaporanPage() {
   const getTopProducts = useTransactionStore((s) => s.getTopProducts);
   const transactions = useTransactionStore((s) => s.transactions);
   const getCustomerById = useCustomerStore((s) => s.getCustomerById);
+  const allProducts = useProductStore(useShallow((s) => s.products));
+  const allCustomers = useCustomerStore(useShallow((s) => s.customers));
   const expenses = useExpenseStore((s) => s.expenses);
 
   const { start, end } = useMemo(
@@ -114,10 +87,7 @@ export default function LaporanPage() {
 
   // Unpaid QRIS is not yet revenue — exclude from sales metrics & charts.
   const reportedTransactions = useMemo(
-    () =>
-      filteredTransactions.filter(
-        (t) => !(t.paymentMethod === "qris" && t.status === "debt")
-      ),
+    () => filteredTransactions.filter(isReportedTransaction),
     [filteredTransactions]
   );
 
@@ -129,10 +99,42 @@ export default function LaporanPage() {
   const totalKasbon = reportedTransactions
     .filter((t) => t.paymentMethod === "kasbon")
     .reduce((s, t) => s + t.totalAmount, 0);
-  const totalExpenses = expenses
-    .filter((e) => e.expenseDate >= start && e.expenseDate <= end)
-    .reduce((s, e) => s + e.totalAmount, 0);
+  const totalExpenses = sumExpensesInRange(expenses, start, end);
   const netProfit = totalProfit - totalExpenses;
+  const profitMargin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
+
+  // Growth vs previous equal-length period.
+  const previousRange = useMemo(() => {
+    const lenMs =
+      new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime();
+    const prevStart = new Date(`${start}T00:00:00`).getTime() - lenMs - 86400000;
+    const fmt = (t: number) => new Date(t).toISOString().slice(0, 10);
+    return { start: fmt(prevStart), end: fmt(new Date(`${start}T00:00:00`).getTime() - 86400000) };
+  }, [start, end]);
+
+  const previousSales = useMemo(() => {
+    const s = new Date(`${previousRange.start}T00:00:00`).getTime();
+    const e = new Date(`${previousRange.end}T00:00:00`).setHours(23, 59, 59, 999);
+    return transactions
+      .filter((t) => {
+        const d = new Date(t.date).getTime();
+        return d >= s && d <= e && isReportedTransaction(t);
+      })
+      .reduce((sum, t) => sum + t.totalAmount, 0);
+  }, [transactions, previousRange]);
+
+  const growth = growthPercent(totalSales, previousSales);
+
+  // Average transaction value.
+  const avgTransaction = reportedTransactions.length > 0
+    ? Math.round(totalSales / reportedTransactions.length)
+    : 0;
+
+  // Inventory value (harga beli × stok) of active products.
+  const inventoryValue = useMemo(
+    () => allProducts.filter((p) => p.isActive).reduce((s, p) => s + p.buyPrice * p.stock, 0),
+    [allProducts]
+  );
 
   // ── Capital summary (lifetime values, not period-scoped) ──
   const capitalTransactions = useCapitalStore((s) => s.capitalTransactions);
@@ -149,7 +151,7 @@ export default function LaporanPage() {
     .filter((t) => t.type === "withdrawal")
     .reduce((s, t) => s + t.amount, 0);
   const lifetimeProfit = transactions
-    .filter((t) => !(t.paymentMethod === "qris" && t.status === "debt"))
+    .filter(isReportedTransaction)
     .reduce((s, t) => s + t.totalProfit, 0);
   const lifetimeExpenses = expenses.reduce((s, e) => s + e.totalAmount, 0);
   const lifetimeNetProfit = lifetimeProfit - lifetimeExpenses;
@@ -157,10 +159,48 @@ export default function LaporanPage() {
     currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
   const remainingCapital = currentCapital - lifetimeNetProfit;
 
-  const chartData = useMemo(
+  // ── Cash flow (period-scoped) ──
+  const debtPayments = useDebtPaymentStore((s) => s.payments);
+  const kasbonIn = useMemo(() => {
+    const s = new Date(`${start}T00:00:00`).getTime();
+    const e = new Date(`${end}T00:00:00`).setHours(23, 59, 59, 999);
+    return debtPayments
+      .filter((p) => {
+        const d = new Date(p.paymentDate).getTime();
+        return d >= s && d <= e;
+      })
+      .reduce((sum, p) => sum + p.amount, 0);
+  }, [debtPayments, start, end]);
+
+  // ── Charts ──
+  const salesChartData = useMemo(
     () => generateChartData(start, end, reportedTransactions),
     [start, end, reportedTransactions]
   );
+  const profitChartData = useMemo(
+    () =>
+      generateChartData(start, end, reportedTransactions).map((p, i) => {
+        const day = getDateOffsetISO(start, i);
+        const value = reportedTransactions
+          .filter((t) => toDateKey(t.date) === day)
+          .reduce((sum, t) => sum + t.totalProfit, 0);
+        return { label: p.label, value };
+      }),
+    [start, end, reportedTransactions]
+  );
+  const expenseChartData = useMemo(() => {
+    const days = Math.ceil(
+      (new Date(`${end}T00:00:00`).getTime() - new Date(`${start}T00:00:00`).getTime()) / 86400000,
+    );
+    const numPoints = Math.min(days + 1, 30);
+    return Array.from({ length: numPoints }, (_, i) => {
+      const day = getDateOffsetISO(start, i);
+      const value = expenses
+        .filter((e) => e.expenseDate.startsWith(day) || toDateKey(e.expenseDate) === day)
+        .reduce((sum, e) => sum + e.totalAmount, 0);
+      return { label: formatDateShort(day), value };
+    });
+  }, [start, end, expenses]);
 
   const topProducts = useMemo(
     () => getTopProducts(start, end),
@@ -182,7 +222,17 @@ export default function LaporanPage() {
     .filter((e) => e.expenseDate >= start && e.expenseDate <= end)
     .sort((a, b) => a.expenseDate.localeCompare(b.expenseDate));
 
-  const profitMargin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
+  const insightList = useMemo(
+    () =>
+      generateInsights({
+        transactions,
+        products: allProducts,
+        customers: allCustomers,
+        expenses,
+        todayISO: getTodayISO(),
+      }),
+    [transactions, allProducts, allCustomers, expenses],
+  );
 
   const handleExport = async () => {
     if (exporting) return;
@@ -234,10 +284,10 @@ export default function LaporanPage() {
     }
   };
 
-  const chartHasData = chartData.some((d) => d.value > 0);
+  const chartHasData = salesChartData.some((d) => d.value > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-10">
       <PageHeader
         title="Laporan"
         subtitle={`Periode: ${PERIOD_LABELS[period] || period}`}
@@ -253,12 +303,12 @@ export default function LaporanPage() {
         }
       />
 
-      <PeriodFilter />
+      <QuickFilter />
 
-      {/* Metric Cards */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Section 1 — Summary KPIs */}
+      <KpiGrid>
         <KpiCard
-          label="Total Penjualan"
+          label="Pendapatan"
           value={formatCurrency(totalSales)}
           icon="payments"
           tone="info"
@@ -272,7 +322,7 @@ export default function LaporanPage() {
           footer="Penjualan − HPP"
         />
         <KpiCard
-          label="Total Pengeluaran"
+          label="Pengeluaran"
           value={formatCurrency(totalExpenses)}
           icon="receipt_long"
           tone="warning"
@@ -285,34 +335,59 @@ export default function LaporanPage() {
           tone={netProfit < 0 ? "danger" : "default"}
           footer="Laba Kotor − Pengeluaran"
         />
-      </section>
+      </KpiGrid>
 
-      {/* Charts Section */}
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Sales Trend */}
-        <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
-          <div className="mb-5 flex items-center justify-between">
-            <h4 className="text-label-xl font-bold text-on-surface">Tren Penjualan</h4>
-            <div className="flex items-center gap-2">
-              <span className="size-3 rounded-full bg-secondary" />
-              <span className="text-caption text-on-surface-variant">Pendapatan</span>
-            </div>
-          </div>
-          <LineChart data={chartData} />
+      {/* Section 2 — Charts */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <ChartCard title="Tren Penjualan" legend={<LegendLabel label="Pendapatan" />}>
+          <LineChart data={salesChartData} />
           {chartHasData && (
             <div className="mt-2 flex justify-between overflow-hidden">
-              {chartData.map((point, i) => (
+              {salesChartData.map((point, i) => (
                 <span key={i} className="truncate text-caption text-on-surface-variant">
                   {point.label}
                 </span>
               ))}
             </div>
           )}
-        </div>
+        </ChartCard>
 
-        {/* Profit Margin */}
-        <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
-          <h4 className="mb-5 text-label-xl font-bold text-on-surface">Margin Laba</h4>
+        <ChartCard title="Tren Laba" legend={<LegendLabel label="Laba kotor" color="var(--color-success)" />}>
+          <LineChart
+            data={profitChartData}
+            color="var(--color-success)"
+            formatValue={(v) => formatCurrency(v)}
+          />
+          {profitChartData.some((d) => d.value > 0) && (
+            <div className="mt-2 flex justify-between overflow-hidden">
+              {profitChartData.map((point, i) => (
+                <span key={i} className="truncate text-caption text-on-surface-variant">
+                  {point.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Tren Pengeluaran" legend={<LegendLabel label="Biaya" color="var(--color-danger)" />}>
+          <LineChart
+            data={expenseChartData}
+            color="var(--color-danger)"
+            formatValue={(v) => formatCurrency(v)}
+          />
+          {expenseChartData.some((d) => d.value > 0) && (
+            <div className="mt-2 flex justify-between overflow-hidden">
+              {expenseChartData.map((point, i) => (
+                <span key={i} className="truncate text-caption text-on-surface-variant">
+                  {point.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </ChartCard>
+
+        {/* Margin gauge */}
+        <ChartCard title="Margin Laba">
           {totalSales === 0 ? (
             <div className="flex h-64 items-center justify-center text-body-md text-on-surface-variant/60">
               Belum ada data penjualan
@@ -355,107 +430,52 @@ export default function LaporanPage() {
               </div>
             </div>
           )}
-        </div>
-      </section>
+        </ChartCard>
+      </div>
 
-      {/* Capital Summary */}
-      <section className="overflow-hidden rounded-lg border border-border-standard bg-card shadow-card">
-        <div className="flex items-center justify-between border-b border-border-standard px-5 py-4">
-          <h4 className="text-label-xl font-bold text-on-surface">Ringkasan Modal</h4>
-          <span className="text-caption text-on-surface-variant">Seumur hidup (tidak mengikuti filter)</span>
-        </div>
-        <div className="grid grid-cols-2 gap-px bg-border-standard md:grid-cols-4">
-          <div className="bg-card p-5">
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Modal Awal</p>
-            <p className="mt-1 text-numeric-display font-bold text-on-surface">{formatCurrency(initialCapital)}</p>
-          </div>
-          <div className="bg-card p-5">
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Penambahan Modal</p>
-            <p className="mt-1 text-numeric-display font-bold text-success">{formatCurrency(additionCapital)}</p>
-          </div>
-          <div className="bg-card p-5">
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Penarikan Modal</p>
-            <p className="mt-1 text-numeric-display font-bold text-danger">{formatCurrency(withdrawalCapital)}</p>
-          </div>
-          <div className="bg-card p-5">
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Total Modal Aktif</p>
-            <p className="mt-1 text-numeric-display font-bold text-secondary">{formatCurrency(currentCapital)}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-6 border-t border-border-standard px-5 py-5 md:grid-cols-3">
-          <div>
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Laba Bersih (Kumulatif)</p>
-            <p className={`mt-1 text-numeric-display font-bold ${lifetimeNetProfit < 0 ? "text-danger" : "text-secondary"}`}>
-              {formatCurrency(lifetimeNetProfit)}
-            </p>
-          </div>
-          <div>
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Progres Balik Modal</p>
-            <p className="mt-1 text-numeric-display font-bold text-on-surface">{Math.round(breakEvenPercent)}%</p>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container">
-              <div
-                className={`h-full rounded-full ${breakEvenPercent >= 100 ? "bg-success" : "bg-secondary"}`}
-                style={{ width: `${Math.min(breakEvenPercent, 100)}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Sisa Modal</p>
-            <p className={`mt-1 text-numeric-display font-bold ${remainingCapital < 0 ? "text-danger" : "text-on-surface"}`}>
-              {formatCurrency(remainingCapital)}
-            </p>
-            {breakEvenPercent >= 100 ? (
-              <p className="mt-1 text-caption font-bold text-success">✅ Sudah Balik Modal</p>
-            ) : (
-              <p className="mt-1 text-caption text-on-surface-variant">
-                Perlu {formatCurrency(remainingCapital)} lagi untuk balik modal
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+      {/* Section 3 — Business Performance */}
+      <BusinessPerformanceCard
+        data={{
+          margin: profitMargin,
+          growth,
+          averageTransaction: avgTransaction,
+          inventoryValue,
+        }}
+      />
 
-      {/* Top Products Table */}
-      <section className="overflow-hidden rounded-lg border border-border-standard bg-card shadow-card">
-        <div className="border-b border-border-standard px-5 py-4">
-          <h4 className="text-label-xl font-bold text-on-surface">Produk Terlaris</h4>
-        </div>
-        {topProducts.length === 0 ? (
-          <div className="px-6 py-10 text-center text-body-md text-on-surface-variant/60">
-            Belum ada produk terjual
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="border-b border-border-standard bg-surface-muted">
-                <tr>
-                  <th className="px-5 py-3 text-label-md text-on-surface-variant">Produk</th>
-                  <th className="px-5 py-3 text-label-md text-on-surface-variant">Terjual</th>
-                  <th className="px-5 py-3 text-right text-label-md text-on-surface-variant">Pendapatan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-standard">
-                {topProducts.map((product, i) => (
-                  <tr key={i} className="transition-colors hover:bg-surface-container-low">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-md bg-surface-container">
-                          <Icon name="package" size={20} className="text-on-surface-variant" />
-                        </div>
-                        <p className="font-semibold text-on-surface">{product.name}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-body-sm text-on-surface">{product.qty} Unit</td>
-                    <td className="px-5 py-4 text-right text-body-sm font-semibold text-on-surface">
-                      {formatCurrency(product.revenue)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {/* Section 4 — Financial Details (capital + cash flow) */}
+      <FinancialDetailsCard
+        data={{
+          initialCapital,
+          additionCapital,
+          withdrawalCapital,
+          currentCapital,
+          lifetimeNetProfit,
+          breakEvenPercent,
+          remainingCapital,
+          cashFlow: {
+            cashIn: totalCash,
+            cashOut: totalExpenses,
+            kasbonOut: totalKasbon,
+            kasbonIn,
+          },
+        }}
+      />
+
+      {/* Wawasan Bisnis — full analytical list */}
+      <InsightCard insights={insightList} />
+
+      {/* Section 5 — Best Selling Products */}
+      <TopProductsTable transactions={reportedTransactions} />
     </div>
+  );
+}
+
+function LegendLabel({ label, color = "var(--color-secondary)" }: { label: string; color?: string }) {
+  return (
+    <span className="flex items-center gap-2 text-caption text-on-surface-variant">
+      <span className="size-3 rounded-full" style={{ backgroundColor: color }} />
+      {label}
+    </span>
   );
 }

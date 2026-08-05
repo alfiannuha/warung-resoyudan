@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { Copy, History, MessageCircle, QrCode, User } from "lucide-react";
+import { useState, useMemo } from "react";
+import { History, MessageCircle, QrCode, User } from "lucide-react";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { formatCurrency, formatDateTime } from "@/lib/formatters";
@@ -40,15 +40,6 @@ export default function TransaksiPage() {
   const [deleting, setDeleting] = useState(false);
 
   const { toast } = useToast();
-
-  const copyReceipt = useCallback(async (receiptNumber: string) => {
-    try {
-      await navigator.clipboard.writeText(receiptNumber);
-      toast("Nomor nota disalin.", "success");
-    } catch {
-      toast("Gagal menyalin nomor nota.", "error");
-    }
-  }, [toast]);
 
   const handleStatusChange = async () => {
     if (!statusTarget || statusBusy) return;
@@ -199,21 +190,9 @@ export default function TransaksiPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="min-w-0 flex-1 pr-10">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-mono text-label-md font-bold text-secondary">
-                            {t.receiptNumber || "—"}
-                          </p>
-                          {t.receiptNumber && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copyReceipt(t.receiptNumber!); }}
-                              className="flex size-8 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container active:scale-90"
-                              title="Salin nomor nota"
-                              aria-label="Salin nomor nota"
-                            >
-                              <Copy className="size-3.5" />
-                            </button>
-                          )}
-                        </div>
+                        <p className="font-mono text-label-md font-bold text-secondary">
+                          {t.receiptNumber || "—"}
+                        </p>
                         <p className="mt-0.5 text-caption text-on-surface-variant">{formatDateTime(t.date)}</p>
                         {customer && (
                           <p className="mt-0.5 text-caption text-on-surface-variant">{customer.name}</p>

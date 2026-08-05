@@ -1,4 +1,4 @@
-/* eslint-disable */
+// Web Bluetooth API type declarations (minimal surface used by the app).
 
 interface Navigator {
   bluetooth: Bluetooth;
@@ -27,6 +27,8 @@ interface BluetoothDevice {
   name?: string;
   gatt?: BluetoothRemoteGATTServer;
   readonly paired?: boolean;
+  addEventListener(type: string, listener: EventListener): void;
+  removeEventListener(type: string, listener: EventListener): void;
 }
 
 interface BluetoothRemoteGATTServer {

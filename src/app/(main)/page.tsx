@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import KasirHeader from "@/components/kasir/kasir-header";
 import ProductGrid from "@/components/kasir/product-grid";
 import CartBar from "@/components/kasir/cart-bar";
@@ -14,15 +15,20 @@ import ConfirmDialog from "@/components/shared/confirm-dialog";
 import EmptyState from "@/components/shared/empty-state";
 import ScannerDialog from "@/components/shared/scanner-dialog";
 import FlyingBalls from "@/components/kasir/flying-balls";
-import FavoriteProductsSection from "@/components/kasir/favorite-products-section";
+import { PrintProgressDialog } from "@/components/shared/print-progress-dialog";
 import { useCheckout } from "@/hooks/use-checkout";
-import { useProductStore } from "@/stores/use-product-store";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
 
 export default function KasirPage() {
   const c = useCheckout();
-  const searchQuery = useProductStore((s) => s.searchQuery);
+
+  // F2 shortcut (from KasirHeader) opens the scanner.
+  useEffect(() => {
+    const handler = () => c.setScannerOpen(true);
+    window.addEventListener("open-scanner", handler);
+    return () => window.removeEventListener("open-scanner", handler);
+  }, [c]);
 
   return (
     <div className="flex h-dvh kasir-layout">
@@ -30,7 +36,6 @@ export default function KasirPage() {
       <div className="flex min-w-0 flex-[3] flex-col border-r border-border-standard">
         <KasirHeader />
         <div className="flex-1 overflow-y-auto">
-          {searchQuery.trim() === "" && <FavoriteProductsSection />}
           <ProductGrid />
         </div>
         {/* Scan FAB — mobile only */}
@@ -181,6 +186,7 @@ export default function KasirPage() {
         customerPhone={c.customerPhone}
         onPrint={c.handlePrint}
         onWhatsApp={c.handleWhatsApp}
+        onRepeat={c.repeatLastOrder}
         onDone={c.handleReceiptDone}
       />
 
@@ -194,6 +200,14 @@ export default function KasirPage() {
         confirmDisabled={c.isSubmitting && !c.checkoutError}
         variant={c.checkoutError ? "danger" : "default"}
         onConfirm={c.handleConfirmTransaction}
+      />
+
+      {/* Print progress + retry */}
+      <PrintProgressDialog
+        open={c.printOpen}
+        state={c.printState}
+        onRetry={c.retryPrint}
+        onClose={c.closePrint}
       />
     </div>
   );

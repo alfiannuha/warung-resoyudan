@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Printer, Database, Palette, ChevronLeft, Moon } from "lucide-react";
 import { usePrinterStore } from "@/stores/use-printer-store";
-import { requestPrinter, reconnectPrinter, testPrint } from "@/utils/bluetooth-printer";
+import { printerManager, type PrinterStatus } from "@/lib/printer-manager";
+import { testPrintJob, PrintProgressDialog, type PrintJobState, type PrintPhase } from "@/components/shared/print-progress-dialog";
 import { useToast } from "@/components/shared/toast-provider";
 import { useSettingsStore, DEFAULT_EDIT_PIN } from "@/stores/use-settings-store";
 import { Icon } from "@/lib/icon-map";
@@ -15,6 +16,22 @@ import ThemePicker from "@/components/shared/theme-picker";
 
 type Tab = "printer" | "data" | "tampilan";
 
+const DENSITY_OPTIONS = [
+  { value: 1, label: "Terang" },
+  { value: 2, label: "Agak Terang" },
+  { value: 3, label: "Normal" },
+  { value: 4, label: "Agak Gelap" },
+  { value: 5, label: "Gelap" },
+] as const;
+
+const STATUS_LABEL: Record<PrinterStatus, string> = {
+  unavailable: "Tidak didukung",
+  disconnected: "Terputus",
+  connecting: "Menghubungkan…",
+  connected: "Terhubung",
+  busy: "Sibuk",
+};
+
 export default function SettingsPage() {
   const router = useRouter();
   const {
@@ -22,9 +39,14 @@ export default function SettingsPage() {
     paperWidth,
     savedDeviceId,
     savedDeviceName,
+    density,
+    storeAddress,
+    storePhone,
     setPrinterName,
     setPaperWidth,
     setSavedDevice,
+    setDensity,
+    setStoreInfo,
   } = usePrinterStore();
   const setEditPin = useSettingsStore((s) => s.setEditPin);
   const { toast } = useToast();
@@ -35,17 +57,31 @@ export default function SettingsPage() {
   const [backingUp, setBackingUp] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [savingPin, setSavingPin] = useState(false);
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatus>(
+    printerManager.getStatus(),
+  );
+  const [printState, setPrintState] = useState<PrintJobState>({ phase: "idle" as PrintPhase, error: null });
+  const [printOpen, setPrintOpen] = useState(false);
 
-  const isConnected = !!savedDeviceId;
+  const isConnected = printerManager.isConnected() || !!savedDeviceId;
 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const device = await requestPrinter();
-      setSavedDevice(device.id, device.name ?? null);
-      if (!printerName && device.name) {
-        setPrinterName(device.name);
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+          "000018f0-0000-1000-8000-00805f9b34fb",
+          "0000ff00-0000-1000-8000-00805f9b34fb",
+          "0000180f-0000-1000-8000-00805f9b34fb",
+        ],
+      });
+      const characteristic = await printerManager.connect(device);
+      if (!characteristic) {
+        toast("Gagal menghubungkan printer.", "error");
+        return;
       }
+      setPrinterStatus(printerManager.getStatus());
       toast(`Printer "${device.name || "Tanpa nama"}" terhubung.`, "success");
     } catch (err) {
       if (err instanceof Error && err.name !== "NotFoundError") {
@@ -58,7 +94,9 @@ export default function SettingsPage() {
   };
 
   const handleDisconnect = () => {
+    printerManager.disconnect();
     setSavedDevice(null, null);
+    setPrinterStatus(printerManager.getStatus());
     toast("Printer diputuskan.", "info");
   };
 
@@ -68,19 +106,20 @@ export default function SettingsPage() {
       return;
     }
     setTesting(true);
+    setPrintOpen(true);
+    setPrintState({ phase: "connecting", error: null });
     try {
-      const device = await reconnectPrinter(savedDeviceId);
-      if (!device) {
-        toast("Gagal terhubung ke printer. Hubungkan ulang.", "error");
-        return;
-      }
-      await testPrint(device);
-      toast("Test print berhasil dikirim.", "success");
-    } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Gagal mencetak test.",
-        "error",
+      await testPrintJob(
+        savedDeviceName || printerName || "Printer",
+        paperWidth,
+        (phase) => setPrintState({ phase, error: null }),
       );
+      setPrinterStatus(printerManager.getStatus());
+    } catch (err) {
+      setPrintState({
+        phase: "error",
+        error: err instanceof Error ? err.message : "Gagal mencetak test.",
+      });
     } finally {
       setTesting(false);
     }
@@ -203,6 +242,52 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          {/* Print Density */}
+          <section className="space-y-2">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              Ketebalan Cetak
+            </label>
+            <p className="text-caption text-on-surface-variant">
+              Pilih kegelapan hasil cetak. Normal adalah bawaan yang disarankan.
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              {DENSITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setDensity(opt.value)}
+                  className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-md font-semibold transition-all active:scale-[0.98] ${
+                    density === opt.value
+                      ? "bg-secondary text-white"
+                      : "border border-border-standard bg-card text-on-surface-variant"
+                  }`}
+                >
+                  <span className="text-caption leading-none">{opt.label}</span>
+                  <span className="text-overline leading-none">{opt.value}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Store Info */}
+          <section className="space-y-2">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              Info Toko di Nota <span className="text-on-surface-variant/60">(opsional)</span>
+            </label>
+            <input
+              value={storeAddress}
+              onChange={(e) => setStoreInfo(e.target.value, storePhone)}
+              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+              placeholder="Alamat, mis. Jl. Resoyudan No. 12, Yogyakarta"
+            />
+            <input
+              value={storePhone}
+              onChange={(e) => setStoreInfo(storeAddress, e.target.value)}
+              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+              placeholder="No. Telepon, mis. 0812-3456-7890"
+              inputMode="tel"
+            />
+          </section>
+
           {/* PIN Edit Transaksi */}
           <section className="space-y-2">
             <label className="block text-label-md font-semibold text-on-surface-variant">
@@ -249,13 +334,26 @@ export default function SettingsPage() {
             {/* Status */}
             <div className="flex items-center justify-between rounded-lg border border-border-standard bg-card p-4 shadow-card">
               <div className="flex items-center gap-3">
-                <div className={`size-3 rounded-full ${isConnected ? "bg-success" : "bg-outline"}`} />
+                <div
+                  className={`size-3 rounded-full ${
+                    isConnected ? "bg-success" : printerStatus === "unavailable" ? "bg-danger" : "bg-outline"
+                  }`}
+                />
                 <div>
                   <p className="text-body-md font-bold text-on-surface">
-                    {isConnected ? savedDeviceName || "Printer terdaftar" : "Belum terhubung"}
+                    {isConnected
+                      ? savedDeviceName || "Printer terdaftar"
+                      : printerStatus === "unavailable"
+                      ? "Tidak didukung"
+                      : "Belum terhubung"}
                   </p>
                   {isConnected && (
-                    <p className="text-caption text-on-surface-variant">ID: {savedDeviceId?.slice(0, 18)}...</p>
+                    <p className="text-caption text-on-surface-variant">
+                      {STATUS_LABEL[printerStatus]} · ID: {savedDeviceId?.slice(0, 18)}...
+                    </p>
+                  )}
+                  {!isConnected && printerStatus === "connecting" && (
+                    <p className="text-caption text-on-surface-variant">Menghubungkan…</p>
                   )}
                 </div>
               </div>
@@ -359,6 +457,17 @@ export default function SettingsPage() {
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* Print progress + retry */}
+      <PrintProgressDialog
+        open={printOpen}
+        state={printState}
+        onRetry={handleTestPrint}
+        onClose={() => {
+          setPrintOpen(false);
+          setPrintState({ phase: "idle" as PrintPhase, error: null });
+        }}
+      />
     </div>
   );
 }

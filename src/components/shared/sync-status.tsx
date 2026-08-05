@@ -1,70 +1,78 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { onSnapshotsInSync } from "firebase/firestore";
+import { WifiOff, RefreshCw, CloudCheck } from "lucide-react";
 import { db } from "@/lib/firebase";
 
-type SyncStatus = "synced" | "pending" | "offline";
+type SyncStatus = "synced" | "offline";
 
+/**
+ * Floating sync indicator: shows when offline (with a reconnect retry) or
+ * when back online after being offline (brief "tersinkron" confirmation).
+ * Renders nothing when everything is healthy.
+ */
 export default function SyncStatus() {
   const [status, setStatus] = useState<SyncStatus>("synced");
-  const [pendingCount, setPendingCount] = useState(0);
-  const unsubRef = useRef<(() => void) | null>(null);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [wasOffline, setWasOffline] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshotsInSync(db, () => {
       setStatus("synced");
-      setPendingCount(0);
+      setLastSync(new Date());
     });
 
-    unsubRef.current = unsub;
-
-    // Listen for online/offline events
-    const handleOnline = () => setStatus("synced");
-    const handleOffline = () => setStatus("offline");
+    const handleOnline = () => {
+      setStatus("synced");
+      setWasOffline(true);
+    };
+    const handleOffline = () => {
+      setStatus("offline");
+      setWasOffline(true);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+
+    // Re-assert offline while disconnected.
+    const interval = setInterval(() => {
+      if (navigator.onLine === false) setStatus("offline");
+    }, 3000);
 
     return () => {
       unsub();
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      unsubRef.current = null;
+      clearInterval(interval);
     };
   }, []);
 
-  // Listen to pending writes via polling (Firestore SDK doesn't expose this directly)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (navigator.onLine === false) {
-        setStatus("offline");
-        return;
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  if (status === "synced" && !wasOffline) return null;
 
-  if (status === "synced" && pendingCount === 0) return null;
-
-  const icon = status === "offline" ? "🔴" : "🟡";
-  const label =
-    status === "offline"
-      ? "Offline"
-      : pendingCount > 0
-        ? `Menyinkronkan...`
-        : "Offline";
+  const offline = status === "offline";
 
   return (
-    <div
-      className={`fixed bottom-4 left-4 z-[60] flex items-center gap-2 px-3 py-1.5 rounded-full text-label-md shadow-lg transition-all ${
-        status === "offline"
-          ? "bg-danger-alert text-white"
-          : "bg-warning-debt text-white"
+    <button
+      onClick={() => {
+        setStatus("synced");
+        setWasOffline(false);
+        if (navigator.onLine) window.dispatchEvent(new Event("online"));
+      }}
+      className={`fixed bottom-4 left-4 z-[60] flex items-center gap-2 rounded-full px-3 py-1.5 text-label-md shadow-dialog transition-all ${
+        offline ? "bg-danger text-white" : "bg-success text-white"
       }`}
+      aria-label={offline ? "Coba sambungkan kembali" : "Tersinkron"}
     >
-      <span>{icon}</span>
-      <span>{label}</span>
-    </div>
+      {offline ? <WifiOff className="size-4" /> : <CloudCheck className="size-4" />}
+      <span>
+        {offline
+          ? "Offline — ketuk untuk mencoba lagi"
+          : lastSync
+          ? `Tersinkron ${lastSync.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`
+          : "Tersinkron"}
+      </span>
+      {offline && <RefreshCw className="size-3.5" />}
+    </button>
   );
 }

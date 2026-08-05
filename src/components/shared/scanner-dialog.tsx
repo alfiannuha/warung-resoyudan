@@ -47,7 +47,15 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
 
-  onScanRef.current = onScan;
+  // Keep the latest onScan callback in a ref (updated via effect to avoid
+  // writing refs during render).
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
+  // Keep a stable ref to scanFrame so startStream (defined earlier) can call it
+  // without a use-before-declare error.
+  const scanFrameRef = useRef<() => void>(() => {});
 
   // Initialise detector once
   useEffect(() => {
@@ -125,7 +133,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
 
         setCameraError("");
         scanningRef.current = true;
-        scanFrame();
+        scanFrameRef.current();
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("NotAllowedError") || msg.includes("Permission")) {
@@ -177,9 +185,14 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     }
 
     if (scanningRef.current) {
-      requestAnimationFrame(() => scanFrame());
+      requestAnimationFrame(() => scanFrameRef.current());
     }
   }, [handleScan]);
+
+  // Keep the ref in sync so startStream can invoke the latest scanFrame.
+  useEffect(() => {
+    scanFrameRef.current = scanFrame;
+  }, [scanFrame]);
 
   const toggleTorch = async () => {
     const track = trackRef.current;
@@ -213,8 +226,11 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
   // Enumerate cameras on mount
   useEffect(() => {
     if (!open) {
-      setCameras([]);
-      setCurrentCameraIndex(0);
+      // Reset camera state after this effect's frame to avoid a cascading render.
+      queueMicrotask(() => {
+        setCameras([]);
+        setCurrentCameraIndex(0);
+      });
       return;
     }
 
@@ -234,16 +250,19 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     if (!open) {
       scanningRef.current = false;
       stopStream();
-      setProcessing(false);
-      setTorchOn(false);
-      setTorchSupported(false);
-      setCameraError("");
       debounceRef.current = false;
+      // Reset camera UI state after this effect's frame.
+      queueMicrotask(() => {
+        setProcessing(false);
+        setTorchOn(false);
+        setTorchSupported(false);
+        setCameraError("");
+      });
       return;
     }
 
-    setCurrentCameraIndex(0);
-    startStream();
+    queueMicrotask(() => setCurrentCameraIndex(0));
+    queueMicrotask(() => void startStream());
 
     return () => {
       mountedRef.current = false;

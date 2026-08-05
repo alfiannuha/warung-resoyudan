@@ -183,15 +183,6 @@ export default function PelangganPage() {
           )}
         </div>
 
-        {/* FAB */}
-        <button
-          onClick={openAdd}
-          className="fixed bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
-          aria-label="Tambah pelanggan"
-        >
-          <Icon name="person_add" size={26} />
-        </button>
-
         {/* Mobile: Detail Bottom Sheet */}
         <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
           <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-card hide-scrollbar">

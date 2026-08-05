@@ -5,7 +5,13 @@ import { Icon } from "@/lib/icon-map";
 import { PERIOD_OPTIONS } from "@/lib/constants";
 import type { PeriodFilter } from "@/types";
 
-export default function PeriodFilter() {
+interface Props {
+  /** Compact variant for the Dashboard — tighter chips, no custom date row. */
+  compact?: boolean;
+  className?: string;
+}
+
+export default function QuickFilter({ compact = false, className = "" }: Props) {
   const period = useReportStore((s) => s.period);
   const customStart = useReportStore((s) => s.customStart);
   const customEnd = useReportStore((s) => s.customEnd);
@@ -21,45 +27,47 @@ export default function PeriodFilter() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar py-2">
+    <div className={className}>
+      <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
         {PERIOD_OPTIONS.map((option) => (
           <button
             key={option.value}
             onClick={() => setPeriod(option.value as PeriodFilter)}
-            className={`px-4 py-2 rounded-full whitespace-nowrap text-label-md font-medium active:scale-95 transition-all ${
+            className={`shrink-0 rounded-full whitespace-nowrap text-label-md font-medium transition-all active:scale-95 ${
+              compact ? "px-3.5 py-2" : "px-4 py-2"
+            } ${
               period === option.value
-                ? "bg-secondary-container text-on-secondary-container"
-                : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                ? "bg-secondary text-white shadow-card"
+                : "border border-border-standard bg-card text-on-surface-variant hover:bg-surface-container"
             }`}
           >
             {option.value === "custom" && (
-              <Icon name="calendar_month" size={18} className="mr-1 align-middle" />
+              <Icon name="calendar_month" size={16} className="mr-1 inline-block align-middle" />
             )}
             {option.label}
           </button>
         ))}
       </div>
 
-      {period === "custom" && (
-        <div className="flex gap-3 items-center">
+      {period === "custom" && !compact && (
+        <div className="mt-3 flex items-center gap-3">
           <div className="flex-1">
-            <label className="text-label-md text-on-surface-variant block mb-1">Dari</label>
+            <label className="mb-1 block text-label-md text-on-surface-variant">Dari</label>
             <input
               type="date"
               value={customStart || ""}
               onChange={(e) => handleCustomStart(e.target.value)}
-              className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none text-body-md"
+              className="h-12 w-full rounded-xl border border-border-standard px-4 text-body-md outline-none focus:border-secondary"
             />
           </div>
-          <span className="text-on-surface-variant mt-6">—</span>
+          <span className="mt-6 text-on-surface-variant">—</span>
           <div className="flex-1">
-            <label className="text-label-md text-on-surface-variant block mb-1">Sampai</label>
+            <label className="mb-1 block text-label-md text-on-surface-variant">Sampai</label>
             <input
               type="date"
               value={customEnd || ""}
               onChange={(e) => handleCustomEnd(e.target.value)}
-              className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none text-body-md"
+              className="h-12 w-full rounded-xl border border-border-standard px-4 text-body-md outline-none focus:border-secondary"
             />
           </div>
         </div>

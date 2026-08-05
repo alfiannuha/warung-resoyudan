@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useCartStore } from "@/stores/use-cart-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { useToast } from "@/components/shared/toast-provider";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, getTodayISO } from "@/lib/formatters";
 import { generateReceiptNumber } from "@/lib/receipt-counter";
-import { buildReceiptText } from "@/utils/receipt";
 import { sendWhatsAppReceipt } from "@/utils/whatsapp";
-import { requestPrinter, reconnectPrinter, printReceipt } from "@/utils/bluetooth-printer";
+import {
+  printReceiptJob,
+  type PrintJobState,
+  type PrintPhase,
+} from "@/components/shared/print-progress-dialog";
 
 /**
  * Shared checkout logic for the Kasir page and the /cart page.
@@ -28,7 +31,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
   const updateTransactionStatus = useTransactionStore((s) => s.updateTransactionStatus);
   const updateDebt = useCustomerStore((s) => s.updateDebt);
   const { toast } = useToast();
-  const { paperWidth, savedDeviceId } = usePrinterStore();
+  const { paperWidth } = usePrinterStore();
 
   const [cartOpen, setCartOpen] = useState(false);
   const [showQris, setShowQris] = useState(false);
@@ -42,6 +45,9 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
   const [amountPaid, setAmountPaid] = useState(0);
   const [change, setChange] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [printState, setPrintState] = useState<PrintJobState>({ phase: "idle" as PrintPhase, error: null });
+  const [printOpen, setPrintOpen] = useState(false);
+  const printParamsRef = useRef<Parameters<typeof printReceiptJob>[0] | null>(null);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
@@ -101,7 +107,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
         // QRIS: save as unpaid (debt). Stock is reduced only when the
         // cashier confirms the payment has been received.
         const txnId = await addTransaction({
-          date: new Date().toISOString(),
+            date: getTodayISO(),
           items: items.map((i) => ({ ...i })),
           totalAmount,
           totalProfit,
@@ -127,7 +133,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       }
 
       await addTransaction({
-        date: new Date().toISOString(),
+          date: getTodayISO(),
         items: items.map((i) => ({ ...i })),
         totalAmount,
         totalProfit,
@@ -171,7 +177,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       }
 
       await addTransaction({
-        date: new Date().toISOString(),
+          date: getTodayISO(),
         items: items.map((i) => ({ ...i })),
         totalAmount,
         totalProfit,
@@ -225,34 +231,61 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
   };
 
   const handlePrint = async () => {
-    try {
-      let device = savedDeviceId ? await reconnectPrinter(savedDeviceId) : null;
-      if (!device) {
-        device = await requestPrinter();
+    const customer = getSelectedCustomer();
+    const params = {
+      items,
+      totalAmount,
+      amountPaid,
+      change,
+      paymentMethod,
+      receiptNumber,
+      date: getTodayISO(),
+      customerName: customer?.name,
+      paperWidth,
+      storeName: usePrinterStore.getState().printerName,
+      storeAddress: usePrinterStore.getState().storeAddress,
+      storePhone: usePrinterStore.getState().storePhone,
+    };
+    printParamsRef.current = params;
+
+    const run = async () => {
+      setPrintOpen(true);
+      setPrintState({ phase: "connecting", error: null });
+      try {
+        await printReceiptJob(params, (phase) =>
+          setPrintState({ phase, error: null }),
+        );
+      } catch (err) {
+        setPrintState({
+          phase: "error",
+          error: err instanceof Error ? err.message : "Gagal mencetak nota.",
+        });
       }
-
-      const customer = getSelectedCustomer();
-      const receiptText = buildReceiptText({
-        items,
-        totalAmount,
-        amountPaid,
-        change,
-        paymentMethod,
-        receiptNumber,
-        date: new Date().toISOString(),
-        customerName: customer?.name,
-        paperWidth,
-      });
-
-      await printReceipt(device, receiptText, paperWidth);
-      toast("Nota berhasil dicetak.", "success");
-    } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Gagal mencetak nota.",
-        "error",
-      );
-    }
+    };
+    await run();
   };
+
+  const retryPrint = useCallback(async () => {
+    const params = printParamsRef.current;
+    if (!params) return;
+    setPrintState({ phase: "connecting", error: null });
+    try {
+      await printReceiptJob(params, (phase) =>
+        setPrintState({ phase, error: null }),
+      );
+    } catch (err) {
+      setPrintState({
+        phase: "error",
+        error: err instanceof Error ? err.message : "Gagal mencetak nota.",
+      });
+    }
+  }, []);
+
+  const closePrint = useCallback(() => {
+    setPrintOpen(false);
+    setPrintState({ phase: "idle" as PrintPhase, error: null });
+    printParamsRef.current = null;
+  }, []);
 
   const handleWhatsApp = () => {
     if (!customerPhone) {
@@ -298,6 +331,32 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       ? `Simpan transaksi kasbon sebesar ${formatCurrency(totalAmount)}?`
       : `Simpan transaksi tunai sebesar ${formatCurrency(totalAmount)}?`);
 
+  /**
+   * Repeat the most recent completed transaction: restore its items into the
+   * cart (skipping products that are no longer active or out of stock).
+   */
+  const repeatLastOrder = useCallback(() => {
+    const txns = useTransactionStore.getState().transactions;
+    const last = txns.find((t) => t.status === "paid") ?? txns[0];
+    if (!last || last.items.length === 0) {
+      toast("Belum ada transaksi untuk diulang.", "info");
+      return;
+    }
+    const cart = useCartStore.getState();
+    const products = useProductStore.getState().products;
+    for (const item of last.items) {
+      const product = products.find((p) => p.id === item.productId && p.isActive);
+      if (!product || product.stock <= 0) continue;
+      // Add the same quantity, capped at available stock.
+      const qty = Math.min(item.quantity, product.stock);
+      cart.addToCart(product);
+      for (let i = 1; i < qty; i++) {
+        useCartStore.getState().updateQuantity(item.productId, i + 1);
+      }
+    }
+    toast("Transaksi terakhir diulang ke keranjang.", "success");
+  }, [toast]);
+
   return {
     // data
     items,
@@ -306,6 +365,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
     paymentMethod,
     customerPhone,
     clearCart,
+    repeatLastOrder,
     // dialog visibility
     cartOpen,
     setCartOpen,
@@ -331,6 +391,10 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
     handleQrisClose,
     handleReceiptDone,
     handlePrint,
+    retryPrint,
+    closePrint,
+    printState,
+    printOpen,
     handleWhatsApp,
     handleScanResult,
   };

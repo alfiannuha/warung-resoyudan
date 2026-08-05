@@ -46,6 +46,29 @@ export default function CartItemRow({ item }: Props) {
           </button>
         </div>
       </div>
+      {/* Quick quantity chips */}
+      <div className="flex items-center gap-1.5 pl-1">
+        <span className="text-caption text-on-surface-variant">Cepat:</span>
+        {[1, 2, 5].map((qty) => {
+          const disabled = maxStock !== undefined && qty > maxStock;
+          const active = item.quantity === qty;
+          return (
+            <button
+              key={qty}
+              onClick={() => updateQuantity(item.productId, qty)}
+              disabled={disabled}
+              className={`h-7 min-w-9 rounded-md border px-2 text-caption font-semibold transition-all active:scale-95 disabled:opacity-40 ${
+                active
+                  ? "border-secondary bg-secondary/10 text-secondary"
+                  : "border-border-standard bg-card text-on-surface-variant"
+              }`}
+              aria-label={`Set jumlah ${qty}`}
+            >
+              ×{qty}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
