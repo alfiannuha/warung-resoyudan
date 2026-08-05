@@ -288,7 +288,7 @@ export function buildWhatsAppReceiptText(params: ReceiptParams): string {
 
   // ── Header ──
   lines.push(storeName);
-  if (storeAddress) lines.push(storeAddress);
+  lines.push(storeAddress);
   if (storePhone) lines.push(`Telp: ${storePhone}`);
   addBlank(lines);
   addSep(lines, w);
