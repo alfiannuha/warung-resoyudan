@@ -235,7 +235,6 @@ export function buildThermalReceiptText(params: ReceiptParams): string {
   // ── Footer ──
   addBlank(lines);
   lines.push(centerText(storeName, w));
-  lines.push(centerText("Catat. Kelola. Tumbuh.", w));
   addBlank(lines);
   lines.push(separatorLine(w, "="));
 
@@ -319,7 +318,6 @@ export function buildWhatsAppReceiptText(params: ReceiptParams): string {
   // ── Footer ──
   addBlank(lines);
   lines.push(storeName);
-  lines.push("Catat. Kelola. Tumbuh.");
 
   return lines.join("\n");
 }

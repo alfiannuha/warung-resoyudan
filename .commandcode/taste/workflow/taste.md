@@ -12,3 +12,5 @@
 - Final verification includes a smoke test of the served routes over HTTP (curl each route for 200 and grep the served HTML for the new components), not just tsc/lint/test/build. Confidence: 0.6
 - When overhauling a subsystem (e.g., the printing stack), preserve the existing business logic and maintain backward compatibility — keep existing public APIs/signatures working via thin delegation shims so no existing caller breaks. Confidence: 0.65
 - Before implementing a large improvement, first deliver root-cause analysis (why the issue occurs), a proposed solution, and an impact assessment on existing functionality, then get approval — diagnose before building. Confidence: 0.6
+- Git workflow is direct-to-main: stage everything (`git add -A`) and commit + push to `origin/main` immediately when asked — no feature branches, PRs, or review gates. Confidence: 0.6
+- Commits include the required `Co-authored-by: CommandCodeBot <noreply@commandcode.ai>` trailer, and are preceded by a final `tsc` + test pass to confirm the tree builds before pushing. Confidence: 0.5

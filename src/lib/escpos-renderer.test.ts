@@ -75,13 +75,15 @@ describe("escpos renderer", () => {
     expect(arr.slice(3, 6)).toEqual([0x1d, 0x56, 0x41]); // GS V 65
   });
 
-  it("renderReceipt emphasizes the store name and TOTAL lines", () => {
+  it("renderReceipt emphasizes the store name but not TOTAL", () => {
     const text = [
       "",
       "WARUNG RESOYUDAN",
       "No Nota: TRX-1",
       "Kopi Susu 2 x Rp 12.000  Rp 24.000",
       "TOTAL  Rp 24.000",
+      "TUNAI  Rp 50.000",
+      "KEMBALI  Rp 26.000",
       "",
       "Terima kasih",
     ].join("\n");
@@ -89,36 +91,32 @@ describe("escpos renderer", () => {
     const data = renderReceipt(text, { paperWidth: 58 });
     const arr = Array.from(data);
 
-    // Init + store name (center + bold + double) + TOTAL (bold + double).
     expect(arr.slice(0, 2)).toEqual([0x1b, 0x40]);
     // The store name line should be preceded by ESC a 1 (center) and GS ! 0x30.
-    // Find the occurrence of "WARUNG RESOYUDAN" bytes and check the 3 bytes before.
     const storeBytes = Array.from(textBytes("WARUNG RESOYUDAN"));
-    const totalBytes = Array.from(textBytes("TOTAL"));
-
     const storeIdx = arr.findIndex((_, i) =>
       i + storeBytes.length <= arr.length &&
       arr.slice(i, i + storeBytes.length).every((v, j) => v === storeBytes[j]),
     );
     expect(storeIdx).toBeGreaterThan(0);
-    // GS ! 0x30 double-size must be emitted before the store text.
     const dblIdx = arr.lastIndexOf(0x30, storeIdx);
     expect(dblIdx).toBeGreaterThanOrEqual(0);
     expect(arr[dblIdx - 2]).toBe(0x1d);
     expect(arr[dblIdx - 1]).toBe(0x21);
 
-    // TOTAL line emphasized: GS ! 0x30 then ESC E 1 before the text.
-    const totalIdx = arr.findIndex((_, i) =>
-      i + totalBytes.length <= arr.length &&
-      arr.slice(i, i + totalBytes.length).every((v, j) => v === totalBytes[j]),
-    );
-    expect(totalIdx).toBeGreaterThan(0);
-    expect(arr[totalIdx - 6]).toBe(0x1d); // GS !
-    expect(arr[totalIdx - 5]).toBe(0x21);
-    expect(arr[totalIdx - 4]).toBe(0x30); // double size
-    expect(arr[totalIdx - 3]).toBe(0x1b); // ESC E 1 (bold)
-    expect(arr[totalIdx - 2]).toBe(0x45);
-    expect(arr[totalIdx - 1]).toBe(0x01);
+    // TOTAL / TUNAI / KEMBALI lines are NOT emphasized: they must be plain
+    // text with no GS ! double-size immediately before them.
+    for (const label of ["TOTAL", "TUNAI", "KEMBALI"]) {
+      const labelBytes = Array.from(textBytes(label));
+      const idx = arr.findIndex((_, i) =>
+        i + labelBytes.length <= arr.length &&
+        arr.slice(i, i + labelBytes.length).every((v, j) => v === labelBytes[j]),
+      );
+      expect(idx).toBeGreaterThan(0);
+      // The bytes immediately before the label are the preceding line's LF
+      // (0x0a) — never a GS ! (0x1d 0x21) double-size command.
+      expect(arr[idx - 1]).toBe(0x0a);
+    }
 
     // Ends with feed + cut: tail (6 bytes) = [ESC d 5 GS V 65].
     const end = arr.slice(-6);

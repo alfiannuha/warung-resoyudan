@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { usePrinterStore } from "@/stores/use-printer-store";
+import { APP_NAME } from "@/lib/constants";
 import { buildReceiptText, type ReceiptParams } from "@/lib/receipt-formatter";
 import { renderReceipt, renderTestPage, type DensityLevel } from "@/lib/escpos-renderer";
 import { printerManager } from "@/lib/printer-manager";
@@ -34,7 +35,7 @@ export async function printReceiptJob(
     const data = renderReceipt(text, {
       paperWidth: params.paperWidth,
       density,
-      storeName: usePrinterStore.getState().printerName,
+      storeName: APP_NAME,
     });
 
     // 3. Print.

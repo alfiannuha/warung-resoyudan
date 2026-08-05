@@ -284,7 +284,7 @@ export async function exportToPDF(data: PDFReportData): Promise<void> {
   // ── Footer ──
   doc.setFontSize(9);
   doc.setTextColor(150);
-  doc.text("Dibuat oleh Warung Resoyudan — Catat. Kelola. Tumbuh.", pageW / 2, finalY + 16, { align: "center" });
+  doc.text("Dibuat oleh Warung Resoyudan", pageW / 2, finalY + 16, { align: "center" });
 
   doc.save(`laporan-${data.startDate}.pdf`);
 }

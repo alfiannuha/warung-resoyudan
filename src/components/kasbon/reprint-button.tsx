@@ -6,6 +6,7 @@ import { sendWhatsAppReceipt } from "@/utils/whatsapp";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useToast } from "@/components/shared/toast-provider";
+import { APP_NAME } from "@/lib/constants";
 import { Icon } from "@/lib/icon-map";
 import {
   PrintProgressDialog,
@@ -40,7 +41,7 @@ export default function ReprintButton({ transaction }: Props) {
     date: transaction.date,
     customerName: customer?.name,
     paperWidth,
-    storeName: usePrinterStore.getState().printerName,
+    storeName: APP_NAME,
     storeAddress: usePrinterStore.getState().storeAddress,
     storePhone: usePrinterStore.getState().storePhone,
   };

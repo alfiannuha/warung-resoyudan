@@ -240,19 +240,14 @@ export function renderReceipt(text: string, opts: RenderOptions): Uint8Array {
     const isStoreName = firstHeaderLine && trimmed.length > 0;
     if (isStoreName) firstHeaderLine = false;
 
-    // TOTAL / TOTAL HUTANG emphasis.
-    const isTotal = /^(TOTAL|TOTAL HUTANG|TUNAI|KEMBALI|Bayar|Kembalian)/.test(trimmed);
-
     if (isStoreName) {
       chunks.push(
         renderLine(line, { center: true, bold: true, big: true }),
       );
-    } else if (isTotal) {
-      chunks.push(
-        renderLine(line, { bold: true, big: true }),
-      );
     } else {
       // Everything else — alignment is already baked into the text.
+      // Total / Cash / Change lines print at normal size and weight; the
+      // grand total is emphasized visually by the uppercase layout.
       chunks.push(renderLine(line, {}));
     }
   }

@@ -96,7 +96,7 @@ describe("receipt formatter", () => {
     expect(text).toContain("TUNAI");
     expect(text).toContain("KEMBALI");
     expect(text).toContain("Terima kasih");
-    expect(text).toContain("Catat. Kelola. Tumbuh.");
+    expect(text).not.toContain("Catat. Kelola. Tumbuh.");
     // No stray tabs — alignment is width-based.
     expect(text).not.toContain("\t");
   });

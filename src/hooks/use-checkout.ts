@@ -8,6 +8,7 @@ import { useCustomerStore } from "@/stores/use-customer-store";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { useToast } from "@/components/shared/toast-provider";
 import { formatCurrency, getTodayISO } from "@/lib/formatters";
+import { APP_NAME } from "@/lib/constants";
 import { generateReceiptNumber } from "@/lib/receipt-counter";
 import { sendWhatsAppReceipt } from "@/utils/whatsapp";
 import {
@@ -242,7 +243,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       date: getTodayISO(),
       customerName: customer?.name,
       paperWidth,
-      storeName: usePrinterStore.getState().printerName,
+      storeName: APP_NAME,
       storeAddress: usePrinterStore.getState().storeAddress,
       storePhone: usePrinterStore.getState().storePhone,
     };

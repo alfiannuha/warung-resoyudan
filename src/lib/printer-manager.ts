@@ -161,11 +161,10 @@ class PrinterManager {
     this.setDevice(device, device.name ?? null);
 
     // Remember the bond (persisted) so future prints skip the chooser.
+    // Note: we do NOT auto-save the device name as the store name — the
+    // receipt store name is a fixed constant, never the printer's label.
     const state = usePrinterStore.getState();
     state.setSavedDevice(device.id, device.name ?? null);
-    if (!state.printerName && device.name) {
-      state.setPrinterName(device.name);
-    }
 
     try {
       const server = device.gatt
