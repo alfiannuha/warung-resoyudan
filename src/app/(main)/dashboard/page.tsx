@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -15,6 +16,11 @@ import { useExpenseStore } from "@/stores/use-expense-store";
 import { useCapitalStore } from "@/stores/use-capital-store";
 import { useShallow } from "zustand/react/shallow";
 import { Icon } from "@/lib/icon-map";
+import PageHeader from "@/components/shared/page-header";
+import KpiCard from "@/components/shared/kpi-card";
+import StatusBadge from "@/components/shared/status-badge";
+import { SkeletonCard, SkeletonText } from "@/components/shared/skeleton";
+import LineChart from "@/components/laporan/line-chart";
 
 /** Local-time YYYY-MM-DD for a date offset from today. */
 function getDateOffsetISO(daysAgo: number): string {
@@ -30,21 +36,17 @@ const DAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
 export default function DashboardPage() {
   const today = getTodayISO();
-  const report = useTransactionStore(
-    useShallow((s) => s.getDailyReport(today))
-  );
+  const report = useTransactionStore(useShallow((s) => s.getDailyReport(today)));
   const transactions = useTransactionStore(useShallow((s) => s.transactions));
+  const txnLoading = useTransactionStore((s) => s.loading);
+  const productsLoading = useProductStore((s) => s.loading);
 
   const debtors = useCustomerStore(
     useShallow((s) => s.customers.filter((c) => c.currentDebt > 0))
   );
-
   const lowStockProducts = useProductStore(
-    useShallow((s) =>
-      s.products.filter((p) => p.isActive && p.stock <= p.minStock)
-    )
+    useShallow((s) => s.products.filter((p) => p.isActive && p.stock <= p.minStock))
   );
-
   const activeDebtTotal = debtors.reduce((s, c) => s + c.currentDebt, 0);
 
   const expenses = useExpenseStore(useShallow((s) => s.expenses));
@@ -55,18 +57,14 @@ export default function DashboardPage() {
 
   // ── Capital / Break-even ──
   const currentCapital = useCapitalStore(useShallow((s) => s.getCurrentCapital()));
-  const capitalTransactions = useCapitalStore(
-    useShallow((s) => s.capitalTransactions)
-  );
-  // Lifetime net profit (all transactions, excluding unpaid QRIS) minus expenses.
+  const capitalTransactions = useCapitalStore(useShallow((s) => s.capitalTransactions));
   const lifetimeNetProfit = useMemo(() => {
     const profit = transactions
       .filter((t) => !(t.paymentMethod === "qris" && t.status === "debt"))
       .reduce((s, t) => s + t.totalProfit, 0);
     return profit - expenses.reduce((s, e) => s + e.totalAmount, 0);
   }, [transactions, expenses]);
-  const breakEvenPercent =
-    currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
+  const breakEvenPercent = currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
   const remainingCapital = currentCapital - lifetimeNetProfit;
   const isBreakEven = breakEvenPercent >= 100;
 
@@ -76,151 +74,109 @@ export default function DashboardPage() {
     const values = days.map(
       (day) =>
         transactions
-          .filter(
-            (t) =>
-              t.date.startsWith(day) &&
-              !(t.paymentMethod === "qris" && t.status === "debt")
-          )
+          .filter((t) => t.date.startsWith(day) && !(t.paymentMethod === "qris" && t.status === "debt"))
           .reduce((sum, t) => sum + t.totalAmount, 0)
     );
     return { days, values };
   }, [transactions]);
 
-  const total7Days = chart.values.reduce((s, v) => s + v, 0);
-  const maxValue = Math.max(...chart.values, 0);
+  const chartData = useMemo(
+    () =>
+      chart.days.map((day, i) => ({
+        label: `${formatDateShort(day)} (${DAY_LABELS[new Date(day).getDay()]})`,
+        value: chart.values[i],
+      })),
+    [chart]
+  );
 
-  const buildLine = (values: number[], w: number, h: number) => {
-    const n = values.length;
-    if (n === 0) return "";
-    const max = Math.max(...values, 0);
-    const minY = 0;
-    const step = w / (n - 1);
-    const points = values.map((v, i) => {
-      const x = i * step;
-      const ratio = max > 0 ? v / max : 0;
-      const y = h - (minY + ratio * (h - minY));
-      return { x, y };
-    });
-
-    if (n === 1) return `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
-
-    // Catmull-Rom to cubic Bézier for a smooth line through all points.
-    let d = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
-    for (let i = 0; i < n - 1; i++) {
-      const p0 = points[i - 1] ?? points[i];
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      const p3 = points[i + 2] ?? p2;
-      const c1x = p1.x + (p2.x - p0.x) / 6;
-      const c1y = p1.y + (p2.y - p0.y) / 6;
-      const c2x = p2.x - (p3.x - p1.x) / 6;
-      const c2y = p2.y - (p3.y - p1.y) / 6;
-      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
-    }
-    return d;
-  };
-
-  const linePath = buildLine(chart.values, 100, 40);
+  const loading = txnLoading || productsLoading;
 
   return (
     <div className="space-y-6">
+      <PageHeader title="Dashboard" subtitle="Ringkasan usaha hari ini" />
+
       {/* Metric Cards Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-border-standard p-5 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-secondary-container/10 text-secondary rounded-lg">
-              <Icon name="payments" size={24} />
-            </div>
-            <span className="text-success-paid text-xs font-bold bg-success-paid/10 px-2 py-0.5 rounded-full">Hari Ini</span>
-          </div>
-          <p className="text-label-md text-on-surface-variant uppercase tracking-wide">Total Penjualan</p>
-          <h3 className="text-numeric-display font-bold text-primary mt-1">{formatCurrency(report.totalSales)}</h3>
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
-
-        <div className="bg-white border border-border-standard p-5 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-tertiary-fixed/30 text-tertiary-fixed-dim rounded-lg">
-              <Icon name="trending_up" size={24} className="text-[#574425]" />
-            </div>
-            <span className="text-success-paid text-xs font-bold bg-success-paid/10 px-2 py-0.5 rounded-full">Hari Ini</span>
-          </div>
-          <p className="text-label-md text-on-surface-variant uppercase tracking-wide">Laba Kotor</p>
-          <h3 className="text-numeric-display font-bold text-primary mt-1">{formatCurrency(report.totalProfit)}</h3>
-        </div>
-
-        <div className="bg-white border border-border-standard p-5 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-error-container text-error rounded-lg">
-              <Icon name="receipt_long" size={24} />
-            </div>
-            <span className="text-danger-alert text-xs font-bold bg-danger-alert/10 px-2 py-0.5 rounded-full">Hari Ini</span>
-          </div>
-          <p className="text-label-md text-on-surface-variant uppercase tracking-wide">Pengeluaran</p>
-          <h3 className="text-numeric-display font-bold text-danger-alert mt-1">{formatCurrency(todayExpenses)}</h3>
-        </div>
-
-        <div className="bg-white border border-border-standard p-5 rounded-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-secondary-container/10 text-secondary rounded-lg">
-              <Icon name="account_balance_wallet" size={24} />
-            </div>
-            <span className="text-success-paid text-xs font-bold bg-success-paid/10 px-2 py-0.5 rounded-full">Hari Ini</span>
-          </div>
-          <p className="text-label-md text-on-surface-variant uppercase tracking-wide">Laba Bersih</p>
-          <h3 className={`text-numeric-display font-bold mt-1 ${netProfit < 0 ? "text-danger-alert" : "text-primary"}`}>{formatCurrency(netProfit)}</h3>
-        </div>
-      </section>
+      ) : (
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Penjualan Hari Ini"
+            value={formatCurrency(report.totalSales)}
+            icon="payments"
+            tone="info"
+            footer={`${report.transactionCount} transaksi`}
+          />
+          <KpiCard
+            label="Laba Hari Ini"
+            value={formatCurrency(report.totalProfit)}
+            icon="trending_up"
+            tone="success"
+          />
+          <KpiCard
+            label="Pengeluaran Hari Ini"
+            value={formatCurrency(todayExpenses)}
+            icon="receipt_long"
+            tone="warning"
+          />
+          <KpiCard
+            label="Laba Bersih"
+            value={formatCurrency(netProfit)}
+            icon="account_balance_wallet"
+            tone={netProfit < 0 ? "danger" : "default"}
+            footer={netProfit < 0 ? "Pengeluaran melebihi laba" : "Laba setelah pengeluaran"}
+          />
+        </section>
+      )}
 
       {/* Capital / Break-even Summary */}
-      <section className="bg-white border border-border-standard rounded-xl p-6">
-        <div className="flex justify-between items-center mb-6">
+      <section className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+        <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icon name="account_balance_wallet" size={24} className="text-secondary" />
-            <h4 className="text-label-xl font-bold">Modal & Balik Modal</h4>
+            <span className="flex size-9 items-center justify-center rounded-md bg-info/10 text-info">
+              <Icon name="account_balance_wallet" size={20} />
+            </span>
+            <h4 className="text-label-xl font-bold text-on-surface">Modal & Balik Modal</h4>
           </div>
-          <a href="/capital" className="text-secondary text-label-md hover:underline">
+          <Link href="/capital" className="text-label-md font-semibold text-secondary hover:underline">
             Lihat Semua
-          </a>
+          </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl border border-border-standard">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-              Current Capital
-            </p>
-            <p className="text-numeric-display font-bold text-primary mt-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-md border border-border-standard bg-card p-4">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Modal Aktif</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-on-surface">
               {formatCurrency(currentCapital)}
             </p>
-            <p className="text-[10px] text-on-surface-variant mt-1">
-              {capitalTransactions.length} transaksi modal
-            </p>
+            <p className="mt-1 text-caption text-on-surface-variant">{capitalTransactions.length} transaksi modal</p>
           </div>
-          <div className="p-4 rounded-xl border border-border-standard">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-              Break-even Progress
-            </p>
-            <p className="text-numeric-display font-bold text-secondary mt-1">
+          <div className="rounded-md border border-border-standard bg-card p-4">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Progres Balik Modal</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
               {Math.round(breakEvenPercent)}%
             </p>
-            <div className="h-1.5 bg-surface-variant rounded-full mt-2 overflow-hidden">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container">
               <div
-                className={`h-full rounded-full ${isBreakEven ? "bg-success-paid" : "bg-secondary"}`}
+                className={`h-full rounded-full ${isBreakEven ? "bg-success" : "bg-secondary"}`}
                 style={{ width: `${Math.min(breakEvenPercent, 100)}%` }}
               />
             </div>
           </div>
-          <div className="p-4 rounded-xl border border-border-standard">
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-              Remaining Capital
-            </p>
-            <p className={`text-numeric-display font-bold mt-1 ${remainingCapital < 0 ? "text-danger-alert" : "text-primary"}`}>
+          <div className="rounded-md border border-border-standard bg-card p-4">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Sisa Modal</p>
+            <p className={`mt-1 text-2xl font-bold tracking-tight ${remainingCapital < 0 ? "text-danger" : "text-on-surface"}`}>
               {formatCurrency(remainingCapital)}
             </p>
-            <p className="text-[10px] text-on-surface-variant mt-1">Modal − Laba bersih</p>
+            <p className="mt-1 text-caption text-on-surface-variant">Modal − Laba bersih</p>
           </div>
-          <div className="p-4 rounded-xl border border-border-standard bg-surface-container-low flex items-center">
+          <div className="flex items-center rounded-md border border-border-standard bg-surface-container-low p-4">
             {isBreakEven ? (
-              <p className="text-label-md font-bold text-success-paid">
-                ✅ Business has reached Break-even Point
+              <p className="text-label-md font-bold text-success">
+                ✅ Sudah Balik Modal
               </p>
             ) : (
               <p className="text-label-md font-bold text-on-surface-variant">
@@ -234,37 +190,44 @@ export default function DashboardPage() {
       </section>
 
       {/* Middle: Stock Alerts & Active Debts */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Stock Alerts */}
-        <div className="bg-white border border-border-standard rounded-xl p-6">
-          <div className="flex justify-between items-center mb-6">
+        <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+          <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Icon name="error" size={24} className="text-danger-alert" />
-              <h4 className="text-label-xl font-bold">Stock Alerts</h4>
+              <span className="flex size-9 items-center justify-center rounded-md bg-danger/10 text-danger">
+                <Icon name="error" size={20} />
+              </span>
+              <h4 className="text-label-xl font-bold text-on-surface">Stok Menipis</h4>
             </div>
-            <a href="/produk" className="text-secondary text-label-md hover:underline">Lihat Semua</a>
+            <Link href="/produk" className="text-label-md font-semibold text-secondary hover:underline">
+              Lihat Semua
+            </Link>
           </div>
           {lowStockProducts.length === 0 ? (
-            <p className="text-on-surface-variant/50 text-center py-8">Semua stok aman</p>
+            <p className="py-8 text-center text-body-md text-on-surface-variant/60">Semua stok aman</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {lowStockProducts.slice(0, 4).map((product) => (
-                <div key={product.id} className="p-4 rounded-lg border border-border-standard hover:border-danger-alert transition-colors">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center shrink-0">
-                      <Icon name="package" size={24} className="text-outline" />
+                <div key={product.id} className="rounded-md border border-border-standard bg-card p-4 transition-colors hover:border-danger/30">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-surface-container">
+                      <Icon name="package" size={22} className="text-on-surface-variant" />
                     </div>
-                    <div>
-                      <p className="font-bold text-on-surface">{product.name}</p>
-                      <p className="text-xs text-on-surface-variant">{product.category}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-body-sm font-bold text-on-surface">{product.name}</p>
+                      <p className="text-caption text-on-surface-variant">{product.category}</p>
                     </div>
                   </div>
-                  <div className="flex justify-between items-end">
+                  <div className="flex items-end justify-between">
                     <div>
-                      <p className="text-[10px] text-danger-alert font-bold uppercase">
-                        {product.stock <= 2 ? "Critical" : "Low Stock"}
+                      <StatusBadge
+                        label={product.stock <= 2 ? "Kritis" : "Stok Tipis"}
+                        variant={product.stock <= 2 ? "danger" : "warning"}
+                      />
+                      <p className="mt-1.5 text-headline-md font-bold text-on-surface">
+                        {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
                       </p>
-                      <p className="text-headline-md font-bold">{product.stock} <span className="text-sm font-normal">pcs</span></p>
                     </div>
                   </div>
                 </div>
@@ -274,50 +237,54 @@ export default function DashboardPage() {
         </div>
 
         {/* Active Debts */}
-        <div className="bg-white border border-border-standard rounded-xl p-6">
-          <div className="flex justify-between items-center mb-6">
+        <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+          <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Icon name="history_edu" size={24} className="text-warning-debt" />
-              <h4 className="text-label-xl font-bold">Kasbon Aktif</h4>
+              <span className="flex size-9 items-center justify-center rounded-md bg-warning/10 text-warning">
+                <Icon name="history_edu" size={20} />
+              </span>
+              <h4 className="text-label-xl font-bold text-on-surface">Kasbon Aktif</h4>
             </div>
-            <a href="/kasbon" className="text-secondary text-label-md hover:underline">Lihat Semua</a>
+            <Link href="/kasbon" className="text-label-md font-semibold text-secondary hover:underline">
+              Lihat Semua
+            </Link>
           </div>
           {debtors.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-on-surface-variant/50">Tidak ada kasbon aktif</p>
-            </div>
+            <p className="py-8 text-center text-body-md text-on-surface-variant/60">Tidak ada kasbon aktif</p>
           ) : (
             <>
-              <div className="flex gap-3 mb-4">
-                <div className="flex-1 p-3 rounded-xl bg-surface-container-low">
-                  <p className="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wide">Pelanggan</p>
-                  <p className="text-numeric-display font-bold text-on-surface">{debtors.length}</p>
+              <div className="mb-4 flex gap-3">
+                <div className="flex-1 rounded-md bg-surface-container-low p-3">
+                  <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Pelanggan</p>
+                  <p className="mt-0.5 text-numeric-display font-bold text-on-surface">{debtors.length}</p>
                 </div>
-                <div className="flex-1 p-3 rounded-xl bg-surface-container-low">
-                  <p className="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wide">Total Piutang</p>
-                  <p className="text-numeric-display font-bold text-warning-debt">{formatCurrency(activeDebtTotal)}</p>
+                <div className="flex-1 rounded-md bg-surface-container-low p-3">
+                  <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Total Piutang</p>
+                  <p className="mt-0.5 text-numeric-display font-bold text-warning">{formatCurrency(activeDebtTotal)}</p>
                 </div>
               </div>
-              <div className="space-y-1 max-h-[260px] overflow-y-auto">
+              <div className="max-h-[260px] space-y-1 overflow-y-auto">
                 {debtors.map((customer) => (
-                  <div key={customer.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-low transition-colors group">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold shrink-0">
+                  <div key={customer.id} className="group flex items-center justify-between rounded-md p-3 transition-colors hover:bg-surface-container-low">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-info/10 font-bold text-info">
                         {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-on-surface truncate">{customer.name}</p>
-                        <p className="text-xs text-on-surface-variant">Terakhir: {getRelativeTime(customer.updatedAt)}</p>
+                        <p className="truncate text-body-sm font-bold text-on-surface">{customer.name}</p>
+                        <p className="text-caption text-on-surface-variant">
+                          Terakhir: {getRelativeTime(customer.updatedAt)}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-3 shrink-0 ml-3">
+                    <div className="ml-3 flex shrink-0 items-center gap-3 text-right">
                       <div>
-                        <p className="font-bold text-danger-alert">{formatCurrencyCompact(customer.currentDebt)}</p>
+                        <p className="font-bold text-on-surface">{formatCurrencyCompact(customer.currentDebt)}</p>
                         {customer.currentDebt > 100000 && (
-                          <span className="text-[10px] font-bold bg-error-container text-error px-2 py-0.5 rounded-full uppercase">Overdue</span>
+                          <StatusBadge label="Overdue" variant="danger" className="mt-1" />
                         )}
                       </div>
-                      <Icon name="chevron_right" size={16} className="text-outline group-hover:text-primary transition-colors" />
+                      <Icon name="chevron_right" size={16} className="text-outline" />
                     </div>
                   </div>
                 ))}
@@ -328,88 +295,26 @@ export default function DashboardPage() {
       </section>
 
       {/* Sales Trend */}
-      <section className="bg-white border border-border-standard rounded-xl p-6">
-        <div className="flex justify-between items-center mb-6">
+      <section className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h4 className="text-label-xl font-bold">Tren Penjualan</h4>
-            <p className="text-body-md text-on-surface-variant">
+            <h4 className="text-label-xl font-bold text-on-surface">Tren Penjualan</h4>
+            <p className="text-body-sm text-on-surface-variant">
               {formatDateShort(chart.days[0])} — {formatDateShort(chart.days[6])}
             </p>
           </div>
-          <span className="text-label-md text-on-surface-variant">7 hari terakhir</span>
+          <span className="text-caption text-on-surface-variant">7 hari terakhir</span>
         </div>
-
-        <div className="relative h-64">
-          {/* Horizontal gridlines + Y-axis labels */}
-          <div className="absolute inset-0 grid grid-rows-5 pointer-events-none">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="border-t border-surface-variant relative">
-                <span className="absolute -top-2 left-0 text-[9px] text-outline">
-                  {maxValue > 0 ? formatCurrencyCompact(maxValue - (maxValue / 4) * i) : "Rp 0"}
-                </span>
-              </div>
-            ))}
+        {loading ? (
+          <SkeletonText lines={5} />
+        ) : chartData.some((d) => d.value > 0) ? (
+          <LineChart data={chartData} />
+        ) : (
+          <div className="flex h-64 flex-col items-center justify-center gap-2 text-on-surface-variant/60">
+            <Icon name="trending_up" size={40} />
+            <p className="text-body-md">Belum ada penjualan 7 hari terakhir</p>
           </div>
-
-          {total7Days === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <Icon name="trending_up" size={40} className="text-outline/50" />
-              <p className="text-on-surface-variant/50">Belum ada penjualan 7 hari terakhir</p>
-            </div>
-          ) : (
-            <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full">
-              {/* Area fill */}
-              <path
-                d={`M0,40 ${linePath.slice(1)} L100,40 Z`}
-                fill="rgba(37, 99, 235, 0.08)"
-                stroke="none"
-              />
-              {/* Line */}
-              <path
-                d={linePath}
-                fill="none"
-                stroke="var(--color-secondary, #2563eb)"
-                strokeWidth="0.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          )}
-
-          {/* Points (HTML dots so they stay round despite SVG stretch) */}
-          {total7Days > 0 && (
-            <div className="absolute inset-0 pointer-events-none">
-              {chart.values.map((v, i) => {
-                const x = (i / (chart.values.length - 1)) * 100;
-                const ratio = maxValue > 0 ? v / maxValue : 0;
-                const y = 100 - ratio * 100;
-                return (
-                  <div
-                    key={i}
-                    className="group absolute w-2 h-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary ring-2 ring-white"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                    title={`${formatDateShort(chart.days[i])}: ${formatCurrency(v)}`}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-          {/* X-axis labels */}
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between">
-            {chart.days.map((day, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <span className="text-[10px] text-on-surface-variant font-medium">
-                  {new Date(day).getDate()}
-                </span>
-                <span className="text-[9px] text-outline">
-                  {DAY_LABELS[new Date(day).getDay()]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </section>
     </div>
   );

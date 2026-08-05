@@ -22,18 +22,18 @@ export default function SideNavDrawer() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeSideNav()}>
-      <SheetContent side="left" className="w-[280px] p-0 bg-surface flex flex-col">
+      <SheetContent side="left" className="flex w-[280px] flex-col bg-surface p-0">
         {/* Header */}
-        <SheetHeader className="px-6 pt-6 pb-2">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-on-primary">
+        <SheetHeader className="px-6 pb-2 pt-6">
+          <div className="mb-2 flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-md bg-primary text-on-primary shadow-sm">
               <Icon name="store" size={24} />
             </div>
             <div>
-              <SheetTitle className="text-headline-md font-bold text-primary">
+              <SheetTitle className="text-headline-md font-bold text-on-surface">
                 {APP_NAME}
               </SheetTitle>
-              <p className="text-[12px] text-on-surface-variant opacity-60 uppercase tracking-wider font-bold">
+              <p className="text-overline uppercase tracking-wider font-bold text-on-surface-variant/60">
                 Kiosk Assistant
               </p>
             </div>
@@ -41,7 +41,10 @@ export default function SideNavDrawer() {
         </SheetHeader>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 mt-4 space-y-1">
+        <nav className="mt-4 flex-1 space-y-1 px-3">
+          <p className="px-4 pb-1 text-overline uppercase tracking-[0.08em] text-on-surface-variant/60">
+            Menu
+          </p>
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.href);
             return (
@@ -49,16 +52,16 @@ export default function SideNavDrawer() {
                 key={item.href}
                 href={item.href}
                 onClick={closeSideNav}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-body-md font-medium transition-all active:scale-[0.98] ${
+                className={`flex items-center gap-3 rounded-md px-4 py-3 text-body-md font-medium transition-all active:scale-[0.98] ${
                   active
-                    ? "bg-secondary-container text-on-secondary-container font-bold"
+                    ? "bg-secondary/10 font-semibold text-secondary"
                     : "text-on-surface-variant hover:bg-surface-container-high"
                 }`}
               >
                 <Icon
                   name={item.icon}
-                  size={24}
-                  className={active ? "" : "text-outline"}
+                  size={22}
+                  className={active ? "" : "text-on-surface-variant/70"}
                 />
                 {item.label}
               </Link>

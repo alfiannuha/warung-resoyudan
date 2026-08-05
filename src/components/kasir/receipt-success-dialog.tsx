@@ -1,8 +1,15 @@
 "use client";
 
-import type { CartItem, PaymentMethod } from "@/types";
+import { CheckCircle2, Printer, MessageCircle } from "lucide-react";
+import type { PaymentMethod } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
-import { Icon } from "@/lib/icon-map";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Props {
   open: boolean;
@@ -29,37 +36,32 @@ export default function ReceiptSuccessDialog({
   onWhatsApp,
   onDone,
 }: Props) {
-  if (!open) return null;
-
   const isKasbon = paymentMethod === "kasbon";
   const hasPhone = !!customerPhone;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-[360px] w-full p-6 space-y-6">
-        {/* Success Icon */}
-        <div className="space-y-2 text-center">
-          <div className="w-16 h-16 rounded-full bg-success-paid/10 flex items-center justify-center mx-auto">
-            <Icon name="check_circle" size={36} className="text-success-paid" />
-          </div>
-          <h3 className="text-headline-md font-bold">Transaksi Berhasil!</h3>
-          <p className="text-label-md text-on-surface-variant font-mono">
+    <Dialog open={open} onOpenChange={(o) => !o && onDone()}>
+      <DialogContent className="max-w-[380px]">
+        <DialogHeader className="items-center text-center">
+          <span className="mx-auto mb-1 flex size-16 items-center justify-center rounded-full bg-success/10 text-success">
+            <CheckCircle2 className="size-8" />
+          </span>
+          <DialogTitle className="text-headline-md font-bold">Transaksi Berhasil!</DialogTitle>
+          <DialogDescription className="font-mono text-label-md text-on-surface-variant">
             {receiptNumber}
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Status badge for kasbon */}
         {isKasbon && (
-          <div className="p-3 bg-warning-debt/10 rounded-xl text-center">
-            <p className="text-label-md font-bold text-warning-debt uppercase tracking-wider">
-              KASBON
-            </p>
+          <div className="rounded-md bg-warning/10 p-3 text-center">
+            <p className="text-label-md font-bold uppercase tracking-wider text-warning">Kasbon</p>
           </div>
         )}
 
         {/* Total */}
-        <div className="p-4 bg-surface-container rounded-xl">
-          <div className="flex justify-between items-center">
+        <div className="rounded-md bg-surface-container p-4">
+          <div className="flex items-center justify-between">
             <span className="text-label-md text-on-surface-variant">Total Pembayaran</span>
             <span className="text-headline-md font-extrabold text-secondary">
               {formatCurrency(totalAmount)}
@@ -67,13 +69,13 @@ export default function ReceiptSuccessDialog({
           </div>
           {paymentMethod === "cash" && amountPaid > 0 && (
             <>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-border-standard">
+              <div className="mt-2 flex items-center justify-between border-t border-border-standard pt-2">
                 <span className="text-label-md text-on-surface-variant">Tunai</span>
                 <span className="text-body-md font-bold">{formatCurrency(amountPaid)}</span>
               </div>
-              <div className="flex justify-between items-center mt-1">
+              <div className="mt-1 flex items-center justify-between">
                 <span className="text-label-md text-on-surface-variant">Kembali</span>
-                <span className="text-body-md font-bold text-success-paid">{formatCurrency(change)}</span>
+                <span className="text-body-md font-bold text-success">{formatCurrency(change)}</span>
               </div>
             </>
           )}
@@ -83,28 +85,28 @@ export default function ReceiptSuccessDialog({
         <div className="space-y-3">
           <button
             onClick={onPrint}
-            className="w-full h-touch-target-min bg-secondary text-on-secondary rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-secondary/20"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
           >
-            <Icon name="print" size={20} />
+            <Printer className="size-5" />
             Cetak Nota
           </button>
           {hasPhone && (
             <button
               onClick={onWhatsApp}
-              className="w-full h-touch-target-min rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform border-2 border-secondary text-secondary"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border-2 border-secondary font-semibold text-secondary transition-all active:scale-[0.98]"
             >
-              <Icon name="message_circle" size={20} />
+              <MessageCircle className="size-5" />
               Kirim WhatsApp
             </button>
           )}
           <button
             onClick={onDone}
-            className="w-full h-12 text-on-surface-variant font-bold active:opacity-80"
+            className="h-12 w-full text-body-md font-semibold text-on-surface-variant transition-opacity active:opacity-80"
           >
             Selesai
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

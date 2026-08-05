@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { Copy, History, MessageCircle, QrCode, User } from "lucide-react";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
-import { formatCurrency, formatDateTime, getTodayISO } from "@/lib/formatters";
+import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import { useToast } from "@/components/shared/toast-provider";
 import ReprintButton from "@/components/kasbon/reprint-button";
@@ -11,6 +12,11 @@ import PinDialog from "@/components/transaksi/pin-dialog";
 import EditTransactionDialog from "@/components/transaksi/edit-transaction-dialog";
 import QrisImageDialog from "@/components/transaksi/qris-image-dialog";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
+import EmptyState from "@/components/shared/empty-state";
+import PageHeader from "@/components/shared/page-header";
+import SearchInput from "@/components/shared/search-input";
+import StatusBadge from "@/components/shared/status-badge";
+import SwipeableRow from "@/components/shared/swipeable-row";
 import type { Transaction, PaymentMethod, TransactionStatus } from "@/types";
 
 export default function TransaksiPage() {
@@ -112,56 +118,56 @@ export default function TransaksiPage() {
     { label: "QRIS", value: "qris", icon: "qr_code_2" },
   ];
 
+  const paymentBadge = (method: PaymentMethod) =>
+    method === "cash"
+      ? { label: "Tunai", variant: "success" as const }
+      : method === "kasbon"
+      ? { label: "Kasbon", variant: "warning" as const }
+      : { label: "QRIS", variant: "info" as const };
+
   return (
-    <div className="space-y-4 pb-8">
-      {/* Header */}
-      <h1 className="text-headline-md font-bold pt-4">Transaksi</h1>
+    <div className="space-y-5 pb-8">
+      <PageHeader title="Transaksi" subtitle={`${filtered.length} transaksi`} />
 
-      {/* Search */}
-      <div className="relative">
-        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" size={18} />
-        <input
+      <div className="space-y-3">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 h-12 bg-surface border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md transition-all"
-          placeholder="Cari No. nota, produk, atau pelanggan..."
+          onChange={setSearch}
+          placeholder="Cari No. nota, produk, atau pelanggan…"
         />
-      </div>
 
-      {/* Filter chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {paymentMethods.map((pm) => (
-          <button
-            key={pm.value}
-            onClick={() => setFilterMethod(pm.value)}
-            className={`touch-target flex items-center gap-1.5 px-4 rounded-xl font-bold text-label-md whitespace-nowrap transition-all active:scale-[0.98] ${
-              filterMethod === pm.value
-                ? "bg-secondary text-on-secondary"
-                : "border border-border-standard text-on-surface-variant"
-            }`}
-          >
-            <Icon name={pm.icon} size={16} />
-            {pm.label}
-          </button>
-        ))}
+        {/* Filter chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {paymentMethods.map((pm) => (
+            <button
+              key={pm.value}
+              onClick={() => setFilterMethod(pm.value)}
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-label-md font-medium transition-all active:scale-[0.98] ${
+                filterMethod === pm.value
+                  ? "bg-secondary text-white"
+                  : "border border-border-standard bg-card text-on-surface-variant"
+              }`}
+            >
+              <Icon name={pm.icon} size={16} />
+              {pm.label}
+            </button>
+          ))}
+        </div>
       </div>
-
-      {/* Count */}
-      <p className="text-label-md text-on-surface-variant">
-        {filtered.length} transaksi
-      </p>
 
       {/* List */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-on-surface-variant/50">
-            <Icon name="receipt_long" size={48} className="mx-auto mb-2" />
-            <p>Tidak ada transaksi</p>
-          </div>
+          <EmptyState
+            icon="receipt_long"
+            title="Tidak ada transaksi"
+            description="Transaksi yang disimpan akan muncul di sini."
+          />
         ) : (
           filtered.map((t) => {
             const customer = t.customerId ? getCustomerById(t.customerId) : null;
             const isExpanded = expandedId === t.id;
+            const badge = paymentBadge(t.paymentMethod);
 
             return (
               <div key={t.id}>
@@ -182,7 +188,6 @@ export default function TransaksiPage() {
                     setDeleteTarget(t);
                   }}
                 >
-                  {/* Row */}
                   <div
                     onClick={() => {
                       if (swipedId === t.id) {
@@ -192,59 +197,41 @@ export default function TransaksiPage() {
                       setExpandedId(isExpanded ? null : t.id);
                     }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1 pr-10">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-label-md text-secondary font-mono font-bold">
+                          <p className="font-mono text-label-md font-bold text-secondary">
                             {t.receiptNumber || "—"}
                           </p>
                           {t.receiptNumber && (
                             <button
                               onClick={(e) => { e.stopPropagation(); copyReceipt(t.receiptNumber!); }}
-                              className="text-outline hover:text-secondary active:scale-90 transition-all"
+                              className="flex size-8 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container active:scale-90"
                               title="Salin nomor nota"
+                              aria-label="Salin nomor nota"
                             >
-                              <Icon name="content_copy" size={14} />
+                              <Copy className="size-3.5" />
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-outline mt-0.5">
-                          {formatDateTime(t.date)}
-                        </p>
+                        <p className="mt-0.5 text-caption text-on-surface-variant">{formatDateTime(t.date)}</p>
                         {customer && (
-                          <p className="text-xs text-on-surface-variant mt-0.5">
-                            {customer.name}
-                          </p>
+                          <p className="mt-0.5 text-caption text-on-surface-variant">{customer.name}</p>
                         )}
                         {t.items.length > 0 && (
-                          <p className="text-xs text-outline mt-0.5 truncate">
+                          <p className="mt-0.5 truncate text-caption text-on-surface-variant">
                             {t.items.map((i) => i.name).join(", ")}
                           </p>
                         )}
                       </div>
-                      <div className="text-right shrink-0 ml-3">
-                        <p className="font-bold text-body-md">{formatCurrency(t.totalAmount)}</p>
-                        <div className="flex gap-1 mt-1 justify-end flex-wrap">
-                          <span
-                            className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
-                              t.paymentMethod === "cash"
-                                ? "bg-success-paid/10 text-success-paid"
-                                : t.paymentMethod === "kasbon"
-                                ? "bg-warning-debt/10 text-warning-debt"
-                                : "bg-secondary/10 text-secondary"
-                            }`}
-                          >
-                            {t.paymentMethod === "cash" ? "Tunai" : t.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
-                          </span>
-                          <span
-                            className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${
-                              t.status === "paid"
-                                ? "bg-success-paid/10 text-success-paid"
-                                : "bg-warning-debt/10 text-warning-debt"
-                            }`}
-                          >
-                            {t.status === "paid" ? "Lunas" : "Belum Lunas"}
-                          </span>
+                      <div className="ml-3 shrink-0 text-right">
+                        <p className="font-bold text-on-surface">{formatCurrency(t.totalAmount)}</p>
+                        <div className="mt-1 flex flex-wrap justify-end gap-1">
+                          <StatusBadge label={badge.label} variant={badge.variant} />
+                          <StatusBadge
+                            label={t.status === "paid" ? "Lunas" : "Belum Lunas"}
+                            variant={t.status === "paid" ? "success" : "warning"}
+                          />
                         </div>
                       </div>
                     </div>
@@ -253,13 +240,13 @@ export default function TransaksiPage() {
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="bg-surface-container-low border border-border-standard rounded-xl mx-2 mt-1 p-4 space-y-3 text-sm">
+                  <div className="mx-2 mt-1 space-y-3 rounded-md border border-border-standard bg-surface-container-low p-4 text-body-sm">
                     {/* Customer info */}
                     {customer && (
-                      <div className="bg-surface-container rounded-lg p-3 space-y-1.5">
+                      <div className="space-y-1.5 rounded-md bg-card p-3 shadow-card">
                         <div className="flex items-center gap-2">
-                          <Icon name="account_circle" size={16} className="text-outline shrink-0" />
-                          <span className="font-medium">{customer.name}</span>
+                          <User className="size-4 shrink-0 text-on-surface-variant" />
+                          <span className="font-medium text-on-surface">{customer.name}</span>
                         </div>
                         {customer.phone && (
                           <a
@@ -269,12 +256,12 @@ export default function TransaksiPage() {
                             className="flex items-center gap-2 text-secondary hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Icon name="message_circle" size={16} className="shrink-0" />
+                            <MessageCircle className="size-4 shrink-0" />
                             <span>{customer.phone}</span>
                           </a>
                         )}
                         {t.paymentMethod === "kasbon" && customer.currentDebt > 0 && (
-                          <div className="flex items-center gap-2 text-warning-debt">
+                          <div className="flex items-center gap-2 text-warning">
                             <Icon name="menu_book" size={16} className="shrink-0" />
                             <span>Utang: {formatCurrency(customer.currentDebt)}</span>
                           </div>
@@ -283,66 +270,64 @@ export default function TransaksiPage() {
                     )}
 
                     {t.items.map((item, i) => (
-                      <div key={i} className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          <p className="text-xs text-outline">{item.quantity} x {formatCurrency(item.sellPrice)}</p>
+                      <div key={i} className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-on-surface">{item.name}</p>
+                          <p className="text-caption text-on-surface-variant">
+                            {item.quantity} x {formatCurrency(item.sellPrice)}
+                          </p>
                         </div>
-                        <p className="font-medium shrink-0 ml-3">{formatCurrency(item.subtotal)}</p>
+                        <p className="ml-3 shrink-0 font-medium text-on-surface">{formatCurrency(item.subtotal)}</p>
                       </div>
                     ))}
 
                     {t.notes && (
-                      <div className="bg-surface-container rounded-lg p-3">
+                      <div className="rounded-md bg-card p-3 shadow-card">
                         <div className="flex items-start gap-2">
-                          <Icon name="lightbulb" size={16} className="text-outline shrink-0 mt-0.5" />
-                          <p className="text-sm text-on-surface-variant whitespace-pre-wrap">{t.notes}</p>
+                          <Icon name="lightbulb" size={16} className="mt-0.5 shrink-0 text-on-surface-variant" />
+                          <p className="whitespace-pre-wrap text-on-surface-variant">{t.notes}</p>
                         </div>
                       </div>
                     )}
 
-                    <div className="border-t border-border-standard pt-2 space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-outline">Subtotal</span>
-                        <span className="font-medium">{formatCurrency(t.totalAmount)}</span>
+                    <div className="space-y-1 border-t border-border-standard pt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-on-surface-variant">Laba</span>
+                        <span className="font-medium text-success">{formatCurrency(t.totalProfit)}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-outline">Laba</span>
-                        <span className="text-success-paid font-medium">{formatCurrency(t.totalProfit)}</span>
-                      </div>
-                      {(t.amountPaid > 0) && (
+                      {t.amountPaid > 0 && (
                         <>
-                          <div className="flex justify-between items-center">
-                            <span className="text-outline">Bayar</span>
-                            <span>{formatCurrency(t.amountPaid)}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-on-surface-variant">Bayar</span>
+                            <span className="text-on-surface">{formatCurrency(t.amountPaid)}</span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-outline">Kembali</span>
-                            <span className="text-success-paid font-medium">{formatCurrency(t.change)}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-on-surface-variant">Kembali</span>
+                            <span className="font-medium text-success">{formatCurrency(t.change)}</span>
                           </div>
                         </>
                       )}
-                      <div className="flex justify-between items-center pt-1 border-t border-border-standard">
-                        <span className="font-bold">Total</span>
+                      <div className="flex items-center justify-between border-t border-border-standard pt-1">
+                        <span className="font-bold text-on-surface">Total</span>
                         <span className="font-bold text-secondary">{formatCurrency(t.totalAmount)}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-border-standard">
-                      <span className="text-[10px] text-outline font-mono">
+                    <div className="flex items-center justify-between border-t border-border-standard pt-2">
+                      <span className="font-mono text-caption text-on-surface-variant">
                         {t.receiptNumber || "—"}
                       </span>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         {t.paymentMethod === "qris" && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openQrisImage(t);
                             }}
-                            className="text-secondary font-bold text-label-md flex items-center gap-1 active:scale-95 transition-transform"
+                            className="flex items-center gap-1 text-label-md font-semibold text-secondary transition-transform active:scale-95"
                           >
-                            <Icon name="qr_code_2" size={16} />
-                            Show QRIS
+                            <QrCode className="size-4" />
+                            Tampilkan QRIS
                           </button>
                         )}
                         <ReprintButton transaction={t} />
@@ -358,9 +343,9 @@ export default function TransaksiPage() {
                             setStatusTarget(t);
                             setStatusAction("paid");
                           }}
-                          className="flex-1 h-11 bg-success-paid text-white rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-success text-label-md font-semibold text-white transition-transform active:scale-[0.98]"
                         >
-                          <Icon name="check_circle" size={16} />
+                          <History className="size-4" />
                           Sudah Dibayar
                         </button>
                       </div>
@@ -439,99 +424,6 @@ export default function TransaksiPage() {
         confirmDisabled={deleting}
         onConfirm={handleDelete}
       />
-    </div>
-  );
-}
-
-/* Swipe-to-reveal row (Android-style): swipe left to reveal Edit & Delete actions. */
-function SwipeableRow({
-  id,
-  isSwiped,
-  onSwipedChange,
-  onEdit,
-  onDelete,
-  children,
-}: {
-  id: string;
-  isSwiped: boolean;
-  onSwipedChange: (id: string | null) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  children: React.ReactNode;
-}) {
-  const startX = useRef<number | null>(null);
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const ACTION_W = 160; // total width of revealed actions (Edit + Delete)
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    setDragging(true);
-    if (isSwiped) setDragX(-ACTION_W);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (startX.current === null) return;
-    const dx = e.touches[0].clientX - startX.current;
-    if (isSwiped) {
-      // Swipe right to close the revealed actions.
-      if (dx > 0) {
-        setDragX(Math.min(dx - ACTION_W, 0));
-      } else {
-        setDragX(Math.max(dx, -ACTION_W));
-      }
-    } else if (dx < 0) {
-      setDragX(Math.max(dx, -ACTION_W));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    startX.current = null;
-    setDragging(false);
-    if (dragX < -ACTION_W / 2) {
-      setDragX(-ACTION_W);
-      onSwipedChange(id);
-    } else {
-      setDragX(0);
-      onSwipedChange(null);
-    }
-  };
-
-  const offset = dragging ? dragX : isSwiped ? -ACTION_W : 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Actions behind the row */}
-      <div className="absolute inset-y-0 right-0 flex">
-        <button
-          onClick={onEdit}
-          className="w-20 bg-secondary text-on-secondary flex flex-col items-center justify-center gap-0.5 font-bold text-xs"
-          aria-label="Edit"
-        >
-          <Icon name="edit" size={20} />
-          Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="w-20 bg-danger-alert text-white flex flex-col items-center justify-center gap-0.5 font-bold text-xs"
-          aria-label="Hapus"
-        >
-          <Icon name="delete" size={20} />
-          Hapus
-        </button>
-      </div>
-
-      {/* Foreground row */}
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 0.2s ease" }}
-        className="relative bg-white border border-border-standard p-4 active:scale-[0.99] transition-transform cursor-pointer touch-pan-y select-none"
-      >
-        {children}
-      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useCartStore } from "@/stores/use-cart-store";
 import { formatCurrency } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
@@ -18,32 +17,37 @@ interface Props {
 export default function CartDrawer({ open, onClose, onCheckout, onScan }: Props) {
   const { items, clearCart } = useCartStore();
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
+  const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
 
   if (!open) return null;
 
   return (
-    <div className="md:hidden fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col bg-card md:hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-gutter py-4 border-b border-border-standard shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center -ml-2">
-            <Icon name="chevron_right" size={24} className="rotate-180" />
+      <div className="flex shrink-0 items-center justify-between border-b border-border-standard px-4 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="flex size-11 items-center justify-center rounded-md transition-colors active:bg-surface-container"
+            aria-label="Tutup keranjang"
+          >
+            <Icon name="chevron_right" size={22} className="rotate-180" />
           </button>
-          <h2 className="text-headline-md font-bold">Keranjang ({totalItems})</h2>
+          <h2 className="text-headline-md font-bold text-on-surface">Keranjang ({totalItems})</h2>
         </div>
         {items.length > 0 && (
-          <button onClick={clearCart} className="text-error text-label-md font-bold">
+          <button onClick={clearCart} className="text-label-md font-bold text-danger">
             Kosongkan
           </button>
         )}
       </div>
 
       {/* Items - scrollable */}
-      <div className="flex-1 overflow-y-auto px-gutter space-y-1 py-4">
+      <div className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
         {items.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-on-surface-variant/50">
-              <Icon name="shopping_cart" size={48} className="block mb-2 mx-auto" />
+          <div className="flex h-full items-center justify-center">
+            <div className="text-center text-on-surface-variant/60">
+              <Icon name="shopping_cart" size={48} className="mx-auto mb-2 block" />
               <p>Keranjang masih kosong</p>
             </div>
           </div>
@@ -56,52 +60,42 @@ export default function CartDrawer({ open, onClose, onCheckout, onScan }: Props)
 
       {/* Sticky footer */}
       {items.length > 0 && (
-        <div className="shrink-0 bg-white border-t border-border-standard shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-          <div className="px-gutter py-4 space-y-4">
+        <div className="shrink-0 border-t border-border-standard bg-card shadow-dialog">
+          <div className="space-y-4 px-4 py-4">
             <PaymentMethod />
             <CustomerSelect />
 
-            <div className="space-y-2 pt-2">
-              <table className="w-full text-body-md">
-                <tbody>
-                  <tr className="text-on-surface-variant">
-                    <td>Subtotal</td>
-                    <td className="text-right">{formatCurrency(items.reduce((s, i) => s + i.subtotal, 0))}</td>
-                  </tr>
-                  <tr className="text-on-surface-variant">
-                    <td>Diskon</td>
-                    <td className="text-right text-error">- Rp 0</td>
-                  </tr>
-                  <tr className="pt-2">
-                    <td className="text-headline-md font-bold pt-2 border-t border-border-standard">Total</td>
-                    <td className="text-headline-md font-extrabold text-secondary pt-2 border-t border-border-standard text-right">
-                      {formatCurrency(items.reduce((s, i) => s + i.subtotal, 0))}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between border-t border-border-standard pt-2">
+                <span className="text-headline-md text-on-surface">Total</span>
+                <span className="text-headline-md font-extrabold text-secondary">
+                  {formatCurrency(totalAmount)}
+                </span>
+              </div>
             </div>
 
             <div className="flex gap-2">
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
-                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border-standard bg-card transition-transform active:scale-[0.98]"
                 title="Simpan Draft"
+                aria-label="Simpan Draft"
               >
                 <Icon name="save" size={20} />
               </button>
               <button
                 onClick={onScan}
-                className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+                className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border-standard bg-card transition-transform active:scale-[0.98]"
                 title="Scan Barcode"
+                aria-label="Scan Barcode"
               >
                 <Icon name="scan_barcode" size={20} />
               </button>
               <button
                 onClick={onCheckout}
-                className="flex-1 h-touch-target-min bg-secondary text-white rounded-xl font-bold text-body-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-secondary/20"
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-secondary text-body-lg font-semibold text-white shadow-fab transition-transform active:scale-[0.98]"
               >
-                <Icon name="check_circle" size={24} />
+                <Icon name="check_circle" size={22} />
                 Konfirmasi & Bayar
               </button>
             </div>

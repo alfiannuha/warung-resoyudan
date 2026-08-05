@@ -168,7 +168,7 @@ export default function EditTransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white rounded-xl max-w-[440px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-[440px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-headline-md font-bold">
             Edit Transaksi
@@ -177,11 +177,11 @@ export default function EditTransactionDialog({
 
         {/* Non-editable info */}
         {transaction && (
-          <div className="bg-surface-container-low rounded-xl p-3 space-y-0.5">
-            <p className="text-label-md text-secondary font-mono font-bold">
+          <div className="space-y-0.5 rounded-md bg-surface-container-low p-3">
+            <p className="text-label-md font-mono font-bold text-secondary">
               {transaction.receiptNumber || "—"}
             </p>
-            <p className="text-xs text-outline">
+            <p className="text-caption text-on-surface-variant">
               Dibuat {formatDateTime(transaction.date)}
             </p>
           </div>
@@ -328,7 +328,7 @@ export default function EditTransactionDialog({
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-white transition-all text-body-md"
+              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
             >
               <option value="">
                 {paymentMethod === "kasbon"
@@ -352,7 +352,7 @@ export default function EditTransactionDialog({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-4 py-3 border border-border-standard rounded-xl focus:border-secondary outline-none bg-surface transition-all resize-none"
+              className="w-full resize-none rounded-md border border-border-standard bg-card px-4 py-3 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
               placeholder="Catatan transaksi..."
               rows={2}
             />
@@ -378,14 +378,14 @@ export default function EditTransactionDialog({
           <div className="flex gap-3">
             <button
               onClick={() => onOpenChange(false)}
-              className="flex-1 h-12 border border-border-standard rounded-xl font-bold text-on-surface-variant active:bg-surface-container transition-colors"
+              className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
             >
               Batal
             </button>
             <button
               onClick={handleSave}
               disabled={saving || items.length === 0}
-              className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-[0.98] transition-transform disabled:opacity-50"
+              className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Simpan"}
             </button>

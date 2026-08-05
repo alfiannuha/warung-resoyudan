@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, X } from "lucide-react";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useCartStore } from "@/stores/use-cart-store";
 import { formatCurrency, getRelativeTime } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import TransactionHistory from "@/components/kasbon/transaction-history";
 import PaymentInput from "@/components/kasbon/payment-input";
+import SearchInput from "@/components/shared/search-input";
+import EmptyState from "@/components/shared/empty-state";
+import StatusBadge from "@/components/shared/status-badge";
 import {
   Sheet,
   SheetContent,
@@ -45,80 +49,59 @@ export default function KasbonPage() {
   return (
     <div className="flex h-full">
       {/* ===== MOBILE VIEW ===== */}
-      <div className="md:hidden w-full space-y-4">
+      <div className="w-full space-y-4 md:hidden">
         {/* Summary Header */}
-        <div className="p-5 bg-primary-container rounded-xl flex flex-col gap-1 shadow-sm border border-border-standard">
-          <p className="text-label-md text-label-md opacity-80">Total Piutang Kasbon</p>
-          <h2 className="text-headline-lg-mobile font-bold text-on-secondary">
+        <div className="flex flex-col gap-1 rounded-lg border border-border-standard bg-primary p-5 shadow-card">
+          <p className="text-label-md text-white/70">Total Piutang Kasbon</p>
+          <h2 className="text-headline-lg-mobile font-bold text-white">
             {formatCurrency(totalPiutang)}
           </h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs px-2 py-1 bg-warning-debt/20 text-warning-debt rounded-full font-bold">
+          <div className="mt-1 flex items-center gap-2">
+            <span className="rounded-full bg-warning/20 px-2 py-1 text-xs font-bold text-warning">
               {activeCount} Pelanggan
             </span>
           </div>
         </div>
 
-        {/* Search + Filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-surface border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md transition-all"
-              placeholder="Cari nama pelanggan..."
-              type="text"
-            />
-          </div>
-          <button className="w-touch-target-min h-touch-target-min flex items-center justify-center border border-border-standard rounded-xl bg-surface hover:bg-surface-container transition-colors">
-            <Icon name="filter_list" size={24} className="text-outline" />
-          </button>
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nama pelanggan…"
+        />
 
         {/* Customer List */}
         <div className="flex flex-col gap-3 pb-4">
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-on-surface-variant/50">
-              <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
-              <p>Tidak ada kasbon aktif</p>
-            </div>
+            <EmptyState
+              icon="person_search"
+              title="Tidak ada kasbon aktif"
+              description="Kasbon pelanggan yang belum lunas akan muncul di sini."
+            />
           ) : (
             filtered.map((customer) => {
-              const isPaid = customer.currentDebt === 0;
               const isOverdue = customer.currentDebt > 100000;
               return (
                 <div
                   key={customer.id}
                   onClick={() => handleOpenDetail(customer)}
-                  className={`bg-surface border border-border-standard p-4 rounded-xl flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer ${
-                    isOverdue ? "border-l-4 border-l-danger-alert" : ""
-                  } ${isPaid ? "bg-surface-muted opacity-70" : ""}`}
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border border-border-standard bg-card p-4 shadow-card transition-all active:scale-[0.99] ${
+                    isOverdue ? "border-l-4 border-l-danger" : ""
+                  }`}
                 >
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-body-lg font-bold truncate">{customer.name}</h3>
+                      <h3 className="truncate text-body-md font-bold text-on-surface">{customer.name}</h3>
                       {isOverdue && (
-                        <span className="bg-error-container text-on-error-container text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
-                          Overdue
-                        </span>
+                        <StatusBadge label="Overdue" variant="danger" />
                       )}
                     </div>
-                    <p className="text-xs text-outline">
-                      {isPaid
-                        ? `Lunas: ${getRelativeTime(customer.updatedAt)}`
-                        : `Terakhir: ${getRelativeTime(customer.updatedAt)}`}
+                    <p className="text-caption text-on-surface-variant">
+                      Terakhir: {getRelativeTime(customer.updatedAt)}
                     </p>
                   </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className={`text-numeric-display font-bold ${isPaid ? "text-on-surface-variant" : "text-warning-debt"}`}>
-                      {formatCurrency(customer.currentDebt)}
-                    </p>
-                    {isPaid ? (
-                      <Icon name="check_circle" size={20} className="text-success-paid" />
-                    ) : (
-                      <Icon name="chevron_right" size={20} className="text-outline" />
-                    )}
+                  <div className="ml-3 shrink-0 text-right">
+                    <p className="font-bold text-warning">{formatCurrency(customer.currentDebt)}</p>
+                    <Icon name="chevron_right" size={20} className="text-outline" />
                   </div>
                 </div>
               );
@@ -129,40 +112,35 @@ export default function KasbonPage() {
         {/* FAB */}
         <button
           onClick={handleAddCashAdvance}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
+          className="fixed bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
           aria-label="Tambah kasbon baru"
         >
-          <Icon name="add" size={28} />
+          <Plus className="size-7" />
         </button>
 
         {/* Mobile: Detail Bottom Sheet */}
         <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-          <SheetContent side="bottom" className="bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto hide-scrollbar">
+          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-card hide-scrollbar">
             {selectedCustomer && <MobileDetailContent customer={selectedCustomer} onClose={() => setDetailOpen(false)} />}
           </SheetContent>
         </Sheet>
       </div>
 
       {/* ===== TABLET VIEW ===== */}
-      <div className="hidden md:flex w-full min-h-0">
+      <div className="hidden w-full min-h-0 md:flex">
         {/* Left: Customer List */}
-        <aside className="w-[400px] border-r border-border-standard flex flex-col bg-surface-muted min-h-0">
-          <div className="p-4 border-b border-border-standard bg-surface">
-            <div className="relative">
-              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md transition-all"
-                placeholder="Cari nama pelanggan..."
-                type="text"
-              />
-            </div>
+        <aside className="flex min-h-0 w-[400px] flex-col border-r border-border-standard bg-surface-muted">
+          <div className="border-b border-border-standard bg-surface p-4">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari nama pelanggan…"
+            />
           </div>
           <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="text-center py-12 text-on-surface-variant/50">
-                <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
+              <div className="py-12 text-center text-on-surface-variant/60">
+                <Icon name="person_search" size={48} className="mx-auto mb-2 block" />
                 <p>Tidak ada kasbon aktif</p>
               </div>
             ) : (
@@ -173,23 +151,23 @@ export default function KasbonPage() {
                   <div
                     key={customer.id}
                     onClick={() => setSelectedCustomer(customer)}
-                    className={`p-4 border-b border-border-standard cursor-pointer transition-colors ${
+                    className={`cursor-pointer border-b border-border-standard p-4 transition-colors ${
                       isSelected
-                        ? "bg-white border-l-4 border-l-secondary shadow-sm"
+                        ? "border-l-4 border-l-secondary bg-card shadow-sm"
                         : "hover:bg-surface-container-low"
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-label-xl font-bold">{customer.name}</h3>
+                    <div className="mb-1 flex items-start justify-between">
+                      <h3 className="truncate text-label-xl font-bold text-on-surface">{customer.name}</h3>
                       {isOverdue && (
-                        <span className="px-2 py-0.5 bg-error-container text-on-error-container text-[10px] font-bold rounded uppercase">Overdue</span>
+                        <StatusBadge label="Overdue" variant="danger" />
                       )}
                     </div>
-                    <div className="flex justify-between items-end">
-                      <p className="text-sm text-on-surface-variant">
+                    <div className="flex items-end justify-between">
+                      <p className="text-body-sm text-on-surface-variant">
                         Terakhir: {getRelativeTime(customer.updatedAt)}
                       </p>
-                      <p className={`text-numeric-display font-bold ${customer.currentDebt > 0 ? "text-danger-alert" : "text-on-surface"}`}>
+                      <p className="ml-3 shrink-0 font-bold text-warning">
                         {formatCurrency(customer.currentDebt)}
                       </p>
                     </div>
@@ -198,21 +176,21 @@ export default function KasbonPage() {
               })
             )}
           </div>
-          <div className="p-4 border-t border-border-standard">
+          <div className="border-t border-border-standard p-4">
             <button
               onClick={handleAddCashAdvance}
-              className="w-full py-3 bg-secondary text-on-secondary rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-transform active:scale-95"
             >
-              <Icon name="add" size={20} />
+              <Plus className="size-5" />
               Tambah Kasbon
             </button>
           </div>
         </aside>
 
         {/* Right: Customer Detail */}
-        <section className="flex-1 flex flex-col bg-white min-h-0">
+        <section className="flex min-h-0 flex-1 flex-col bg-card">
           {!selectedCustomer ? (
-            <div className="flex-1 flex items-center justify-center text-on-surface-variant/50">
+            <div className="flex flex-1 items-center justify-center text-on-surface-variant/60">
               <div className="text-center">
                 <Icon name="person_search" size={64} className="mx-auto mb-3" />
                 <p>Pilih pelanggan untuk melihat detail</p>
@@ -223,7 +201,6 @@ export default function KasbonPage() {
           )}
         </section>
       </div>
-
     </div>
   );
 }
@@ -233,31 +210,35 @@ function MobileDetailContent({ customer, onClose }: { customer: Customer; onClos
   return (
     <div>
       {/* Handle */}
-      <div className="w-full flex justify-center py-3">
-        <div className="w-10 h-1 bg-outline-variant rounded-full"></div>
+      <div className="flex w-full justify-center py-3">
+        <div className="h-1 w-10 rounded-full bg-outline-variant" />
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 px-gutter">
+      <div className="mb-6 flex items-center justify-between px-5">
         <div className="flex flex-col">
-          <h2 className="text-headline-md font-bold">{customer.name}</h2>
-          <p className="text-warning-debt font-bold text-label-xl">
+          <h2 className="text-headline-md font-bold text-on-surface">{customer.name}</h2>
+          <p className="text-label-xl font-bold text-warning">
             {formatCurrency(customer.currentDebt)}
           </p>
         </div>
-        <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container active:scale-90 transition-transform">
-          <Icon name="close" size={24} />
+        <button
+          onClick={onClose}
+          className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
+          aria-label="Tutup"
+        >
+          <X className="size-5" />
         </button>
       </div>
 
       {/* Transaction History */}
-      <div className="mb-8 px-gutter">
+      <div className="mb-8 px-5">
         <TransactionHistory customerId={customer.id} />
       </div>
 
       {/* Payment Input */}
       {customer.currentDebt > 0 && (
-        <div className="px-gutter pb-8">
+        <div className="px-5 pb-8">
           <PaymentInput customerId={customer.id} />
         </div>
       )}
@@ -269,47 +250,49 @@ function MobileDetailContent({ customer, onClose }: { customer: Customer; onClos
 function TabletDetailContent({ customer }: { customer: Customer }) {
   return (
     <>
-      <div className="p-6 border-b border-border-standard bg-surface-bright flex justify-between items-center">
+      <div className="flex items-center justify-between border-b border-border-standard bg-surface-bright p-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-2xl">
+          <div className="flex size-16 items-center justify-center rounded-full bg-secondary/10 text-2xl font-bold text-secondary">
             {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
           </div>
           <div>
-            <h2 className="text-headline-md font-bold">{customer.name}</h2>
-            <p className="text-on-surface-variant flex items-center gap-1 text-sm">
+            <h2 className="text-headline-md font-bold text-on-surface">{customer.name}</h2>
+            <p className="flex items-center gap-1 text-body-sm text-on-surface-variant">
               <Icon name="account_circle" size={14} />
               {customer.phone || "-"}
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs font-bold text-on-surface-variant uppercase mb-1">Total Hutang Aktif</p>
-          <p className="text-3xl font-bold text-danger-alert">{formatCurrency(customer.currentDebt)}</p>
+          <p className="mb-1 text-overline uppercase tracking-[0.08em] text-on-surface-variant">
+            Total Hutang Aktif
+          </p>
+          <p className="text-3xl font-bold text-danger">{formatCurrency(customer.currentDebt)}</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Total Hutang</p>
-            <p className="text-xl font-bold text-danger-alert">{formatCurrency(customer.currentDebt)}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Total Hutang</p>
+            <p className="mt-1 text-xl font-bold text-danger">{formatCurrency(customer.currentDebt)}</p>
           </div>
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Status</p>
-            <p className={`text-xl font-bold ${customer.currentDebt > 0 ? "text-warning-debt" : "text-success-paid"}`}>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Status</p>
+            <p className={`mt-1 text-xl font-bold ${customer.currentDebt > 0 ? "text-warning" : "text-success"}`}>
               {customer.currentDebt > 0 ? "Aktif" : "Lunas"}
             </p>
           </div>
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Telepon</p>
-            <p className="text-xl font-bold text-secondary">{customer.phone || "-"}</p>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Telepon</p>
+            <p className="mt-1 text-xl font-bold text-secondary">{customer.phone || "-"}</p>
           </div>
         </div>
 
         {/* Transaction History */}
         <div>
-          <h3 className="text-label-xl font-bold mb-4">Riwayat Transaksi & Pembayaran</h3>
+          <h3 className="mb-4 text-label-xl font-bold text-on-surface">Riwayat Transaksi & Pembayaran</h3>
           <TransactionHistory customerId={customer.id} />
         </div>
 

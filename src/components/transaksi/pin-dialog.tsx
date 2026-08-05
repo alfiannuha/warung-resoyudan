@@ -44,7 +44,7 @@ export default function PinDialog({ open, onOpenChange, onSuccess }: Props) {
         onOpenChange(o);
       }}
     >
-      <DialogContent className="bg-white rounded-xl max-w-[320px]">
+      <DialogContent className="max-w-[320px]">
         <DialogHeader className="text-center">
           <DialogTitle className="text-headline-md font-bold">
             Masukkan PIN Keamanan
@@ -66,30 +66,30 @@ export default function PinDialog({ open, onOpenChange, onSuccess }: Props) {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleVerify();
             }}
-            className={`w-full h-14 text-center text-2xl tracking-[0.5em] font-bold border rounded-xl outline-none transition-all ${
+            className={`h-14 w-full rounded-md border text-center text-2xl font-bold tracking-[0.5em] outline-none transition-all ${
               error
-                ? "border-danger-alert focus:border-danger-alert focus:ring-2 focus:ring-danger-alert/20"
-                : "border-border-standard focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+                ? "border-danger focus:border-danger focus:ring-4 focus:ring-danger/15"
+                : "border-border-standard focus:border-secondary focus:ring-4 focus:ring-secondary/15"
             }`}
             placeholder="••••"
             maxLength={4}
           />
           {error && (
-            <p className="text-danger-alert text-sm text-center font-medium">
+            <p className="text-center text-body-sm font-medium text-danger">
               PIN salah. Silakan coba lagi.
             </p>
           )}
           <div className="flex gap-3 pt-2">
             <button
               onClick={() => onOpenChange(false)}
-              className="flex-1 h-12 border border-border-standard rounded-xl font-bold text-on-surface-variant active:bg-surface-container transition-colors"
+              className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
             >
               Batal
             </button>
             <button
               onClick={handleVerify}
               disabled={pin.length < 4}
-              className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-[0.98] transition-transform disabled:opacity-50"
+              className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
             >
               Verifikasi
             </button>

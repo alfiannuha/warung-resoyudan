@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Plus } from "lucide-react";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
 import { lookupBarcode } from "@/lib/barcode-lookup";
@@ -11,9 +12,16 @@ import ProductForm from "@/components/produk/product-form";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import ScannerDialog from "@/components/shared/scanner-dialog";
 import { useToast } from "@/components/shared/toast-provider";
+import PageHeader from "@/components/shared/page-header";
+import SearchInput from "@/components/shared/search-input";
+import KpiCard from "@/components/shared/kpi-card";
+import EmptyState from "@/components/shared/empty-state";
+
+type Filter = "semua" | "stok-tipis" | "favorit";
 
 export default function ProdukPage() {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("semua");
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -36,19 +44,22 @@ export default function ProdukPage() {
   );
   const { toast } = useToast();
 
-  const allActive = products.filter((p) => p.isActive);
+  const allActive = useMemo(() => products.filter((p) => p.isActive), [products]);
   const lowStockCount = allActive.filter((p) => p.stock <= p.minStock).length;
   const totalStockValue = allActive.reduce((s, p) => s + p.buyPrice * p.stock, 0);
 
-  const filtered = useMemo(
-    () =>
-      search.trim()
-        ? allActive.filter((p) =>
-            p.name.toLowerCase().includes(search.toLowerCase())
-          )
-        : allActive,
-    [allActive, search]
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allActive.filter((p) => {
+      if (filter === "stok-tipis" && p.stock > p.minStock) return false;
+      if (filter === "favorit" && !p.is_favorite) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.barcode?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [allActive, search, filter]);
 
   const handleEdit = (id: string) => {
     setEditId(id);
@@ -127,178 +138,185 @@ export default function ProdukPage() {
     setFormOpen(true);
   };
 
+  const filterChips: { id: Filter; label: string }[] = [
+    { id: "semua", label: "Semua" },
+    { id: "stok-tipis", label: "Stok Menipis" },
+    { id: "favorit", label: "Favorit" },
+  ];
+
   return (
-    <div className="pb-4 space-y-6">
-      {/* Mobile: search */}
-      <div className="relative md:hidden">
-        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-        <input
+    <div className="space-y-6 pb-20 md:pb-6">
+      <PageHeader
+        title="Produk"
+        subtitle={`${allActive.length} produk aktif`}
+        actions={
+          <div className="hidden items-center gap-2 md:flex">
+            <button
+              onClick={handleScanProduct}
+              className="inline-flex h-11 items-center gap-2 rounded-md border border-border-standard bg-card px-4 font-semibold text-on-surface transition-colors hover:bg-surface-container active:scale-[0.98]"
+            >
+              <Icon name="scan_barcode" size={18} />
+              Scan Produk
+            </button>
+            <button
+              onClick={() => { setEditId(null); setFormOpen(true); }}
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-secondary px-5 font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
+            >
+              <Plus className="size-5" />
+              Tambah Produk
+            </button>
+          </div>
+        }
+      />
+
+      {/* Search + filters */}
+      <div className="space-y-3">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-12 pl-10 pr-4 bg-white border border-border-standard rounded-lg focus:border-secondary outline-none text-body-md transition-all"
-          placeholder="Cari nama produk..."
+          onChange={setSearch}
+          placeholder="Cari nama produk atau barcode…"
         />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.id}
+              onClick={() => setFilter(chip.id)}
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-label-md font-medium transition-all active:scale-95 ${
+                filter === chip.id
+                  ? "bg-secondary text-white"
+                  : "border border-border-standard bg-card text-on-surface"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-surface-container-lowest p-5 rounded-xl border border-border-standard">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="inventory_2" size={20} className="text-secondary" />
-            <span className="text-label-md text-on-surface-variant font-medium">Total Produk</span>
-          </div>
-          <span className="text-[28px] font-bold text-primary">{allActive.length}</span>
-          <p className="text-body-md text-success-paid flex items-center gap-1 mt-1">
-            <Icon name="trending_up" size={16} /> {allActive.length} produk
-          </p>
-        </div>
-        <div className="bg-surface-container-lowest p-5 rounded-xl border border-border-standard">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="warning" size={20} className="text-warning-debt" />
-            <span className="text-label-md text-on-surface-variant font-medium">Stok Menipis</span>
-          </div>
-          <span className="text-[28px] font-bold text-primary">{lowStockCount} <span className="text-lg">Item</span></span>
-          <button className="mt-2 text-secondary text-label-md flex items-center gap-1 hover:underline">
-            Lihat Daftar <Icon name="chevron_right" size={16} />
-          </button>
-        </div>
-        <div className="bg-secondary p-5 rounded-xl relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-2 text-on-secondary/80">
-            <Icon name="receipt" size={20} />
-            <span className="text-label-md">Nilai Stok</span>
-          </div>
-          <span className="text-[28px] font-bold text-on-secondary">{formatCurrency(totalStockValue)}</span>
-          <p className="mt-2 text-on-secondary/80 text-label-md">Total nilai inventaris</p>
-          <div className="absolute -right-4 -bottom-4 opacity-20">
-            <Icon name="package" size={120} />
-          </div>
-        </div>
-      </div>
-
-      {/* Tablet: Header with Search + Add */}
-      <div className="hidden md:flex items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-border-standard rounded-full text-body-md focus:border-secondary outline-none transition-all"
-            placeholder="Cari nama produk atau SKU..."
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleScanProduct}
-            className="px-6 h-10 rounded-full border border-border-standard flex items-center gap-2 text-on-surface font-label-md hover:bg-surface-container active:scale-95 transition-all"
-          >
-            <Icon name="scan_barcode" size={20} />
-            Scan Produk
-          </button>
-          <button
-            onClick={() => { setEditId(null); setFormOpen(true); }}
-            className="bg-secondary text-on-secondary px-6 h-10 rounded-full flex items-center gap-2 font-label-md hover:brightness-110 active:scale-95 transition-all"
-          >
-            <Icon name="add" size={20} />
-            Tambah Produk
-          </button>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard
+          label="Total Produk"
+          value={String(allActive.length)}
+          icon="inventory_2"
+          tone="info"
+          footer="Produk aktif"
+        />
+        <KpiCard
+          label="Stok Menipis"
+          value={`${lowStockCount} item`}
+          icon="warning"
+          tone="warning"
+          onClick={() => setFilter(filter === "stok-tipis" ? "semua" : "stok-tipis")}
+          footer="Ketuk untuk melihat daftar"
+        />
+        <KpiCard
+          label="Nilai Stok"
+          value={formatCurrency(totalStockValue)}
+          icon="receipt"
+          tone="default"
+          footer="Total nilai inventaris"
+        />
       </div>
 
       {/* Product Table (tablet) */}
-      <div className="hidden md:block bg-surface-container-lowest rounded-xl border border-border-standard overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-surface-container-low border-b border-border-standard">
+      <div className="hidden overflow-hidden rounded-lg border border-border-standard bg-card shadow-card md:block">
+        <table className="w-full border-collapse text-left">
+          <thead className="border-b border-border-standard bg-surface-container-low">
             <tr>
-              <th className="px-6 py-4 text-label-md text-on-surface-variant">Info Produk</th>
-              <th className="px-6 py-4 text-label-md text-on-surface-variant text-center">Harga Beli</th>
-              <th className="px-6 py-4 text-label-md text-on-surface-variant text-center">Harga Jual</th>
-              <th className="px-6 py-4 text-label-md text-on-surface-variant text-center">Stok</th>
-              <th className="px-6 py-4 text-label-md text-on-surface-variant text-right">Aksi</th>
+              <th className="px-5 py-3 text-label-md text-on-surface-variant">Info Produk</th>
+              <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Beli</th>
+              <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Jual</th>
+              <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Stok</th>
+              <th className="px-5 py-3 text-right text-label-md text-on-surface-variant">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-standard">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-on-surface-variant/50">
-                  <Icon name="inventory_2" size={48} className="mx-auto mb-2" />
-                  <p>Tidak ada produk</p>
+                <td colSpan={5} className="px-6 py-12">
+                  <EmptyState
+                    icon="inventory_2"
+                    title="Tidak ada produk"
+                    description="Coba ubah kata kunci atau filter."
+                  />
                 </td>
               </tr>
             ) : (
               filtered.map((product) => (
-                <tr key={product.id} className="hover:bg-surface-container-lowest/50 transition-colors">
-                  <td className="px-6 py-4">
+                <tr key={product.id} className="transition-colors hover:bg-surface-container-low/60">
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-container-high">
                         {product.image_url ? (
                           <img
                             src={product.image_url}
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            className="h-full w-full object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                           />
                         ) : (
-                          <Icon name="package" size={24} className="text-outline opacity-40" />
+                          <Icon name="package" size={24} className="opacity-40" />
                         )}
                       </div>
                       <div>
-                        <div className="text-body-lg font-bold text-primary">{product.name}</div>
-                        <div className="flex items-center gap-2">
-                          {product.brand && <span className="text-[11px] text-outline">{product.brand}</span>}
-                          <span className="text-label-md text-[12px] uppercase text-on-surface-variant bg-surface-container-high px-1.5 rounded">{product.category}</span>
-                          {product.barcode && <span className="text-[11px] text-outline">• {product.barcode}</span>}
+                        <div className="text-body-lg font-bold text-on-surface">{product.name}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                          {product.brand && <span className="text-caption text-on-surface-variant">{product.brand}</span>}
+                          <span className="rounded bg-surface-container-high px-1.5 py-0.5 text-caption uppercase text-on-surface-variant">{product.category}</span>
+                          {product.barcode && <span className="text-caption text-on-surface-variant">• {product.barcode}</span>}
                           <StockBadge stock={product.stock} minStock={product.minStock} />
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-center font-numeric-display text-on-surface-variant">{formatCurrency(product.buyPrice)}</td>
-                  <td className="px-6 py-4 text-center font-numeric-display text-primary">{formatCurrency(product.sellPrice)}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`font-numeric-display ${product.stock <= product.minStock ? "text-danger-alert" : "text-primary"}`}>
-                      {product.stock} <span className="text-[14px] text-on-surface-variant font-normal">pcs</span>
+                  <td className="px-5 py-4 text-center font-semibold text-on-surface-variant">{formatCurrency(product.buyPrice)}</td>
+                  <td className="px-5 py-4 text-center font-bold text-on-surface">{formatCurrency(product.sellPrice)}</td>
+                  <td className="px-5 py-4 text-center">
+                    <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
+                      {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={async () => {
                           const r = await toggleFavorite(product.id);
                           if (!r.success) toast(r.message!, "error");
                         }}
-                        className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all ${
+                        className={`flex size-11 items-center justify-center rounded-md border border-border-standard bg-card transition-all active:scale-95 ${
                           product.is_favorite
-                            ? "text-warning-debt bg-warning-debt/10 border-warning-debt/30"
-                            : "text-outline hover:text-warning-debt"
+                            ? "text-warning border-warning/30 bg-warning/10"
+                            : "text-on-surface-variant hover:bg-surface-container"
                         }`}
                         title={product.is_favorite ? "Hapus dari favorit" : "Tandai favorit"}
+                        aria-label="Favorit"
                       >
-                        <Icon
-                          name="star"
-                          size={16}
-                          fill={product.is_favorite ? "currentColor" : undefined}
-                        />
+                        <Icon name="star" size={18} fill={product.is_favorite ? "currentColor" : undefined} />
                       </button>
                       <button
                         onClick={() => handleEdit(product.id)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-secondary"
+                        className="flex size-11 items-center justify-center rounded-md border border-border-standard bg-card text-secondary transition-all active:scale-95"
                         title="Edit"
+                        aria-label="Edit"
                       >
-                        <Icon name="edit" size={16} />
+                        <Icon name="edit" size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-danger-alert"
+                        className="flex size-11 items-center justify-center rounded-md border border-border-standard bg-card text-danger transition-all active:scale-95"
                         title="Hapus"
+                        aria-label="Hapus"
                       >
-                        <Icon name="delete" size={16} />
+                        <Icon name="delete" size={18} />
                       </button>
                       <button
                         onClick={() => quickAddStock(product.id, 1)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-standard hover:bg-surface-container-high active:scale-95 transition-all text-secondary"
-                        title="Tambah stok"
+                        className="flex size-11 items-center justify-center rounded-md bg-secondary text-white transition-all active:scale-95"
+                        title="Tambah stok +1"
+                        aria-label="Tambah stok"
                       >
-                        <Icon name="add" size={16} />
+                        <Plus className="size-5" />
                       </button>
                     </div>
                   </td>
@@ -310,68 +328,65 @@ export default function ProdukPage() {
       </div>
 
       {/* Mobile: product rows */}
-      <div className="md:hidden space-y-3">
+      <div className="space-y-3 md:hidden">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-on-surface-variant/50">
-            <Icon name="inventory_2" size={48} className="block mb-2 mx-auto" />
-            <p>Tidak ada produk</p>
-          </div>
+          <EmptyState
+            icon="inventory_2"
+            title="Tidak ada produk"
+            description="Coba ubah kata kunci atau filter."
+          />
         ) : (
           filtered.map((product) => (
-            <div key={product.id} className="bg-white border border-border-standard rounded-xl p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+            <div key={product.id} className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+              <div className="mb-2 flex items-start justify-between">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-container-high">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     ) : (
-                      <Icon name="package" size={20} className="text-outline opacity-40" />
+                      <Icon name="package" size={20} className="opacity-40" />
                     )}
                   </div>
-                  <div>
-                    <span className="text-label-xl font-bold block truncate">{product.name}</span>
-                    {product.brand && <span className="text-[11px] text-outline">{product.brand}</span>}
-                    <span className="block text-[12px] text-outline">{product.category}</span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-label-xl font-bold text-on-surface">{product.name}</span>
+                    {product.brand && <span className="text-caption text-on-surface-variant">{product.brand}</span>}
+                    <span className="block text-caption text-on-surface-variant">{product.category}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 ml-2">
+                <div className="ml-2 flex shrink-0 items-center gap-1">
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
                       const r = await toggleFavorite(product.id);
                       if (!r.success) toast(r.message!, "error");
                     }}
-                    className={`w-8 h-8 flex items-center justify-center ${
-                      product.is_favorite ? "text-warning-debt" : "text-outline"
-                    }`}
+                    className={`flex size-11 items-center justify-center ${product.is_favorite ? "text-warning" : "text-on-surface-variant"}`}
+                    aria-label="Favorit"
                   >
-                    <Icon
-                      name="star"
-                      size={18}
-                      fill={product.is_favorite ? "currentColor" : undefined}
-                    />
+                    <Icon name="star" size={20} fill={product.is_favorite ? "currentColor" : undefined} />
                   </button>
                   <StockBadge stock={product.stock} minStock={product.minStock} />
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpenId(menuOpenId === product.id ? null : product.id)}
-                      className="w-8 h-8 flex items-center justify-center"
+                      className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container"
+                      aria-label="Aksi"
                     >
-                      <Icon name="more_vert" size={16} className="text-outline" />
+                      <Icon name="more_vert" size={18} className="text-on-surface-variant" />
                     </button>
                     {menuOpenId === product.id && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
-                        <div className="absolute right-0 top-full mt-1 bg-white border border-border-standard rounded-xl shadow-lg z-20 w-32 py-1">
+                        <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-border-standard bg-card py-1 shadow-dialog">
                           <button
                             onClick={() => handleEdit(product.id)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-surface-container flex items-center gap-2"
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-body-sm hover:bg-surface-container"
                           >
                             <Icon name="edit" size={14} /> Edit
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-surface-container flex items-center gap-2 text-danger-alert"
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-body-sm text-danger hover:bg-danger/5"
                           >
                             <Icon name="delete" size={14} /> Hapus
                           </button>
@@ -381,26 +396,27 @@ export default function ProdukPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center py-2 border-y border-border-standard/50">
+              <div className="flex items-center justify-between border-y border-border-standard/60 py-2">
                 <div>
-                  <span className="text-[12px] text-outline">Beli</span>
-                  <span className="block font-bold text-on-surface-variant">{formatCurrency(product.buyPrice)}</span>
+                  <span className="text-caption text-on-surface-variant">Beli</span>
+                  <span className="block font-semibold text-on-surface-variant">{formatCurrency(product.buyPrice)}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[12px] text-outline">Jual</span>
+                  <span className="text-caption text-on-surface-variant">Jual</span>
                   <span className="block font-bold text-secondary">{formatCurrency(product.sellPrice)}</span>
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className={`font-numeric-display font-bold ${product.stock <= product.minStock ? "text-danger-alert" : "text-primary"}`}>
-                  {product.stock} <span className="text-[14px] text-outline font-normal">pcs</span>
+              <div className="flex items-center justify-between pt-2">
+                <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
+                  {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => quickAddStock(product.id, 1)}
-                    className="touch-target w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center active:opacity-80 transition-opacity"
+                    className="flex size-11 items-center justify-center rounded-md bg-primary text-white transition-opacity active:opacity-80"
+                    aria-label="Tambah stok"
                   >
-                    <Icon name="add" />
+                    <Plus className="size-5" />
                   </button>
                 </div>
               </div>
@@ -410,22 +426,21 @@ export default function ProdukPage() {
       </div>
 
       {/* Mobile: FAB Speed Dial */}
-      <div className="md:hidden fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">
-        {/* Speed dial options */}
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3 md:hidden">
         {speedDialOpen && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setSpeedDialOpen(false)} />
             <div className="relative z-30 flex flex-col items-end gap-3">
               <button
                 onClick={handleScanProduct}
-                className="flex items-center gap-2 bg-white border border-border-standard shadow-lg rounded-xl px-4 py-3 text-body-md font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-2 rounded-md border border-border-standard bg-card px-4 py-3 text-body-md font-semibold shadow-dialog transition-transform active:scale-95"
               >
                 <Icon name="scan_barcode" size={20} className="text-secondary" />
                 Scan Produk
               </button>
               <button
                 onClick={handleManualAdd}
-                className="flex items-center gap-2 bg-white border border-border-standard shadow-lg rounded-xl px-4 py-3 text-body-md font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-2 rounded-md border border-border-standard bg-card px-4 py-3 text-body-md font-semibold shadow-dialog transition-transform active:scale-95"
               >
                 <Icon name="edit" size={20} className="text-secondary" />
                 Tambah Manual
@@ -434,15 +449,14 @@ export default function ProdukPage() {
           </>
         )}
 
-        {/* FAB button */}
         <button
           onClick={() => setSpeedDialOpen(!speedDialOpen)}
-          className={`relative z-30 w-14 h-14 bg-secondary text-on-secondary rounded-2xl shadow-xl flex items-center justify-center active:scale-90 transition-transform ${
+          className={`relative z-30 flex size-14 items-center justify-center rounded-lg bg-secondary text-white shadow-fab transition-transform active:scale-90 ${
             speedDialOpen ? "rotate-45" : ""
           }`}
           aria-label="Tambah produk"
         >
-          <Icon name="add" size={32} />
+          <Plus className="size-7" />
         </button>
       </div>
 

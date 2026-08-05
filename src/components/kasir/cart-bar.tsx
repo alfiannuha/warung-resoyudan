@@ -17,10 +17,13 @@ export default function CartBar({ onOpen }: Props) {
   const empty = items.length === 0;
 
   return (
-    <div className={`md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border-standard shadow-lg ${empty ? "invisible" : ""}`} data-cart-bar>
+    <div
+      className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border-standard bg-card shadow-dialog md:hidden ${empty ? "invisible" : ""}`}
+      data-cart-bar
+    >
       <button
         onClick={onOpen}
-        className="w-full flex items-center justify-between px-gutter py-3 active:bg-surface-container transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 transition-colors active:bg-surface-container"
       >
         <div className="flex items-center gap-3">
           <div className="relative" data-cart-icon>
@@ -29,18 +32,18 @@ export default function CartBar({ onOpen }: Props) {
               size={24}
               className={`text-secondary ${lastAddedItemId ? "animate-cart-bounce" : ""}`}
             />
-            <span className={`absolute -top-2 -right-2 bg-danger-alert text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center transition-transform ${
-              lastAddedItemId ? "animate-badge-pulse" : ""
-            }`}>
+            <span
+              className={`absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white transition-transform ${
+                lastAddedItemId ? "animate-badge-pulse" : ""
+              }`}
+            >
               {totalItems > 99 ? "99+" : totalItems}
             </span>
           </div>
-          <span className="text-body-md text-on-surface-variant">
-            {totalItems} item
-          </span>
+          <span className="text-body-md text-on-surface-variant">{totalItems} item</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-headline-md font-extrabold text-secondary">
+          <span className="text-headline-md font-bold text-secondary">
             {formatCurrency(totalAmount)}
           </span>
           <Icon name="chevron_right" size={20} className="text-outline" />

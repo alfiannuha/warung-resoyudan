@@ -5,6 +5,7 @@ import { useUIStore } from "@/stores/use-ui-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { PRODUCT_CATEGORIES } from "@/types";
 import { Icon } from "@/lib/icon-map";
+import { Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import TodayTransactions from "./today-transactions";
 import DraftDialog from "./draft-dialog";
@@ -25,30 +26,39 @@ export default function KasirHeader() {
   const setSelectedCategory = useProductStore((s) => s.setSelectedCategory);
 
   return (
-    <header className="bg-surface border-b border-border-standard">
-      {/* Top row: hamburger + title (mobile only) + history button */}
-      <div className="flex items-center gap-3 px-container-padding h-touch-target-min">
+    <header className="border-b border-border-standard bg-surface">
+      {/* Single row: hamburger + search + actions */}
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           onClick={toggleSideNav}
-          className="text-primary touch-target active:scale-95 transition-transform flex items-center justify-center"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-on-surface transition-transform active:scale-95"
           aria-label="Buka menu navigasi"
         >
-          <Icon name="menu" />
+          <Icon name="menu" size={22} />
         </button>
-        <h1 className="text-headline-md-mobile font-bold text-on-surface md:hidden">
-          Warung Resoyudan
-        </h1>
-        <div className="ml-auto flex items-center gap-1">
+
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-on-surface-variant" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-11 w-full rounded-md border border-border-standard bg-card pl-11 pr-4 text-base text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50 focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+            placeholder="Cari produk…"
+            type="text"
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => setHistoryOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-secondary hover:bg-surface-container active:scale-95 transition-all"
+            className="flex size-11 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container"
             aria-label="Riwayat Hari Ini"
           >
             <Icon name="history_edu" size={20} />
           </button>
           <button
             onClick={() => setDraftOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-secondary hover:bg-surface-container active:scale-95 transition-all"
+            className="flex size-11 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container"
             aria-label="Draft Transaksi"
           >
             <Icon name="shopping_bag" size={20} />
@@ -56,32 +66,15 @@ export default function KasirHeader() {
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="px-container-padding pb-3">
-        <div className="relative group">
-          <Icon
-            name="search"
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-secondary pointer-events-none"
-          />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-[52px] pl-12 pr-4 bg-surface-container border border-border-standard rounded-xl focus:ring-0 focus:border-secondary text-body-md outline-none transition-all placeholder:text-outline"
-            placeholder="Cari produk atau scan barcode..."
-            type="text"
-          />
-        </div>
-      </div>
-
       {/* Category chips */}
-      <div className="px-container-padding pb-3 overflow-x-auto hide-scrollbar">
+      <div className="hide-scrollbar overflow-x-auto px-3 pb-2">
         <div className="flex gap-2">
           <button
             onClick={() => setSelectedCategory("Semua")}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-label-md font-label-md transition-all active:scale-95 ${
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-label-md font-medium transition-all active:scale-95 ${
               selectedCategory === "Semua"
-                ? "bg-secondary text-on-secondary"
-                : "bg-surface-container-high text-on-surface border border-border-standard"
+                ? "bg-secondary text-white"
+                : "border border-border-standard bg-card text-on-surface"
             }`}
           >
             Semua
@@ -92,10 +85,10 @@ export default function KasirHeader() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-label-md font-label-md transition-all active:scale-95 ${
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-label-md font-medium transition-all active:scale-95 ${
                   isActive
-                    ? "bg-secondary text-on-secondary"
-                    : "bg-surface-container-high text-on-surface border border-border-standard"
+                    ? "bg-secondary text-white"
+                    : "border border-border-standard bg-card text-on-surface"
                 }`}
               >
                 {cat}
@@ -107,7 +100,7 @@ export default function KasirHeader() {
 
       {/* Riwayat Hari Ini Dialog */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="bg-white rounded-xl max-w-[480px] max-h-[85dvh] overflow-y-auto">
+        <DialogContent className="max-h-[85dvh] max-w-[480px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-headline-md font-bold">Riwayat Hari Ini</DialogTitle>
           </DialogHeader>

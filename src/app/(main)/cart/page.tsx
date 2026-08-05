@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import CartItemRow from "@/components/kasir/cart-item";
 import PaymentMethod from "@/components/kasir/payment-method";
 import CustomerSelect from "@/components/kasir/customer-select";
@@ -8,294 +9,58 @@ import CashPaymentDialog from "@/components/kasir/cash-payment-dialog";
 import ReceiptSuccessDialog from "@/components/kasir/receipt-success-dialog";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import EmptyState from "@/components/shared/empty-state";
-import { useToast } from "@/components/shared/toast-provider";
+import { useCheckout } from "@/hooks/use-checkout";
+import { useCartStore } from "@/stores/use-cart-store";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency } from "@/lib/formatters";
-import { generateReceiptNumber } from "@/lib/receipt-counter";
-import { buildReceiptText } from "@/utils/receipt";
-import { sendWhatsAppReceipt } from "@/utils/whatsapp";
-import { requestPrinter, reconnectPrinter, printReceipt } from "@/utils/bluetooth-printer";
-import { usePrinterStore } from "@/stores/use-printer-store";
-import { useState } from "react";
-import { useCartStore } from "@/stores/use-cart-store";
-import { useProductStore } from "@/stores/use-product-store";
-import { useTransactionStore } from "@/stores/use-transaction-store";
-import { useCustomerStore } from "@/stores/use-customer-store";
-import { useRouter } from "next/navigation";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, paymentMethod, selectedCustomerId, clearCart } = useCartStore();
-  const products = useProductStore((s) => s.products);
-  const reduceStock = useProductStore((s) => s.reduceStock);
-  const addTransaction = useTransactionStore((s) => s.addTransaction);
-  const updateTransactionStatus = useTransactionStore((s) => s.updateTransactionStatus);
-  const updateDebt = useCustomerStore((s) => s.updateDebt);
-  const { toast } = useToast();
-  const { paperWidth, savedDeviceId } = usePrinterStore();
-  const [showQris, setShowQris] = useState(false);
-  const [qrisTransactionId, setQrisTransactionId] = useState<string | null>(null);
-  const [confirmCheckout, setConfirmCheckout] = useState(false);
-  const [checkoutError, setCheckoutError] = useState("");
-  const [showCashPayment, setShowCashPayment] = useState(false);
-  const [showReceiptSuccess, setShowReceiptSuccess] = useState(false);
-  const [receiptNumber, setReceiptNumber] = useState("");
-  const [amountPaid, setAmountPaid] = useState(0);
-  const [change, setChange] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
-  const totalProfit = items.reduce((sum, i) => sum + i.profit, 0);
+  const c = useCheckout({ onAfterDone: () => router.push("/") });
+  const clearCart = useCartStore((s) => s.clearCart);
 
-  const getSelectedCustomer = () => {
-    if (!selectedCustomerId) return undefined;
-    return useCustomerStore.getState().customers.find((c) => c.id === selectedCustomerId);
-  };
-
-  const customerPhone = getSelectedCustomer()?.phone;
-
-  const handleCheckoutStart = () => {
-    if (items.length === 0) return;
-    if (paymentMethod === "kasbon" && !selectedCustomerId) {
-      setCheckoutError("Silakan pilih pelanggan untuk transaksi kasbon.");
-      setConfirmCheckout(true);
-      return;
-    }
-    for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product || product.stock < item.quantity) {
-        setCheckoutError(`Stok ${item.name} tidak mencukupi.`);
-        setConfirmCheckout(true);
-        return;
-      }
-    }
-    setCheckoutError("");
-    setConfirmCheckout(true);
-  };
-
-  const handleConfirmTransaction = async () => {
-    setConfirmCheckout(false);
-    if (checkoutError) return;
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      const rn = await generateReceiptNumber();
-      setReceiptNumber(rn);
-      setAmountPaid(0);
-      setChange(0);
-
-      if (paymentMethod === "cash") {
-        setShowCashPayment(true);
-        return;
-      }
-
-      if (paymentMethod === "qris") {
-        // QRIS: save as unpaid (debt). Stock is reduced only when the
-        // cashier confirms the payment has been received.
-        const txnId = await addTransaction({
-          date: new Date().toISOString(),
-          items: items.map((i) => ({ ...i })),
-          totalAmount,
-          totalProfit,
-          paymentMethod,
-          status: "debt",
-          customerId: selectedCustomerId,
-          receiptNumber: rn,
-          amountPaid: 0,
-          change: 0,
-        });
-        setQrisTransactionId(txnId);
-        setShowQris(true);
-        return;
-      }
-
-      for (const item of items) {
-        const ok = await reduceStock(item.productId, item.quantity);
-        if (!ok) {
-          toast(`Stok ${item.name} tidak mencukupi.`, "error");
-          return;
-        }
-      }
-
-      await addTransaction({
-        date: new Date().toISOString(),
-        items: items.map((i) => ({ ...i })),
-        totalAmount,
-        totalProfit,
-        paymentMethod,
-        status: paymentMethod === "kasbon" ? "debt" : "paid",
-        customerId: selectedCustomerId,
-        receiptNumber: rn,
-        amountPaid: 0,
-        change: 0,
-      });
-
-      if (paymentMethod === "kasbon" && selectedCustomerId) {
-        await updateDebt(selectedCustomerId, totalAmount);
-      }
-
-      toast("Transaksi berhasil disimpan!");
-      setShowReceiptSuccess(true);
-    } catch {
-      toast("Gagal menyimpan transaksi.", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCashPaymentConfirm = async (paid: number) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      setShowCashPayment(false);
-      const chg = paid - totalAmount;
-      setAmountPaid(paid);
-      setChange(chg);
-
-      for (const item of items) {
-        const ok = await reduceStock(item.productId, item.quantity);
-        if (!ok) {
-          toast(`Stok ${item.name} tidak mencukupi.`, "error");
-          return;
-        }
-      }
-
-      await addTransaction({
-        date: new Date().toISOString(),
-        items: items.map((i) => ({ ...i })),
-        totalAmount,
-        totalProfit,
-        paymentMethod: "cash",
-        status: "paid",
-        customerId: selectedCustomerId,
-        receiptNumber,
-        amountPaid: paid,
-        change: chg,
-      });
-
-      toast("Transaksi berhasil disimpan!");
-      setShowReceiptSuccess(true);
-    } catch {
-      toast("Gagal menyimpan transaksi.", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleQrisConfirm = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      // Stock is reduced inside updateTransactionStatus (qris debt → paid).
-      if (!qrisTransactionId) return;
-      await updateTransactionStatus(qrisTransactionId, "paid");
-      setShowQris(false);
-      setShowReceiptSuccess(true);
-    } catch {
-      toast("Gagal mengonfirmasi pembayaran.", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleQrisClose = () => {
-    setShowQris(false);
-    clearCart();
-    setQrisTransactionId(null);
-    router.push("/");
-    toast("Transaksi QRIS disimpan sebagai Belum Dibayar.", "info");
-  };
-
-  const handleReceiptDone = () => {
-    clearCart();
-    setShowReceiptSuccess(false);
-    router.push("/");
-  };
-
-  const handlePrint = async () => {
-    try {
-      let device = savedDeviceId ? await reconnectPrinter(savedDeviceId) : null;
-      if (!device) {
-        device = await requestPrinter();
-      }
-
-      const customer = getSelectedCustomer();
-      const receiptText = buildReceiptText({
-        items,
-        totalAmount,
-        amountPaid,
-        change,
-        paymentMethod,
-        receiptNumber,
-        date: new Date().toISOString(),
-        customerName: customer?.name,
-        paperWidth,
-      });
-
-      await printReceipt(device, receiptText, paperWidth);
-      toast("Nota berhasil dicetak.", "success");
-    } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Gagal mencetak nota.",
-        "error",
-      );
-    }
-  };
-
-  const handleWhatsApp = () => {
-    if (!customerPhone) {
-      toast("Nomor WhatsApp pelanggan belum tersedia.", "error");
-      return;
-    }
-    const customer = getSelectedCustomer();
-    sendWhatsAppReceipt(customerPhone, {
-      items,
-      totalAmount,
-      amountPaid,
-      change,
-      paymentMethod,
-      receiptNumber,
-      date: new Date().toISOString(),
-      customerName: customer?.name,
-      paperWidth,
-    });
-  };
-
-  if (items.length === 0) {
-    return <EmptyState icon="shopping_cart" message="Keranjang masih kosong" />;
+  if (c.items.length === 0) {
+    return (
+      <div className="pt-10">
+        <EmptyState
+          icon="shopping_cart"
+          title="Keranjang kosong"
+          description="Tidak ada produk di keranjang saat ini."
+          actionLabel="Kembali ke Kasir"
+          onAction={() => router.push("/")}
+        />
+      </div>
+    );
   }
 
-  const checkoutMessage =
-    checkoutError ||
-    (paymentMethod === "qris"
-      ? `Lanjutkan pembayaran QRIS sebesar ${formatCurrency(totalAmount)}?`
-      : paymentMethod === "kasbon"
-      ? `Simpan transaksi kasbon sebesar ${formatCurrency(totalAmount)}?`
-      : `Simpan transaksi tunai sebesar ${formatCurrency(totalAmount)}?`);
-
   return (
-    <div className="mt-4 pb-8 space-y-6">
+    <div className="space-y-5 pb-8">
       {/* Header with back button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-1">
         <button
           onClick={() => router.push("/")}
-          className="touch-target w-10 h-10 flex items-center justify-center rounded-full border border-border-standard active:bg-surface-container transition-colors"
+          className="flex size-12 items-center justify-center rounded-md border border-border-standard bg-card text-on-surface transition-colors active:bg-surface-container"
           aria-label="Kembali"
         >
           <Icon name="chevron_right" size={20} className="rotate-180" />
         </button>
-        <h1 className="text-headline-md font-bold">Keranjang ({totalItems})</h1>
-        <button onClick={clearCart} className="ml-auto text-danger-alert text-label-md font-bold">
+        <h1 className="text-headline-md font-bold text-on-surface">
+          Keranjang ({c.totalItems})
+        </h1>
+        <button
+          onClick={clearCart}
+          className="ml-auto text-label-md font-bold text-danger"
+        >
           Kosongkan
         </button>
       </div>
 
       {/* Items */}
-      <div className="space-y-2">
-        {items.map((item) => (
-          <CartItemRow key={item.productId} item={item} />
+      <div className="space-y-3">
+        {c.items.map((item) => (
+          <div key={item.productId} className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <CartItemRow item={item} />
+          </div>
         ))}
       </div>
 
@@ -304,79 +69,81 @@ export default function CartPage() {
         <PaymentMethod />
         <CustomerSelect />
 
-        <div className="flex items-center justify-between pt-4 border-t border-border-standard">
-          <span className="text-on-surface-variant text-body-md">Total Pembayaran</span>
+        <div className="flex items-center justify-between border-t border-border-standard pt-4">
+          <span className="text-body-md text-on-surface-variant">Total Pembayaran</span>
           <span className="text-headline-md font-extrabold text-secondary">
-            {formatCurrency(totalAmount)}
+            {formatCurrency(c.totalAmount)}
           </span>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("open-draft"))}
-            className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+            className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border-standard bg-card transition-transform active:scale-[0.98]"
             title="Simpan Draft"
+            aria-label="Simpan Draft"
           >
             <Icon name="save" size={20} />
           </button>
           <button
             onClick={() => router.push("/")}
-            className="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-xl border border-border-standard active:scale-[0.98] transition-transform shrink-0"
+            className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border-standard bg-card transition-transform active:scale-[0.98]"
             title="Scan Barcode"
+            aria-label="Scan Barcode"
           >
             <Icon name="scan_barcode" size={20} />
           </button>
           <button
-            onClick={handleCheckoutStart}
-            className="flex-1 h-touch-target-min bg-secondary text-white font-bold text-body-lg rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            onClick={c.handleCheckoutStart}
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-transform active:scale-[0.98]"
           >
-            <Icon name="check_circle" />
-            {paymentMethod === "qris" ? "Bayar QRIS" : "Simpan Transaksi"}
+            <Icon name="check_circle" size={22} />
+            {c.paymentMethod === "qris" ? "Bayar QRIS" : "Simpan Transaksi"}
           </button>
         </div>
       </div>
 
       {/* Cash Payment Dialog */}
       <CashPaymentDialog
-        key={showCashPayment ? "open" : "closed"}
-        open={showCashPayment}
-        totalAmount={totalAmount}
-        onConfirm={handleCashPaymentConfirm}
-        onCancel={() => setShowCashPayment(false)}
+        key={c.showCashPayment ? "open" : "closed"}
+        open={c.showCashPayment}
+        totalAmount={c.totalAmount}
+        onConfirm={c.handleCashPaymentConfirm}
+        onCancel={() => c.setShowCashPayment(false)}
       />
 
       {/* QRIS Dialog */}
       <QrisPaymentDialog
-        open={showQris}
-        amount={totalAmount}
-        onConfirm={handleQrisConfirm}
-        onClose={handleQrisClose}
+        open={c.showQris}
+        amount={c.totalAmount}
+        onConfirm={c.handleQrisConfirm}
+        onClose={c.handleQrisClose}
       />
 
       {/* Receipt Success Dialog */}
       <ReceiptSuccessDialog
-        open={showReceiptSuccess}
-        receiptNumber={receiptNumber}
-        totalAmount={totalAmount}
-        amountPaid={amountPaid}
-        change={change}
-        paymentMethod={paymentMethod}
-        customerPhone={customerPhone}
-        onPrint={handlePrint}
-        onWhatsApp={handleWhatsApp}
-        onDone={handleReceiptDone}
+        open={c.showReceiptSuccess}
+        receiptNumber={c.receiptNumber}
+        totalAmount={c.totalAmount}
+        amountPaid={c.amountPaid}
+        change={c.change}
+        paymentMethod={c.paymentMethod}
+        customerPhone={c.customerPhone}
+        onPrint={c.handlePrint}
+        onWhatsApp={c.handleWhatsApp}
+        onDone={c.handleReceiptDone}
       />
 
       {/* Confirm Dialog */}
       <ConfirmDialog
-        open={confirmCheckout}
-        onOpenChange={setConfirmCheckout}
-        title={checkoutError ? "Perhatian" : "Konfirmasi Transaksi"}
-        description={checkoutMessage}
-        confirmLabel={checkoutError ? "Tutup" : isSubmitting ? "Menyimpan..." : "Simpan"}
-        confirmDisabled={isSubmitting && !checkoutError}
-        variant={checkoutError ? "danger" : "default"}
-        onConfirm={handleConfirmTransaction}
+        open={c.confirmCheckout}
+        onOpenChange={c.setConfirmCheckout}
+        title={c.checkoutError ? "Perhatian" : "Konfirmasi Transaksi"}
+        description={c.checkoutMessage}
+        confirmLabel={c.checkoutError ? "Tutup" : c.isSubmitting ? "Menyimpan..." : "Simpan"}
+        confirmDisabled={c.isSubmitting && !c.checkoutError}
+        variant={c.checkoutError ? "danger" : "default"}
+        onConfirm={c.handleConfirmTransaction}
       />
     </div>
   );

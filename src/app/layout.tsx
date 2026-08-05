@@ -2,6 +2,7 @@ import { Hanken_Grotesk } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "@/components/shared/providers";
+import ThemeScript from "@/themes/ThemeScript";
 
 const hanken = Hanken_Grotesk({
   subsets: ["latin"],
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0F172A",
+  themeColor: "#2563eb",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -75,6 +76,7 @@ export default function RootLayout({
     <html lang="id" className={`h-full antialiased ${hanken.className}`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <ThemeScript />
       </head>
       <body className="min-h-full flex flex-col bg-surface text-on-surface">
         <Providers>

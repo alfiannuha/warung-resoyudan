@@ -19,7 +19,7 @@ export default function QrisFullscreenDialog({ open, onClose }: Props) {
         <p className="text-label-md font-bold">QRIS</p>
         <button
           onClick={onClose}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:scale-90 transition-all"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-card/10 hover:bg-card/20 active:scale-90 transition-all"
           aria-label="Tutup"
         >
           <Icon name="close" size={24} />

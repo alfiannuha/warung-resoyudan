@@ -81,7 +81,7 @@ export default function LineChart({
       <div className="absolute inset-0 grid grid-rows-5 pointer-events-none">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="border-t border-surface-variant relative">
-            <span className="absolute -top-2 left-0 text-[9px] text-outline">
+            <span className="absolute -top-2 left-0 text-caption text-on-surface-variant">
               {maxValue > 0 ? formatValue(maxValue - (maxValue / 4) * i) : "Rp 0"}
             </span>
           </div>
@@ -90,7 +90,7 @@ export default function LineChart({
 
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full">
         {/* Area fill */}
-        <path d={areaPath} fill="rgba(37, 99, 235, 0.08)" stroke="none" />
+        <path d={areaPath} fill="var(--color-chart-2, rgba(37, 99, 235, 0.08))" opacity="0.12" stroke="none" />
         {/* Line */}
         <path
           d={linePath}

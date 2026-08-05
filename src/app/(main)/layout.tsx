@@ -10,7 +10,7 @@ export default function MainLayout({
     <>
       <AppBarWrapper />
       <SideNavDrawer />
-      <main className="pt-[48px] pb-4 px-container-padding mx-auto w-full flex-1 min-h-screen [&:has(.kasir-layout)]:pt-0 [&:has(.kasir-layout)]:px-0">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-6 pt-[52px] sm:px-6 min-h-screen [&:has(.kasir-layout)]:max-w-none [&:has(.kasir-layout)]:pt-0 [&:has(.kasir-layout)]:px-0 [&:has(.kasir-layout)]:pb-0">
         {children}
       </main>
     </>

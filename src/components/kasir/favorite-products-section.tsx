@@ -73,39 +73,28 @@ export default function FavoriteProductsSection() {
   }, [favorites, topProducts, allProducts]);
 
   if (items.length === 0) {
-    return (
-      <div className="px-container-padding py-6">
-        <div className="text-center py-10 text-on-surface-variant/50 bg-surface-container rounded-xl">
-          <Icon name="star_border" size={40} className="block mb-2 mx-auto" />
-          <p className="text-body-md">Belum ada produk favorit.</p>
-          <p className="text-label-md mt-1">
-            Tandai produk favorit dari menu Produk.
-          </p>
-        </div>
-        <hr className="mt-6 border-border-standard" />
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="px-container-padding py-4">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">🔥</span>
-        <h2 className="text-label-xl font-bold text-on-surface">
-          Produk Favorit
-        </h2>
+    <div className="px-4 py-4 sm:px-6">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="flex size-8 items-center justify-center rounded-md bg-warning/10 text-warning">
+          <Icon name="star" size={16} fill="currentColor" />
+        </span>
+        <h2 className="text-label-xl font-bold text-on-surface">Produk Favorit</h2>
         {bestSellers.length > 0 && (
-          <span className="text-label-md text-outline font-normal">
+          <span className="text-caption font-normal text-on-surface-variant">
             {favorites.length} favorit · {bestSellers.length} terlaris
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
         {items.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
-      <hr className="mt-6 border-border-standard" />
+      <div className="mt-6 border-t border-border-standard" />
     </div>
   );
 }

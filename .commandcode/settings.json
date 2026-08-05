@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Shell(pnpm:*)",
-      "Shell(grep:*)"
+      "Shell(grep:*)",
+      "Shell(rm:*)",
+      "Shell(git:*)",
+      "Shell(ls node_modules/@base-ui/react/ 2>/dev/null; find node_modules/@base-ui/react -name \"*.js\" -path \"*tab*\" 2>/dev/null | head -5)",
+      "Shell(python3 -c import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('exports',{}), indent=1)[:800]))",
+      "Shell(cd /Users/alfiannuha/Documents/belajar/frontend/warung-resoyudan && grep -rl \"bg-white\" src --include=\"*.tsx\" | xargs sed -i '' 's/bg-white/bg-card/g' && echo \"--- remaining bg-card count ---\" && grep -rn \"bg-card\" src --include=\"*.tsx\" | wc -l)",
+      "Shell(cd /Users/alfiannuha/Documents/belajar/frontend/warung-resoyudan && ls .next/static/chunks/*.css 2>/dev/null | head -3; echo \"---\"; for f in .next/static/chunks/*.css; do echo \"$f: $(wc -c < $f) bytes\"; done 2>/dev/null | head -5)"
     ],
     "deny": [],
     "defaultMode": "default"

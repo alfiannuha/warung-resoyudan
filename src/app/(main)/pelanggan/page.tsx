@@ -10,6 +10,9 @@ import { Icon } from "@/lib/icon-map";
 import TransactionHistory from "@/components/kasbon/transaction-history";
 import PaymentInput from "@/components/kasbon/payment-input";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
+import SearchInput from "@/components/shared/search-input";
+import EmptyState from "@/components/shared/empty-state";
+import StatusBadge from "@/components/shared/status-badge";
 import { useToast } from "@/components/shared/toast-provider";
 import {
   Dialog,
@@ -131,24 +134,20 @@ export default function PelangganPage() {
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-surface border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md transition-all"
-            placeholder="Cari nama atau nomor..."
-            type="text"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nama atau nomor…"
+        />
 
         {/* Customer List */}
         <div className="flex flex-col gap-3 pb-4">
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-on-surface-variant/50">
-              <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
-              <p>{search ? "Tidak ditemukan" : "Belum ada pelanggan"}</p>
-            </div>
+            <EmptyState
+              icon="person_search"
+              title={search ? "Tidak ditemukan" : "Belum ada pelanggan"}
+              description={search ? "Coba kata kunci lain." : "Tambahkan pelanggan untuk mulai mencatat kasbon."}
+            />
           ) : (
             filtered.map((customer) => {
               const isPaid = customer.currentDebt === 0;
@@ -156,30 +155,25 @@ export default function PelangganPage() {
                 <div
                   key={customer.id}
                   onClick={() => handleOpenDetail(customer)}
-                  className={`bg-surface border border-border-standard p-4 rounded-xl flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer ${
-                    !isPaid ? "border-l-4 border-l-danger-alert" : ""
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border border-border-standard bg-card p-4 shadow-card transition-all active:scale-[0.99] ${
+                    !isPaid ? "border-l-4 border-l-warning" : ""
                   }`}
                 >
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <h3 className="text-body-lg font-bold truncate">{customer.name}</h3>
-                    <p className="text-xs text-outline truncate">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <h3 className="truncate text-body-md font-bold text-on-surface">{customer.name}</h3>
+                    <p className="truncate text-caption text-on-surface-variant">
                       {customer.phone || "—"}
                     </p>
                   </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className={`text-numeric-display font-bold ${isPaid ? "text-on-surface-variant" : "text-warning-debt"}`}>
+                  <div className="ml-3 shrink-0 text-right">
+                    <p className={`font-bold ${isPaid ? "text-on-surface-variant" : "text-warning"}`}>
                       {formatCurrency(customer.currentDebt)}
                     </p>
-                    <div className="flex items-center justify-end gap-2 mt-0.5">
-                      {isPaid ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-success-paid/10 text-success-paid">
-                          Lunas
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-warning-debt/10 text-warning-debt">
-                          Aktif
-                        </span>
-                      )}
+                    <div className="mt-1 flex items-center justify-end gap-2">
+                      <StatusBadge
+                        label={isPaid ? "Lunas" : "Aktif"}
+                        variant={isPaid ? "success" : "warning"}
+                      />
                       <Icon name="chevron_right" size={16} className="text-outline" />
                     </div>
                   </div>
@@ -192,15 +186,15 @@ export default function PelangganPage() {
         {/* FAB */}
         <button
           onClick={openAdd}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
+          className="fixed bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-lg bg-primary text-white shadow-fab transition-transform active:scale-95"
           aria-label="Tambah pelanggan"
         >
-          <Icon name="person_add" size={28} />
+          <Icon name="person_add" size={26} />
         </button>
 
         {/* Mobile: Detail Bottom Sheet */}
         <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-          <SheetContent side="bottom" className="bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto hide-scrollbar">
+          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl bg-card hide-scrollbar">
             {selectedCustomer && (
               <MobileDetailContent
                 customer={selectedCustomer}
@@ -217,35 +211,30 @@ export default function PelangganPage() {
       </div>
 
       {/* ===== TABLET VIEW ===== */}
-      <div className="hidden md:flex w-full min-h-0">
+      <div className="hidden w-full min-h-0 md:flex">
         {/* Left: Customer List */}
-        <aside className="w-[400px] border-r border-border-standard flex flex-col bg-surface-muted min-h-0">
-          <div className="p-4 border-b border-border-standard bg-surface space-y-3">
+        <aside className="flex min-h-0 w-[400px] flex-col border-r border-border-standard bg-surface-muted">
+          <div className="space-y-3 border-b border-border-standard bg-surface p-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-headline-md font-bold">Pelanggan</h1>
+              <h1 className="text-headline-md font-bold text-on-surface">Pelanggan</h1>
               <button
                 onClick={openAdd}
-                className="h-10 px-4 bg-secondary text-on-secondary rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-transform"
+                className="inline-flex h-11 items-center gap-1.5 rounded-md bg-secondary px-4 font-semibold text-white transition-all active:scale-[0.98]"
               >
                 <Icon name="add" size={18} />
                 Tambah
               </button>
             </div>
-            <div className="relative">
-              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-border-standard rounded-xl focus:ring-2 focus:ring-secondary focus:border-secondary outline-none text-body-md transition-all"
-                placeholder="Cari nama atau nomor..."
-                type="text"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari nama atau nomor…"
+            />
           </div>
           <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="text-center py-12 text-on-surface-variant/50">
-                <Icon name="person_search" size={48} className="block mb-2 mx-auto" />
+              <div className="py-12 text-center text-on-surface-variant/60">
+                <Icon name="person_search" size={48} className="mx-auto mb-2 block" />
                 <p>{search ? "Tidak ditemukan" : "Belum ada pelanggan"}</p>
               </div>
             ) : (
@@ -256,25 +245,25 @@ export default function PelangganPage() {
                   <div
                     key={customer.id}
                     onClick={() => setSelectedCustomer(customer)}
-                    className={`p-4 border-b border-border-standard cursor-pointer transition-colors ${
+                    className={`cursor-pointer border-b border-border-standard p-4 transition-colors ${
                       isSelected
-                        ? "bg-white border-l-4 border-l-secondary shadow-sm"
+                        ? "border-l-4 border-l-secondary bg-card shadow-sm"
                         : "hover:bg-surface-container-low"
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-label-xl font-bold truncate">{customer.name}</h3>
+                    <div className="mb-1 flex items-start justify-between">
+                      <h3 className="truncate text-label-xl font-bold text-on-surface">{customer.name}</h3>
                       {!isPaid && (
-                        <span className="ml-2 shrink-0 px-2 py-0.5 bg-warning-debt/10 text-warning-debt text-[10px] font-bold rounded uppercase">
+                        <span className="ml-2 shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-caption font-bold uppercase text-warning">
                           Aktif
                         </span>
                       )}
                     </div>
-                    <div className="flex justify-between items-end">
-                      <p className="text-sm text-on-surface-variant truncate">
+                    <div className="flex items-end justify-between">
+                      <p className="truncate text-body-sm text-on-surface-variant">
                         {customer.phone || "—"}
                       </p>
-                      <p className={`text-numeric-display font-bold shrink-0 ml-3 ${isPaid ? "text-on-surface" : "text-danger-alert"}`}>
+                      <p className={`ml-3 shrink-0 font-bold ${isPaid ? "text-on-surface" : "text-danger"}`}>
                         {formatCurrency(customer.currentDebt)}
                       </p>
                     </div>
@@ -286,9 +275,9 @@ export default function PelangganPage() {
         </aside>
 
         {/* Right: Customer Detail */}
-        <section className="flex-1 flex flex-col bg-white min-h-0">
+        <section className="flex-1 flex flex-col bg-card min-h-0">
           {!selectedCustomer ? (
-            <div className="flex-1 flex items-center justify-center text-on-surface-variant/50">
+            <div className="flex flex-1 items-center justify-center text-on-surface-variant/60">
               <div className="text-center">
                 <Icon name="person_search" size={64} className="mx-auto mb-3" />
                 <p>Pilih pelanggan untuk melihat detail</p>
@@ -306,7 +295,7 @@ export default function PelangganPage() {
 
       {/* ===== ADD / EDIT CUSTOMER DIALOG ===== */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="bg-white rounded-xl max-w-[360px]">
+        <DialogContent className="max-w-[380px]">
           <DialogHeader>
             <DialogTitle className="text-headline-md font-bold">
               {editCustomer ? "Edit Pelanggan" : "Tambah Pelanggan"}
@@ -314,29 +303,29 @@ export default function PelangganPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">
-                Nama Pelanggan <span className="text-danger-alert">*</span>
+              <label className="mb-1 block text-label-md text-on-surface-variant">
+                Nama Pelanggan <span className="text-danger">*</span>
               </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-surface transition-all"
+                className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
                 placeholder="Nama"
                 autoFocus
               />
             </div>
             <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">
-                Nomor WhatsApp <span className="text-outline">(opsional)</span>
+              <label className="mb-1 block text-label-md text-on-surface-variant">
+                Nomor WhatsApp <span className="text-on-surface-variant/60">(opsional)</span>
               </label>
-              <div className="flex border border-border-standard rounded-xl focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/20 overflow-hidden transition-all">
-                <span className="flex items-center px-3 text-body-md font-bold bg-surface-container text-on-surface-variant shrink-0">
+              <div className="flex overflow-hidden rounded-md border border-border-standard bg-card transition-all focus-within:border-secondary focus-within:ring-4 focus-within:ring-secondary/15">
+                <span className="flex shrink-0 items-center bg-surface-container px-3 text-body-md font-bold text-on-surface-variant">
                   +62
                 </span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                  className="flex-1 h-12 px-3 outline-none"
+                  className="h-12 flex-1 px-3 text-base outline-none"
                   placeholder="81x-xxxx-xxxx"
                   inputMode="numeric"
                 />
@@ -345,14 +334,14 @@ export default function PelangganPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setFormOpen(false)}
-                className="flex-1 h-12 border border-border-standard rounded-xl font-bold"
+                className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={saving || !name.trim()}
-                className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
+                className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-95 disabled:opacity-50"
               >
                 {saving ? "Menyimpan..." : "Simpan"}
               </button>
@@ -410,48 +399,52 @@ function MobileDetailContent({
   return (
     <div>
       {/* Handle */}
-      <div className="w-full flex justify-center py-3">
-        <div className="w-10 h-1 bg-outline-variant rounded-full"></div>
+      <div className="flex w-full justify-center py-3">
+        <div className="h-1 w-10 rounded-full bg-outline-variant" />
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 px-gutter">
+      <div className="mb-6 flex items-center justify-between px-5">
         <div className="flex flex-col">
-          <h2 className="text-headline-md font-bold">{customer.name}</h2>
-          <p className={`font-bold text-label-xl ${isPaid ? "text-success-paid" : "text-warning-debt"}`}>
+          <h2 className="text-headline-md font-bold text-on-surface">{customer.name}</h2>
+          <p className={`text-label-xl font-bold ${isPaid ? "text-success" : "text-warning"}`}>
             {formatCurrency(customer.currentDebt)}
           </p>
-          <p className="text-xs text-outline">{customer.phone || "—"}</p>
+          <p className="text-caption text-on-surface-variant">{customer.phone || "—"}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={onEdit}
-            className="p-2 rounded-full hover:bg-surface-container active:scale-90 transition-transform"
+            className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
             aria-label="Edit pelanggan"
           >
             <Icon name="edit" size={20} className="text-secondary" />
           </button>
           <button
             onClick={onDelete}
-            className="p-2 rounded-full hover:bg-surface-container active:scale-90 transition-transform"
+            className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
             aria-label="Hapus pelanggan"
           >
-            <Icon name="delete" size={20} className="text-danger-alert" />
+            <Icon name="delete" size={20} className="text-danger" />
           </button>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container active:scale-90 transition-transform">
-            <Icon name="close" size={24} />
+          <button
+            onClick={onClose}
+            className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
+            aria-label="Tutup"
+          >
+            <Icon name="close" size={22} />
           </button>
         </div>
       </div>
 
       {/* Transaction History */}
-      <div className="mb-8 px-gutter">
+      <div className="mb-8 px-5">
         <TransactionHistory customerId={customer.id} />
       </div>
 
       {/* Payment Input */}
       {customer.currentDebt > 0 && (
-        <div className="px-gutter pb-8">
+        <div className="px-5 pb-8">
           <PaymentInput customerId={customer.id} />
         </div>
       )}
@@ -472,14 +465,14 @@ function TabletDetailContent({
   const isPaid = customer.currentDebt === 0;
   return (
     <>
-      <div className="p-6 border-b border-border-standard bg-surface-bright flex justify-between items-center">
+      <div className="flex items-center justify-between border-b border-border-standard bg-surface-bright p-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-2xl">
+          <div className="flex size-16 items-center justify-center rounded-full bg-secondary/10 text-2xl font-bold text-secondary">
             {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
           </div>
           <div>
-            <h2 className="text-headline-md font-bold">{customer.name}</h2>
-            <p className="text-on-surface-variant flex items-center gap-1 text-sm">
+            <h2 className="text-headline-md font-bold text-on-surface">{customer.name}</h2>
+            <p className="flex items-center gap-1 text-body-sm text-on-surface-variant">
               <Icon name="account_circle" size={14} />
               {customer.phone || "-"}
             </p>
@@ -488,14 +481,14 @@ function TabletDetailContent({
         <div className="flex items-center gap-2">
           <button
             onClick={onEdit}
-            className="h-10 px-4 rounded-xl border border-border-standard font-bold flex items-center gap-1.5 text-secondary active:scale-95 transition-transform"
+            className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border-standard bg-card px-4 font-semibold text-secondary transition-all active:scale-95"
           >
             <Icon name="edit" size={16} />
             Edit
           </button>
           <button
             onClick={onDelete}
-            className="h-10 px-4 rounded-xl border border-danger-alert/30 text-danger-alert font-bold flex items-center gap-1.5 active:scale-95 transition-transform"
+            className="inline-flex h-11 items-center gap-1.5 rounded-md border border-danger/30 bg-card px-4 font-semibold text-danger transition-all active:scale-95"
           >
             <Icon name="delete" size={16} />
             Hapus
@@ -503,28 +496,28 @@ function TabletDetailContent({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Total Hutang</p>
-            <p className="text-xl font-bold text-danger-alert">{formatCurrency(customer.currentDebt)}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Total Hutang</p>
+            <p className="mt-1 text-xl font-bold text-danger">{formatCurrency(customer.currentDebt)}</p>
           </div>
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Status</p>
-            <p className={`text-xl font-bold ${isPaid ? "text-success-paid" : "text-warning-debt"}`}>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Status</p>
+            <p className={`mt-1 text-xl font-bold ${isPaid ? "text-success" : "text-warning"}`}>
               {isPaid ? "Lunas" : "Aktif"}
             </p>
           </div>
-          <div className="p-4 border border-border-standard rounded-xl bg-white">
-            <p className="text-xs font-semibold text-on-surface-variant mb-1">Terakhir Update</p>
-            <p className="text-sm font-bold text-secondary">{getRelativeTime(customer.updatedAt)}</p>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">Terakhir Update</p>
+            <p className="mt-1 text-body-sm font-bold text-secondary">{getRelativeTime(customer.updatedAt)}</p>
           </div>
         </div>
 
         {/* Transaction History */}
         <div>
-          <h3 className="text-label-xl font-bold mb-4">Riwayat Transaksi & Pembayaran</h3>
+          <h3 className="mb-4 text-label-xl font-bold text-on-surface">Riwayat Transaksi & Pembayaran</h3>
           <TransactionHistory customerId={customer.id} />
         </div>
 

@@ -32,7 +32,7 @@ export default function QuickStockDialog({ open, onOpenChange, product }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white rounded-xl max-w-[360px]">
+      <DialogContent className="bg-card rounded-xl max-w-[360px]">
         <DialogHeader>
           <DialogTitle className="text-headline-md font-bold">
             Tambah Stok

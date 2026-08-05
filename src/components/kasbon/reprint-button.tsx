@@ -94,7 +94,7 @@ export default function ReprintButton({ transaction }: Props) {
 
   return (
     <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-[320px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-2xl max-w-[320px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
           <h3 className="text-headline-md font-bold">Cetak Ulang Nota</h3>
           <p className="text-label-md text-on-surface-variant mt-1 font-mono">

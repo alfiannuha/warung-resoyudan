@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { Printer, Database, Palette, ChevronLeft, Moon } from "lucide-react";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { requestPrinter, reconnectPrinter, testPrint } from "@/utils/bluetooth-printer";
 import { useToast } from "@/components/shared/toast-provider";
 import { useSettingsStore, DEFAULT_EDIT_PIN } from "@/stores/use-settings-store";
 import { Icon } from "@/lib/icon-map";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { exportToExcel } from "@/lib/export";
+import { exportAllData } from "@/lib/backup";
 import { useRouter } from "next/navigation";
+import ThemePicker from "@/components/shared/theme-picker";
+
+type Tab = "printer" | "data" | "tampilan";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -21,8 +28,11 @@ export default function SettingsPage() {
   } = usePrinterStore();
   const setEditPin = useSettingsStore((s) => s.setEditPin);
   const { toast } = useToast();
+  const [tab, setTab] = useState<Tab>("printer");
   const [connecting, setConnecting] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [savingPin, setSavingPin] = useState(false);
 
@@ -92,150 +102,263 @@ export default function SettingsPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportToExcel();
+      toast("Data berhasil diexport ke Excel.", "success");
+    } catch {
+      toast("Gagal mengexport data.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleBackup = async () => {
+    if (backingUp) return;
+    setBackingUp(true);
+    try {
+      await exportAllData();
+      toast("Backup berhasil dibuat.", "success");
+    } catch {
+      toast("Gagal membuat backup.", "error");
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
   return (
-    <div className="max-w-[480px] mx-auto pt-4 pb-8 space-y-6">
+    <div className="mx-auto max-w-[560px] space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-1">
         <button
           onClick={() => router.back()}
-          className="touch-target w-10 h-10 flex items-center justify-center rounded-full border border-border-standard active:bg-surface-container transition-colors"
+          className="flex size-12 items-center justify-center rounded-md border border-border-standard bg-card text-on-surface transition-colors active:bg-surface-container"
           aria-label="Kembali"
         >
-          <Icon name="chevron_right" size={20} className="rotate-180" />
+          <ChevronLeft className="size-5" />
         </button>
-        <h1 className="text-headline-md font-bold">Pengaturan Printer</h1>
+        <h1 className="text-headline-md font-bold text-on-surface">Pengaturan</h1>
       </div>
 
-      {/* Printer Name */}
-      <section className="space-y-2">
-        <label className="text-label-md text-on-surface-variant font-bold block">
-          Nama Printer
-        </label>
-        <input
-          value={printerName}
-          onChange={(e) => setPrinterName(e.target.value)}
-          className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none text-body-md"
-          placeholder="XPrinter XP-58"
-        />
-      </section>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+        <TabsList variant="line" className="w-full">
+          <TabsTrigger value="printer" className="h-11 flex-1 gap-2">
+            <Printer className="size-4" />
+            Printer
+          </TabsTrigger>
+          <TabsTrigger value="data" className="h-11 flex-1 gap-2">
+            <Database className="size-4" />
+            Data
+          </TabsTrigger>
+          <TabsTrigger value="tampilan" className="h-11 flex-1 gap-2">
+            <Palette className="size-4" />
+            Tampilan
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Paper Width */}
-      <section className="space-y-2">
-        <label className="text-label-md text-on-surface-variant font-bold block">
-          Lebar Kertas
-        </label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPaperWidth(58)}
-            className={`flex-1 h-12 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform ${
-              paperWidth === 58
-                ? "bg-secondary text-on-secondary"
-                : "border border-border-standard text-on-surface-variant"
-            }`}
-          >
-            <Icon name="receipt" size={18} />
-            58 mm
-          </button>
-          <button
-            onClick={() => setPaperWidth(80)}
-            className={`flex-1 h-12 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform ${
-              paperWidth === 80
-                ? "bg-secondary text-on-secondary"
-                : "border border-border-standard text-on-surface-variant"
-            }`}
-          >
-            <Icon name="receipt" size={18} />
-            80 mm
-          </button>
-        </div>
-      </section>
+        <TabsContent value="printer" className="space-y-6 pt-4">
+          {/* Printer Name */}
+          <section className="space-y-2">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              Nama Printer
+            </label>
+            <input
+              value={printerName}
+              onChange={(e) => setPrinterName(e.target.value)}
+              className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+              placeholder="XPrinter XP-58"
+            />
+          </section>
 
-      {/* PIN Edit Transaksi */}
-      <section className="space-y-2">
-        <label className="text-label-md text-on-surface-variant font-bold block">
-          PIN Edit Transaksi
-        </label>
-        <p className="text-xs text-on-surface-variant">
-          Digunakan untuk mengedit transaksi. Default: {DEFAULT_EDIT_PIN}
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={pinInput}
-            onChange={(e) =>
-              setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))
-            }
-            inputMode="numeric"
-            type="password"
-            className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none text-body-md tracking-[0.5em] text-center font-bold"
-            placeholder="••••"
-            maxLength={4}
-          />
-          <button
-            onClick={handleSavePin}
-            disabled={savingPin || pinInput.length !== 4}
-            className="h-12 px-5 bg-secondary text-on-secondary rounded-xl font-bold flex items-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
-          >
-            <Icon name="lock" size={16} />
-            {savingPin ? "Menyimpan..." : "Simpan"}
-          </button>
-        </div>
-      </section>
-
-      {/* Separator */}
-      <div className="border-t border-border-standard" />
-
-      {/* Bluetooth Device */}
-      <section className="space-y-3">
-        <label className="text-label-md text-on-surface-variant font-bold block">
-          Perangkat Bluetooth
-        </label>
-
-        {/* Status */}
-        <div className="p-4 border border-border-standard rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-success-paid" : "bg-outline"}`} />
-            <div>
-              <p className="text-body-md font-bold">
-                {isConnected ? savedDeviceName || "Printer terdaftar" : "Belum terhubung"}
-              </p>
-              {isConnected && (
-                <p className="text-xs text-on-surface-variant">ID: {savedDeviceId?.slice(0, 18)}...</p>
-              )}
+          {/* Paper Width */}
+          <section className="space-y-2">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              Lebar Kertas
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPaperWidth(58)}
+                className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-all active:scale-[0.98] ${
+                  paperWidth === 58
+                    ? "bg-secondary text-white"
+                    : "border border-border-standard bg-card text-on-surface-variant"
+                }`}
+              >
+                <Icon name="receipt" size={18} />
+                58 mm
+              </button>
+              <button
+                onClick={() => setPaperWidth(80)}
+                className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-all active:scale-[0.98] ${
+                  paperWidth === 80
+                    ? "bg-secondary text-white"
+                    : "border border-border-standard bg-card text-on-surface-variant"
+                }`}
+              >
+                <Icon name="receipt" size={18} />
+                80 mm
+              </button>
             </div>
+          </section>
+
+          {/* PIN Edit Transaksi */}
+          <section className="space-y-2">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              PIN Edit Transaksi
+            </label>
+            <p className="text-caption text-on-surface-variant">
+              Digunakan untuk mengedit transaksi.
+              {!pinInput && (
+                <span> PIN default: {DEFAULT_EDIT_PIN}.</span>
+              )}
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={pinInput}
+                onChange={(e) =>
+                  setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+                inputMode="numeric"
+                type="password"
+                className="h-12 w-32 rounded-md border border-border-standard bg-card text-center text-body-md font-bold tracking-[0.5em] outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+                placeholder="••••"
+                maxLength={4}
+              />
+              <button
+                onClick={handleSavePin}
+                disabled={savingPin || pinInput.length !== 4}
+                className="inline-flex h-12 items-center gap-1.5 rounded-md bg-secondary px-5 font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                <Icon name="lock" size={16} />
+                {savingPin ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </section>
+
+          {/* Separator */}
+          <div className="border-t border-border-standard" />
+
+          {/* Bluetooth Device */}
+          <section className="space-y-3">
+            <label className="block text-label-md font-semibold text-on-surface-variant">
+              Perangkat Bluetooth
+            </label>
+
+            {/* Status */}
+            <div className="flex items-center justify-between rounded-lg border border-border-standard bg-card p-4 shadow-card">
+              <div className="flex items-center gap-3">
+                <div className={`size-3 rounded-full ${isConnected ? "bg-success" : "bg-outline"}`} />
+                <div>
+                  <p className="text-body-md font-bold text-on-surface">
+                    {isConnected ? savedDeviceName || "Printer terdaftar" : "Belum terhubung"}
+                  </p>
+                  {isConnected && (
+                    <p className="text-caption text-on-surface-variant">ID: {savedDeviceId?.slice(0, 18)}...</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              {isConnected ? (
+                <button
+                  onClick={handleDisconnect}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md border border-danger/30 bg-card font-semibold text-danger transition-all active:scale-[0.98]"
+                >
+                  <Icon name="delete" size={20} />
+                  Putuskan Printer
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  <Icon name="bluetooth" size={20} />
+                  {connecting ? "Menghubungkan..." : "Hubungkan Printer"}
+                </button>
+              )}
+
+              <button
+                onClick={handleTestPrint}
+                disabled={!isConnected || testing}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-md border-2 border-secondary bg-card font-semibold text-secondary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Icon name="print" size={20} />
+                {testing ? "Mencetak..." : "Cetak Test"}
+              </button>
+            </div>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="data" className="space-y-4 pt-4">
+          <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+            <h3 className="text-label-xl font-bold text-on-surface">Export Data</h3>
+            <p className="mt-1 text-body-sm text-on-surface-variant">
+              Unduh seluruh data bisnis (produk, transaksi, pelanggan, kasbon, pengeluaran, modal) ke file Excel.
+            </p>
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <Icon name="file_text" size={18} />
+              {exporting ? "Mengexport..." : "Export ke Excel"}
+            </button>
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="space-y-2">
-          {isConnected ? (
+          <div className="rounded-lg border border-border-standard bg-card p-5 shadow-card">
+            <h3 className="text-label-xl font-bold text-on-surface">Backup</h3>
+            <p className="mt-1 text-body-sm text-on-surface-variant">
+              Buat salinan cadangan seluruh data dalam satu file.
+            </p>
             <button
-              onClick={handleDisconnect}
-              className="w-full h-touch-target-min border border-danger-alert text-danger-alert rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              onClick={handleBackup}
+              disabled={backingUp}
+              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              <Icon name="delete" size={20} />
-              Putuskan Printer
+              <Icon name="save" size={18} />
+              {backingUp ? "Membuat backup..." : "Buat Backup"}
             </button>
-          ) : (
-            <button
-              onClick={handleConnect}
-              disabled={connecting}
-              className="w-full h-touch-target-min bg-secondary text-on-secondary rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50"
-            >
-              <Icon name="bluetooth" size={20} />
-              {connecting ? "Menghubungkan..." : "Hubungkan Printer"}
-            </button>
-          )}
+          </div>
+        </TabsContent>
 
-          <button
-            onClick={handleTestPrint}
-            disabled={!isConnected || testing}
-            className="w-full h-touch-target-min border-2 border-secondary text-secondary rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Icon name="print" size={20} />
-            {testing ? "Mencetak..." : "Cetak Test"}
-          </button>
-        </div>
-      </section>
+        <TabsContent value="tampilan" className="space-y-6 pt-4">
+          <section>
+            <h3 className="text-label-xl font-bold text-on-surface">Tema Warna</h3>
+            <p className="mt-1 text-body-sm text-on-surface-variant">
+              Pilih tema yang nyaman untuk penggunaan sehari-hari. Perubahan
+              diterapkan langsung dan tersimpan otomatis.
+            </p>
+            <div className="mt-4">
+              <ThemePicker />
+            </div>
+          </section>
+
+          <section>
+            <h3 className="text-label-xl font-bold text-on-surface">Mode Gelap</h3>
+            <div className="mt-3 flex items-center justify-between rounded-lg border border-border-standard bg-card p-4 shadow-card">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-md bg-muted text-on-surface-variant">
+                  <Moon className="size-5" />
+                </span>
+                <div>
+                  <p className="text-body-sm font-semibold text-on-surface">Mode Gelap</p>
+                  <p className="text-caption text-on-surface-variant">
+                    Mengurangi silau saat digunakan di tempat gelap.
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-muted px-3 py-1 text-caption font-semibold text-on-surface-variant">
+                Segera hadir
+              </span>
+            </div>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

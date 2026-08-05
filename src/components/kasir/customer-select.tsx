@@ -5,6 +5,12 @@ import { useShallow } from "zustand/react/shallow";
 import { useCartStore } from "@/stores/use-cart-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { useToast } from "@/components/shared/toast-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Icon } from "@/lib/icon-map";
 
 export default function CustomerSelect() {
@@ -53,7 +59,7 @@ export default function CustomerSelect() {
         <select
           value={selectedCustomerId || ""}
           onChange={(e) => setCustomer(e.target.value || null)}
-          className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-white transition-all text-body-md"
+          className="flex-1 h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none bg-card transition-all text-body-md"
         >
           <option value="">{paymentMethod === "kasbon" ? "Pilih pelanggan..." : "Tanpa pelanggan"}</option>
           {customers.map((c) => (
@@ -72,56 +78,60 @@ export default function CustomerSelect() {
       </div>
 
       {/* Add Customer Dialog */}
-      {addOpen && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setAddOpen(false)}>
-          <div className="bg-white rounded-xl max-w-[360px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-headline-md font-bold">Pelanggan Baru</h3>
+      <Dialog open={addOpen} onOpenChange={(o) => !o && setAddOpen(false)}>
+        <DialogContent className="max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle className="text-headline-md font-bold">Pelanggan Baru</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">Nama</label>
+              <label className="mb-1 block text-label-md text-on-surface-variant">Nama</label>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
+                className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
                 placeholder="Nama pelanggan"
                 autoFocus
               />
             </div>
             <div>
-              <label className="text-label-md text-on-surface-variant block mb-1">
-                Nomor WhatsApp <span className="text-outline">(opsional)</span>
+              <label className="mb-1 block text-label-md text-on-surface-variant">
+                Nomor WhatsApp <span className="text-on-surface-variant/60">(opsional)</span>
               </label>
-              <div className="flex border border-border-standard rounded-xl focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/20 overflow-hidden transition-all">
-                <span className="flex items-center px-3 text-body-md font-bold bg-surface-container text-on-surface-variant shrink-0">
+              <div className="flex overflow-hidden rounded-md border border-border-standard bg-card transition-all focus-within:border-secondary focus-within:ring-4 focus-within:ring-secondary/15">
+                <span className="flex shrink-0 items-center bg-surface-container px-3 text-body-md font-bold text-on-surface-variant">
                   +62
                 </span>
                 <input
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
-                  className="flex-1 h-12 px-3 outline-none"
+                  className="h-12 flex-1 px-3 text-base outline-none"
                   placeholder="81x-xxxx-xxxx"
                   inputMode="numeric"
                 />
               </div>
-              <p className="text-xs text-outline mt-1">Diperlukan untuk kirim nota via WhatsApp</p>
+              <p className="mt-1 text-caption text-on-surface-variant">
+                Diperlukan untuk kirim nota via WhatsApp
+              </p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => { setAddOpen(false); setNewName(""); setNewPhone(""); }}
-                className="flex-1 h-12 border border-border-standard rounded-xl font-bold"
+                className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
               >
                 Batal
               </button>
               <button
                 onClick={handleAdd}
                 disabled={saving || !newName.trim()}
-                className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
+                className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {saving ? "Menyimpan..." : "Tambah"}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

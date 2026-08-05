@@ -323,7 +323,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
         {cameraError && (
           <div className="absolute inset-0 flex items-center justify-center px-8">
             <div className="text-center max-w-sm">
-              <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #dc2626)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -383,7 +383,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
         <div className="py-6 shrink-0">
           <button
             onClick={handleClose}
-            className="mx-auto block px-6 h-11 bg-white/10 text-white rounded-xl font-bold active:scale-95 transition-transform"
+            className="mx-auto block px-6 h-11 bg-card/10 text-white rounded-xl font-bold active:scale-95 transition-transform"
           >
             Tutup Scanner
           </button>

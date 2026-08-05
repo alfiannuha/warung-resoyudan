@@ -12,7 +12,11 @@ const pageTitles: Record<string, string> = {
   "/pelanggan": "Pelanggan",
   "/pengeluaran": "Pengeluaran",
   "/kasbon": "Kasbon",
+  "/capital": "Modal",
   "/laporan": "Laporan",
+  "/settings": "Pengaturan",
+  "/transaksi": "Transaksi",
+  "/cart": "Keranjang",
 };
 
 export default function TopAppBar() {
@@ -21,24 +25,22 @@ export default function TopAppBar() {
   const title = pageTitles[pathname] || APP_NAME;
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-surface border-b border-border-standard flex items-center justify-between px-gutter h-touch-target-min">
+    <header className="fixed top-0 z-50 flex h-12 w-full items-center justify-between border-b border-border-standard bg-surface/90 px-4 backdrop-blur-md">
       <div className="flex items-center gap-3">
         <button
           onClick={toggleSideNav}
-          className="text-primary touch-target active:scale-95 transition-transform flex items-center justify-center"
+          className="flex size-12 items-center justify-center text-on-surface transition-transform active:scale-95"
           aria-label="Buka menu navigasi"
         >
-          <Icon name="menu" />
+          <Icon name="menu" size={22} />
         </button>
-        <h1 className="text-headline-md-mobile font-bold text-on-surface">
-          {title}
-        </h1>
+        <h1 className="text-headline-md-mobile font-bold text-on-surface">{title}</h1>
       </div>
       <button
-        className="text-primary touch-target active:scale-95 transition-transform flex items-center justify-center"
+        className="flex size-12 items-center justify-center text-on-surface transition-transform active:scale-95"
         aria-label="Profil"
       >
-        <Icon name="account_circle" />
+        <Icon name="account_circle" size={22} />
       </button>
     </header>
   );

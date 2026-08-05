@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { useCartStore } from "@/stores/use-cart-store";
 import { useFlyingBallStore } from "@/stores/use-flying-ball-store";
 import { Icon } from "@/lib/icon-map";
+import StatusBadge from "@/components/shared/status-badge";
 
 export default function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.addToCart);
@@ -42,48 +43,58 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const showImage = product.image_url && !imgError;
 
+  const stockLabel =
+    product.stock === 0
+      ? { text: "Habis", variant: "danger" as const }
+      : product.stock <= product.minStock
+      ? { text: "Stok Tipis", variant: "warning" as const }
+      : null;
+
   return (
     <div
       ref={cardRef}
       onClick={handleAdd}
-      className={`bg-white border border-border-standard rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:border-secondary transition-all ${
+      className={`flex cursor-pointer flex-col gap-2 rounded-lg border border-border-standard bg-card p-3 shadow-card transition-all hover:shadow-card-hover ${
         animating ? "animate-product-pop border-secondary" : "active:scale-[0.98]"
       }`}
     >
-      <div className="aspect-square bg-surface-container rounded-lg flex items-center justify-center overflow-hidden relative">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-surface-container">
         {animating ? (
-          <div className="w-full h-full bg-secondary/10 flex items-center justify-center">
-            <Icon name="check_circle" size={40} className="text-secondary animate-badge-pulse" />
+          <div className="flex h-full w-full items-center justify-center bg-secondary/10">
+            <Icon name="check_circle" size={40} className="animate-badge-pulse text-secondary" />
           </div>
         ) : showImage ? (
           <img
             src={product.image_url!}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (
           <Icon name="inventory_2" size={40} className="text-outline" />
         )}
         {product.is_favorite && (
-          <div className="absolute top-1 left-1 w-6 h-6 bg-warning-debt rounded-full flex items-center justify-center shadow-md">
+          <div className="absolute left-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-warning shadow-sm">
             <Icon name="star" size={14} fill="currentColor" className="text-white" />
+          </div>
+        )}
+        {stockLabel && (
+          <div className="absolute bottom-1.5 right-1.5">
+            <StatusBadge label={stockLabel.text} variant={stockLabel.variant} />
           </div>
         )}
       </div>
 
-      <div className="flex flex-col flex-1 gap-1 min-w-0">
-        <span className="text-[11px] text-on-surface-variant truncate">
-          {product.category}
-        </span>
-        <h3 className="text-[13px] leading-snug text-on-surface font-bold line-clamp-2 min-h-[34px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate text-caption text-on-surface-variant">{product.category}</span>
+        <h3 className="line-clamp-2 min-h-[40px] text-body-md font-semibold leading-snug text-on-surface">
           {product.name}
         </h3>
-        <div className="flex justify-between items-end gap-2 mt-auto pt-1">
-          <span className="text-label-xl font-bold text-primary truncate min-w-0">
+        <div className="mt-auto flex items-end justify-between gap-2 pt-1">
+          <span className="min-w-0 truncate text-label-xl font-bold text-on-surface">
             {formatCurrency(product.sellPrice)}
           </span>
-          <span className="text-[12px] text-outline font-medium whitespace-nowrap shrink-0">
+          <span className="shrink-0 text-caption font-medium text-on-surface-variant">
             Stok: {product.stock}
           </span>
         </div>
@@ -91,7 +102,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       <button
         onClick={(e) => { e.stopPropagation(); handleAdd(); }}
-        className="w-full h-10 rounded-lg bg-secondary text-on-secondary font-bold text-label-md flex items-center justify-center gap-1 active:opacity-80 transition-opacity mt-1"
+        className="mt-1 flex h-11 w-full items-center justify-center gap-1 rounded-md bg-secondary text-label-md font-semibold text-white transition-all hover:bg-secondary/90 active:opacity-80"
       >
         <Icon name="add" size={16} />
         Tambah

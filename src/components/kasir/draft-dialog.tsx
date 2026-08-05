@@ -8,6 +8,7 @@ import { formatCurrency, formatTime } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import { useToast } from "@/components/shared/toast-provider";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
+import StatusBadge from "@/components/shared/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -76,13 +77,20 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
     }
   };
 
-  const doRestore = (draft: Draft) => {
+  const doRestore = async (draft: Draft) => {
     useCartStore.setState({
       items: draft.items,
       paymentMethod: draft.paymentMethod,
       selectedCustomerId: draft.selectedCustomerId,
     });
     setCustomer(draft.selectedCustomerId);
+    // The draft has been resumed — remove it immediately so it can't be
+    // resumed twice or linger after the transaction is completed.
+    try {
+      await deleteDraft(draft.id);
+    } catch {
+      // Deleting the draft is best-effort; the cart restore still succeeded.
+    }
     toast("Draft berhasil dimuat.", "success");
     onOpenChange(false);
   };
@@ -99,7 +107,7 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-white rounded-xl max-w-[480px] max-h-[85dvh] overflow-y-auto">
+        <DialogContent className="max-h-[85dvh] max-w-[480px] overflow-y-auto">
           {mode === "save" ? (
             <>
               <DialogHeader>
@@ -109,41 +117,36 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <label className="text-label-md text-on-surface-variant block mb-1">
-                    Nama Draft <span className="text-outline">(opsional)</span>
+                  <label className="mb-1 block text-label-md text-on-surface-variant">
+                    Nama Draft <span className="text-on-surface-variant/60">(opsional)</span>
                   </label>
                   <input
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
-                    className="w-full h-12 px-4 border border-border-standard rounded-xl focus:border-secondary outline-none"
+                    className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
                     placeholder={customerName || "Misal: Pesanan Pak Joko"}
                     autoFocus
                   />
                   {!draftName && customerName && (
-                    <p className="text-xs text-outline mt-1">
+                    <p className="mt-1 text-caption text-on-surface-variant">
                       Akan menggunakan &ldquo;{customerName}&rdquo;
                     </p>
                   )}
                 </div>
 
                 {/* Cart summary */}
-                <div className="bg-surface-container rounded-xl p-3 space-y-1 text-sm">
-                  <p className="font-bold">{items.length} produk</p>
+                <div className="space-y-1 rounded-md bg-surface-container p-3 text-body-sm">
+                  <p className="font-bold text-on-surface">{items.length} produk</p>
                   <p className="text-on-surface-variant">
                     {formatCurrency(items.reduce((s, i) => s + i.subtotal, 0))}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] px-1.5 py-0.5 rounded font-bold bg-secondary/10 text-secondary">
-                      {paymentMethod === "cash"
-                        ? "Tunai"
-                        : paymentMethod === "kasbon"
-                        ? "Kasbon"
-                        : "QRIS"}
-                    </span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <StatusBadge
+                      label={paymentMethod === "cash" ? "Tunai" : paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
+                      variant={paymentMethod === "cash" ? "success" : paymentMethod === "kasbon" ? "warning" : "info"}
+                    />
                     {customerName && (
-                      <span className="text-[11px] text-outline">
-                        {customerName}
-                      </span>
+                      <span className="text-caption text-on-surface-variant">{customerName}</span>
                     )}
                   </div>
                 </div>
@@ -151,14 +154,14 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setMode("list")}
-                    className="flex-1 h-12 border border-border-standard rounded-xl font-bold"
+                    className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
                   >
                     Lihat Draft
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving || !hasItems}
-                    className="flex-1 h-12 bg-secondary text-on-secondary rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
+                    className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
                   >
                     {saving ? "Menyimpan..." : "Simpan"}
                   </button>
@@ -174,11 +177,11 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
               </DialogHeader>
               <div className="space-y-3">
                 <div className="relative">
-                  <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" size={14} />
+                  <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" size={16} />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 bg-surface-container border border-border-standard rounded-lg text-[13px] outline-none focus:border-secondary transition-all"
+                    className="h-11 w-full rounded-md border border-border-standard bg-card pl-10 pr-3 text-body-sm outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
                     placeholder="Cari draft..."
                   />
                 </div>
@@ -189,7 +192,7 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
                       setMode("save");
                       setDraftName(customerName || "");
                     }}
-                    className="w-full h-10 border-2 border-dashed border-border-standard rounded-xl text-label-md font-bold text-secondary flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-md border-2 border-dashed border-border-standard text-label-md font-semibold text-secondary transition-transform active:scale-[0.98]"
                   >
                     <Icon name="add" size={16} />
                     Simpan Draft Baru
@@ -197,7 +200,7 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
                 )}
 
                 {filtered.length === 0 ? (
-                  <p className="text-center py-6 text-on-surface-variant/50 text-label-md">
+                  <p className="py-6 text-center text-label-md text-on-surface-variant/60">
                     {search ? "Tidak ditemukan" : "Belum ada draft"}
                   </p>
                 ) : (
@@ -209,55 +212,41 @@ export default function DraftDialog({ open, onOpenChange }: Props) {
                       return (
                         <div
                           key={d.id}
-                          className="border border-border-standard rounded-xl p-3 space-y-2"
+                          className="space-y-2 rounded-md border border-border-standard bg-card p-3 shadow-card"
                         >
                           <div className="flex items-start justify-between">
                             <div>
-                              <p className="font-bold text-sm">{d.name}</p>
-                              <p className="text-[11px] text-outline font-mono mt-0.5">
+                              <p className="text-body-sm font-bold text-on-surface">{d.name}</p>
+                              <p className="mt-0.5 font-mono text-caption text-on-surface-variant">
                                 {d.draftNumber}
                               </p>
                             </div>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                                d.paymentMethod === "cash"
-                                  ? "bg-success-paid/10 text-success-paid"
-                                  : d.paymentMethod === "kasbon"
-                                  ? "bg-warning-debt/10 text-warning-debt"
-                                  : "bg-secondary/10 text-secondary"
-                              }`}
-                            >
-                              {d.paymentMethod === "cash"
-                                ? "Tunai"
-                                : d.paymentMethod === "kasbon"
-                                ? "Kasbon"
-                                : "QRIS"}
-                            </span>
+                            <StatusBadge
+                              label={d.paymentMethod === "cash" ? "Tunai" : d.paymentMethod === "kasbon" ? "Kasbon" : "QRIS"}
+                              variant={d.paymentMethod === "cash" ? "success" : d.paymentMethod === "kasbon" ? "warning" : "info"}
+                            />
                           </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-outline">
-                              {d.items.length} produk ·{" "}
-                              {formatCurrency(d.totalAmount)}
+                          <div className="flex items-center justify-between text-body-sm">
+                            <span className="text-on-surface-variant">
+                              {d.items.length} produk · {formatCurrency(d.totalAmount)}
                             </span>
-                            <span className="text-[11px] text-outline">
+                            <span className="text-caption text-on-surface-variant">
                               {formatTime(d.createdAt)}
                             </span>
                           </div>
                           {customer && (
-                            <p className="text-[11px] text-outline">
-                              {customer.name}
-                            </p>
+                            <p className="text-caption text-on-surface-variant">{customer.name}</p>
                           )}
                           <div className="flex gap-2 pt-1">
                             <button
                               onClick={() => handleRestore(d)}
-                              className="flex-1 h-9 rounded-lg bg-secondary text-on-secondary text-[12px] font-bold active:scale-95 transition-transform"
+                              className="h-10 flex-1 rounded-md bg-secondary text-label-md font-semibold text-white transition-all active:scale-[0.98]"
                             >
                               Lanjutkan
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(d)}
-                              className="h-9 px-4 rounded-lg border border-border-standard text-[12px] font-bold text-danger-alert active:scale-95 transition-transform"
+                              className="h-10 rounded-md border border-border-standard bg-card px-4 text-label-md font-semibold text-danger transition-colors active:bg-surface-container"
                             >
                               Hapus
                             </button>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useShallow } from "zustand/react/shallow";
 import type { CartItem } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
@@ -20,15 +19,17 @@ export default function CartItemRow({ item }: Props) {
   const maxStock = product ? product.stock : undefined;
 
   return (
-    <div className="py-3 space-y-2">
+    <div className="space-y-2 py-2">
       {/* Row 1: name + subtotal */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-body-lg font-medium break-words leading-snug flex-1 min-w-0">{item.name}</p>
-        <p className="font-bold text-on-surface shrink-0">{formatCurrency(item.subtotal)}</p>
+        <p className="min-w-0 flex-1 break-words text-body-md font-semibold leading-snug text-on-surface">
+          {item.name}
+        </p>
+        <p className="shrink-0 font-bold text-on-surface">{formatCurrency(item.subtotal)}</p>
       </div>
       {/* Row 2: unit price + quantity control + delete */}
       <div className="flex items-center justify-between gap-2">
-        <p className="text-label-md text-on-surface-variant">{formatCurrency(item.sellPrice)}</p>
+        <p className="text-caption text-on-surface-variant">{formatCurrency(item.sellPrice)}</p>
         <div className="flex items-center gap-2">
           <QuantityControl
             quantity={item.quantity}
@@ -38,7 +39,7 @@ export default function CartItemRow({ item }: Props) {
           />
           <button
             onClick={() => removeFromCart(item.productId)}
-            className="text-danger-alert w-9 h-9 flex items-center justify-center rounded-lg hover:bg-danger-alert/10 active:scale-90 transition-all"
+            className="flex size-11 items-center justify-center rounded-md text-danger transition-colors hover:bg-danger/10 active:scale-90"
             aria-label={`Hapus ${item.name}`}
           >
             <Icon name="delete" size={18} />
