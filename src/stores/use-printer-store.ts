@@ -2,14 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PaperWidth } from "@/types";
 
-export type PrintDensity = 1 | 2 | 3 | 4 | 5;
+export type PrintDensity = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 interface PrinterStore {
   printerName: string;
   paperWidth: PaperWidth;
   savedDeviceId: string | null;
   savedDeviceName: string | null;
-  /** Print darkness level (1 = lightest, 5 = darkest). Default 3. */
+  /** Print darkness level (1 = lightest, 10 = darkest). Default 6. */
   density: PrintDensity;
   /** Store info shown on receipts (optional). */
   storeAddress: string;
@@ -28,7 +28,7 @@ export const usePrinterStore = create<PrinterStore>()(
       paperWidth: 58,
       savedDeviceId: null,
       savedDeviceName: null,
-      density: 3,
+      density: 8,
       storeAddress: "",
       storePhone: "",
 

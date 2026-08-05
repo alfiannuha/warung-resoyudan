@@ -97,6 +97,11 @@ describe("receipt formatter", () => {
     expect(text).toContain("KEMBALI");
     expect(text).toContain("Terima kasih");
     expect(text).not.toContain("Catat. Kelola. Tumbuh.");
+    // QR section present (thermal only) — instruction wraps to column width.
+    expect(text).toMatch(/Scan QR/);
+    expect(text).toContain("QR untuk");
+    expect(text).toContain("[[QR]]");
+    expect(text).toContain("TRX-0001");
     // No stray tabs — alignment is width-based.
     expect(text).not.toContain("\t");
   });

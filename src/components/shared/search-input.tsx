@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { Search, X } from "lucide-react";
 
 interface Props {
@@ -13,18 +14,16 @@ interface Props {
 /**
  * Unified search input used across every page that needs one.
  */
-export default function SearchInput({
-  value,
-  onChange,
-  placeholder = "Cari…",
-  autoFocus,
-  className,
-}: Props) {
+const SearchInput = forwardRef<HTMLInputElement, Props>(function SearchInput(
+  { value, onChange, placeholder = "Cari…", autoFocus, className },
+  ref,
+) {
   return (
     <div className={className}>
       <div className="relative">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-on-surface-variant" />
         <input
+          ref={ref}
           type="search"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -44,4 +43,6 @@ export default function SearchInput({
       </div>
     </div>
   );
-}
+});
+
+export default SearchInput;

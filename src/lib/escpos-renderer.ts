@@ -1,4 +1,7 @@
 import type { PaperWidth } from "@/types";
+import { generateQRMatrix } from "./qr";
+import { renderQrCentered } from "./qr-raster";
+import { buildReceiptQrPayload } from "./receipt-qr";
 
 /**
  * High-quality ESC/POS byte-stream renderer.
@@ -213,7 +216,12 @@ export interface RenderOptions {
   density?: DensityLevel;
   /** Store name shown in the header — centered + bold + doubled. */
   storeName?: string;
+  /** Receipt number — encoded in the printed QR code. */
+  receiptNumber?: string;
 }
+
+/** Sentinel line the renderer swaps for a raster QR image. */
+export const QR_PLACEHOLDER = "[[QR]]";
 
 /**
  * Renders the plain-text receipt (from receipt-formatter) into a full
@@ -233,6 +241,21 @@ export function renderReceipt(text: string, opts: RenderOptions): Uint8Array {
   for (const raw of lines) {
     const line = raw.trimEnd();
     const trimmed = line.trim();
+
+    // QR placeholder — emit the raster image instead of text.
+    if (trimmed === QR_PLACEHOLDER) {
+      if (opts.receiptNumber) {
+        try {
+          const qr = generateQRMatrix(buildReceiptQrPayload(opts.receiptNumber), "M");
+          chunks.push(renderQrCentered(qr, opts.paperWidth));
+          chunks.push(escPos(LF));
+        } catch {
+          // QR generation failed — print the receipt number as fallback.
+          chunks.push(renderLine(opts.receiptNumber, { center: true }));
+        }
+      }
+      continue;
+    }
 
     if (line === "") {
       chunks.push(escPos(LF));
@@ -298,6 +321,16 @@ export function renderTestPage(deviceName: string, opts: RenderOptions): Uint8Ar
   chunks.push(renderLine("", {}));
   chunks.push(renderLine("Terima kasih", { center: true }));
   chunks.push(renderLine("", {}));
+  chunks.push(renderLine("QR Test", { center: true }));
+
+  // Sample QR so users can verify scanner readability without a sale.
+  try {
+    const qr = generateQRMatrix(buildReceiptQrPayload("TRX-20260805-001"), "M");
+    chunks.push(renderQrCentered(qr, opts.paperWidth));
+    chunks.push(escPos(LF));
+  } catch {
+    // skip QR on failure
+  }
 
   chunks.push(finishSequence());
   return bytesOf(...chunks);

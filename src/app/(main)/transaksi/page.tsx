@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { History, MessageCircle, QrCode, User } from "lucide-react";
 import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
@@ -17,6 +17,7 @@ import PageHeader from "@/components/shared/page-header";
 import SearchInput from "@/components/shared/search-input";
 import StatusBadge from "@/components/shared/status-badge";
 import SwipeableRow from "@/components/shared/swipeable-row";
+import ScanReceiptButton from "@/components/transaksi/scan-receipt-button";
 import type { Transaction, PaymentMethod, TransactionStatus } from "@/types";
 
 export default function TransaksiPage() {
@@ -38,8 +39,28 @@ export default function TransaksiPage() {
   const [statusBusy, setStatusBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const { toast } = useToast();
+
+  /** Expands + scrolls to a transaction found via the receipt QR scan. */
+  const handleScanFound = (transactionId: string) => {
+    const txn = transactions.find((t) => t.id === transactionId);
+    if (!txn) return;
+    setExpandedId(transactionId);
+    setSwipedId(null);
+    // Scroll the row into view after it expands.
+    setTimeout(() => {
+      const el = listRef.current?.querySelector(`[data-txn-id="${transactionId}"]`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  /** Focuses the search box from the not-found sheet's "Cari Manual". */
+  const handleSearchManually = () => {
+    setTimeout(() => searchRef.current?.focus(), 100);
+  };
 
   const handleStatusChange = async () => {
     if (!statusTarget || statusBusy) return;
@@ -121,11 +142,20 @@ export default function TransaksiPage() {
       <PageHeader title="Transaksi" subtitle={`${filtered.length} transaksi`} />
 
       <div className="space-y-3">
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Cari No. nota, produk, atau pelanggan…"
-        />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchInput
+              ref={searchRef}
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari No. nota, produk, atau pelanggan…"
+            />
+          </div>
+          <ScanReceiptButton
+            onFound={handleScanFound}
+            onSearchManually={handleSearchManually}
+          />
+        </div>
 
         {/* Filter chips */}
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -147,7 +177,7 @@ export default function TransaksiPage() {
       </div>
 
       {/* List */}
-      <div className="space-y-2">
+      <div ref={listRef} className="space-y-2">
         {filtered.length === 0 ? (
           <EmptyState
             icon="receipt_long"
@@ -161,7 +191,7 @@ export default function TransaksiPage() {
             const badge = paymentBadge(t.paymentMethod);
 
             return (
-              <div key={t.id}>
+              <div key={t.id} data-txn-id={t.id}>
                 <SwipeableRow
                   id={t.id}
                   isSwiped={swipedId === t.id}

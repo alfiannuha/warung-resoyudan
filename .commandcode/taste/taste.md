@@ -9,7 +9,7 @@
 - Use real Open Food Facts API for barcode product lookups with mock fallback. Confidence: 0.50
 
 # language
-- Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.75
+- Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.8
 - Write all UI strings in Indonesian (Bahasa) for the app interface. Confidence: 0.65
 
 # package-management
@@ -46,6 +46,13 @@ See [ui/taste.md](ui/taste.md)
 # product-vision
 - Platform vision includes multi-user roles & permissions (owner/manager/cashier) gating access to reports, settings, capital, expenses, and destructive actions; treat as architectural direction even if implemented in a later phase. Confidence: 0.5
 - Confirmed product directions from the approved Tier-1 plan: a global search command palette (products by name+barcode, customers, transactions by receipt #, expenses, capital) opened from the top bar or "/" shortcut; inventory analytics (30-day sales-velocity Laris/Normal/Lambat/Tidak Laku, days-of-stock, suggested reorder qty); and an in-app rule-based notifications center (low stock, overdue kasbon, daily summary) with a bell + persisted read-state. Confidence: 0.6
+
+# ui
+See [ui/taste.md](ui/taste.md)
+# business-rules
+- Unpaid/unconfirmed transactions (e.g., QRIS "Belum Dibayar") must not count as sales revenue in reports, dashboard, charts, or PDF, and stock should only be deducted once payment is confirmed — not when the transaction is created. Confidence: 0.75
+0.75
+
 
 # ui
 See [ui/taste.md](ui/taste.md)

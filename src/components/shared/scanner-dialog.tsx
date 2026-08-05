@@ -7,7 +7,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onScan: (barcode: string) => void;
-  mode?: "product" | "cashier";
+  mode?: "product" | "cashier" | "receipt";
 }
 
 function playBeep() {
@@ -164,20 +164,27 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
         const raw = barcode.rawValue;
         const format = barcode.format;
 
-        // Only accept known 1D product barcode formats with numeric-only values
-        const isEanUpc = ["ean_13", "ean_8", "upc_a", "upc_e"].includes(format);
-        const isNumeric = /^\d+$/.test(raw);
-
-        if (!isEanUpc || !isNumeric) {
-          // Skip non-product barcodes (GS1 DataBar, composite, etc.)
-        } else if (debounceRef.current) {
-          // Still in cooldown — skip
-        } else if (raw === lastBarcodeRef.current) {
-          // Same barcode reappeared after leaving — re-scan
+        // In receipt mode, accept any detected code (QR or 1D) — the
+        // payload is parsed downstream.
+        const isReceiptMode = mode === "receipt";
+        if (isReceiptMode && raw) {
           handleScan(raw);
         } else {
-          // New barcode
-          handleScan(raw);
+          // Only accept known 1D product barcode formats with numeric-only values
+          const isEanUpc = ["ean_13", "ean_8", "upc_a", "upc_e"].includes(format);
+          const isNumeric = /^\d+$/.test(raw);
+
+          if (!isEanUpc || !isNumeric) {
+            // Skip non-product barcodes (GS1 DataBar, composite, etc.)
+          } else if (debounceRef.current) {
+            // Still in cooldown — skip
+          } else if (raw === lastBarcodeRef.current) {
+            // Same barcode reappeared after leaving — re-scan
+            handleScan(raw);
+          } else {
+            // New barcode
+            handleScan(raw);
+          }
         }
       }
     } catch {
@@ -187,7 +194,7 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
     if (scanningRef.current) {
       requestAnimationFrame(() => scanFrameRef.current());
     }
-  }, [handleScan]);
+  }, [handleScan, mode]);
 
   // Keep the ref in sync so startStream can invoke the latest scanFrame.
   useEffect(() => {
@@ -394,6 +401,8 @@ export default function ScannerDialog({ open, onClose, onScan, mode = "product" 
               ? "Harap tunggu..."
               : mode === "cashier"
               ? "Scan barcode untuk menambahkan produk ke keranjang"
+              : mode === "receipt"
+              ? "Arahkan kamera ke QR di nota"
               : "Scan barcode produk untuk pengisian otomatis"}
           </p>
         </div>
