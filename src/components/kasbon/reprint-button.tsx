@@ -42,8 +42,6 @@ export default function ReprintButton({ transaction }: Props) {
     customerName: customer?.name,
     paperWidth,
     storeName: APP_NAME,
-    storeAddress: usePrinterStore.getState().storeAddress,
-    storePhone: usePrinterStore.getState().storePhone,
   };
 
   const handlePrint = async () => {

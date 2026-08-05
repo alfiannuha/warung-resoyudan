@@ -244,8 +244,6 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       customerName: customer?.name,
       paperWidth,
       storeName: APP_NAME,
-      storeAddress: usePrinterStore.getState().storeAddress,
-      storePhone: usePrinterStore.getState().storePhone,
     };
     printParamsRef.current = params;
 
