@@ -118,8 +118,11 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   },
 
   getTransactionsByDateRange: (start, end) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    // Construct both bounds in LOCAL time (date-only strings parse as UTC
+    // midnight, which shifts the range by the UTC offset and misassigns
+    // days — e.g. "Hari Ini" would exclude most of the day in UTC+7).
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = new Date(`${end}T00:00:00`);
     endDate.setHours(23, 59, 59, 999);
     return get().transactions.filter((t) => {
       const d = new Date(`${toDateKey(t.date)}T00:00:00`);

@@ -113,11 +113,13 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   },
 
   getExpensesByDateRange: (start, end) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    // Build bounds in LOCAL time; date-only strings parse as UTC midnight
+    // and would shift the range by the UTC offset.
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = new Date(`${end}T00:00:00`);
     endDate.setHours(23, 59, 59, 999);
     return get().expenses.filter((e) => {
-      const d = new Date(e.expenseDate);
+      const d = new Date(`${e.expenseDate}T00:00:00`);
       return d >= startDate && d <= endDate;
     });
   },

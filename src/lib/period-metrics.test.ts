@@ -118,6 +118,37 @@ describe("period metrics helpers", () => {
     expect(getDateOffsetFromISO("2026-08-05", -1)).toBe("2026-08-04");
   });
 
+  it("filters transactions by a date range in local time (UTC offset safe)", () => {
+    // Reproduces the store's getTransactionsByDateRange with the local-time
+    // fix. date-only strings must NOT be parsed as UTC midnight, otherwise
+    // the range shifts by the UTC offset and "Hari Ini"/"Kemarin" misassign.
+    const filter = (txns: { date: string }[], start: string, end: string) => {
+      const startDate = new Date(`${start}T00:00:00`);
+      const endDate = new Date(`${end}T00:00:00`);
+      endDate.setHours(23, 59, 59, 999);
+      return txns.filter((t) => {
+        const d = new Date(`${toDateKey(t.date)}T00:00:00`);
+        return d >= startDate && d <= endDate;
+      });
+    };
+
+    const today = getDateOffsetISO(0);
+    const yesterday = getDateOffsetISO(1);
+
+    const txns = [
+      { date: today },
+      { date: `${today}T09:30:00.000Z` }, // legacy ISO, same local day
+      { date: yesterday },
+      { date: `${yesterday}T16:00:00.000Z` }, // legacy ISO, yesterday local
+    ];
+
+    const inToday = filter(txns, today, today);
+    expect(inToday.map((t) => t.date)).toEqual([today, `${today}T09:30:00.000Z`]);
+
+    const inYesterday = filter(txns, yesterday, yesterday);
+    expect(inYesterday.map((t) => t.date)).toEqual([yesterday, `${yesterday}T16:00:00.000Z`]);
+  });
+
   it("toDateKey normalizes full ISO timestamps to local YYYY-MM-DD", () => {
     expect(toDateKey("2026-08-05")).toBe("2026-08-05");
     expect(toDateKey("2026-08-05T10:32:00.000Z")).toBe("2026-08-05");
