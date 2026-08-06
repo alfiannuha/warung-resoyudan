@@ -257,17 +257,6 @@ export function buildThermalReceiptText(params: ReceiptParams): string {
   addBlank(lines);
   lines.push(centerText(storeName, w));
   addBlank(lines);
-
-  // ── QR Code (thermal only) ──
-  // The renderer replaces the [[QR]] sentinel with a raster QR image.
-  wrapText("Scan QR untuk menemukan transaksi ini", w).forEach((l) =>
-    lines.push(centerText(l, w)),
-  );
-  lines.push("[[QR]]");
-  if (receiptNumber) {
-    lines.push(centerText(receiptNumber, w));
-  }
-  addBlank(lines);
   lines.push(separatorLine(w, "="));
 
   return lines.join("\n");

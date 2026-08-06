@@ -37,6 +37,7 @@ See [ui/taste.md](ui/taste.md)
 # code-quality
 - Avoid re-implementing a rule/notification that another component already owns — one component is the single source of truth (e.g., the top-bar bell generates daily-summary notifications; pages must not duplicate that logic or notifications get double-added). Confidence: 0.5
 - Separate a subsystem's responsibilities into focused, reusable modules (e.g., a printer connection manager, an ESC/POS byte-stream renderer, a pure text-layout formatter, and a job orchestrator) instead of one monolithic utility. Confidence: 0.6
+- Prefer self-contained/vendored implementations over adding new npm dependencies when feasible (keeps the app lean, works offline/PWA, no build weight) — e.g., a vendored pure-TypeScript QR generator was chosen over an npm package. Confidence: 0.5
  than only restyling. Confidence: 0.7
 - Confirmed design direction for this app: full-app visual overhaul, light theme only (no dark mode), keep hamburger-drawer navigation (no bottom nav bar). Confidence: 0.7
 
@@ -58,4 +59,6 @@ See [ui/taste.md](ui/taste.md)
 See [ui/taste.md](ui/taste.md)
 # business-rules
 - Unpaid/unconfirmed transactions (e.g., QRIS "Belum Dibayar") must not count as sales revenue in reports, dashboard, charts, or PDF, and stock should only be deducted once payment is confirmed — not when the transaction is created. Confidence: 0.75
+0.75
+dence: 0.75
 0.75

@@ -36,7 +36,6 @@ export async function printReceiptJob(
       paperWidth: params.paperWidth,
       density,
       storeName: APP_NAME,
-      receiptNumber: params.receiptNumber,
     });
 
     // 3. Print.

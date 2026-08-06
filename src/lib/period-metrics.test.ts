@@ -57,8 +57,9 @@ describe("period metrics helpers", () => {
   });
 
   it("excludes unpaid QRIS from the sales series", () => {
-    const paid = txn({ date: "2026-08-05", totalAmount: 5000, paymentMethod: "qris", status: "paid" });
-    const unpaid = txn({ date: "2026-08-05", totalAmount: 9000, paymentMethod: "qris", status: "debt" });
+    const today = getDateOffsetISO(0);
+    const paid = txn({ date: today, totalAmount: 5000, paymentMethod: "qris", status: "paid" });
+    const unpaid = txn({ date: today, totalAmount: 9000, paymentMethod: "qris", status: "debt" });
     const series = buildSalesSeries([paid, unpaid], 1);
     expect(series[0].value).toBe(5000);
   });

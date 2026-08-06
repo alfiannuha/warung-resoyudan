@@ -1,5 +1,5 @@
 # workflow
-- Feature requests come with a spec document in docs/*.md; implement the feature by reading and following that spec, and reference it when reporting back. Confidence: 0.6
+- Feature requests come as detailed written specs — a document in docs/*.md or a structured markdown spec in chat (sections like Objective, Functional Requirements, Error Handling, Performance, Security, Deliverables); implement by following the spec and reference it when reporting back. Confidence: 0.6
 - Before building a new module (page, store, dialog), read the existing analogous module (e.g., pengeluaran/expense flow) and mirror its architecture so the new feature is consistent with the codebase. Confidence: 0.5
 - After changes, verify with tsc, lint, and build, and report that checks are clean or back to the pre-existing baseline (pre-existing errors are tolerated, no new warnings). Confidence: 0.5
 - Destructive operations (e.g., deleting a transaction) must go through a confirmation dialog, restore related state (stock), reconcile side effects (customer debt), and be recorded in the audit log. Confidence: 0.55

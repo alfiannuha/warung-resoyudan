@@ -10,7 +10,6 @@ import {
   finishSequence,
   initSequence,
   normalSize,
-  QR_PLACEHOLDER,
   renderReceipt,
   renderTestPage,
   textBytes,
@@ -151,51 +150,5 @@ describe("escpos renderer", () => {
     expect(arr.slice(-5)[2]).toBe(0x1d);
     expect(arr.slice(-5)[3]).toBe(0x56);
     expect(arr.slice(-5)[4]).toBe(0x41);
-  });
-
-  it("renderReceipt emits a GS v 0 raster for the QR placeholder", () => {
-    const text = [
-      "",
-      "WARUNG RESOYUDAN",
-      "No Nota: TRX-1",
-      "TOTAL  Rp 24.000",
-      "Terima kasih",
-      "",
-      "Scan QR untuk menemukan transaksi ini",
-      QR_PLACEHOLDER,
-      "TRX-1",
-      "",
-    ].join("\n");
-
-    const data = renderReceipt(text, { paperWidth: 58, receiptNumber: "TRX-1" });
-    const arr = Array.from(data);
-
-    // The QR raster command (GS v 0 = 0x1d 0x76 0x30 0x00) must be present.
-    const rasterIdx = arr.findIndex((_, i) =>
-      arr[i] === 0x1d && arr[i + 1] === 0x76 && arr[i + 2] === 0x30 && arr[i + 3] === 0x00,
-    );
-    expect(rasterIdx).toBeGreaterThan(0);
-
-    // The literal placeholder must NOT be emitted as text.
-    const placeholderBytes = Array.from(textBytes(QR_PLACEHOLDER));
-    let foundPlaceholder = false;
-    for (let i = 0; i <= arr.length - placeholderBytes.length; i++) {
-      if (arr.slice(i, i + placeholderBytes.length).every((v, j) => v === placeholderBytes[j])) {
-        foundPlaceholder = true;
-        break;
-      }
-    }
-    expect(foundPlaceholder).toBe(false);
-
-    // Without a receiptNumber, no GS v 0 raster is emitted.
-    const noQr = Array.from(renderReceipt(text, { paperWidth: 58 }));
-    let hasRaster = false;
-    for (let i = 0; i <= noQr.length - 4; i++) {
-      if (noQr[i] === 0x1d && noQr[i + 1] === 0x76 && noQr[i + 2] === 0x30 && noQr[i + 3] === 0x00) {
-        hasRaster = true;
-        break;
-      }
-    }
-    expect(hasRaster).toBe(false);
   });
 });
