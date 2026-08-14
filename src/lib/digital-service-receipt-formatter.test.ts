@@ -143,11 +143,36 @@ describe("digital service receipt formatter", () => {
       customerIdentifier: "123456789012",
       tokenCode: "1234-5678-9012-3456",
     });
+    const lines = text.split("\n").map((l) => l.trim());
     expect(text).toContain("TOKEN PLN");
     expect(text).toContain("No. Meter: 123456789012");
-    expect(text).toContain("Kode Token: 1234-5678-9012-3456");
+    // The token title is a fixed, normal-size line at the very bottom, and
+    // the code itself sits below it on its own centered line.
+    const titleIdx = lines.indexOf("KODE TOKEN");
+    expect(titleIdx).toBeGreaterThan(0);
+    // The code sits on its own centered line below the title, marked with
+    // the "@@" large-bold prefix for the ESC/POS renderer.
+    expect(lines[titleIdx + 2].startsWith("@@")).toBe(true);
+    expect(lines[titleIdx + 2]).toContain("1234-5678-9012-3456");
+    expect(lines[lines.length - 1]).toContain("1234-5678-9012-3456");
     // No stray tabs — width-based alignment.
     expect(text).not.toContain("\t");
+  });
+
+  it("renders the PLN token code on WhatsApp receipts", () => {
+    const text = buildDigitalServiceWhatsAppReceiptText({
+      ...base,
+      serviceType: "pln_prepaid",
+      customerIdentifier: "123456789012",
+      tokenCode: "1234-5678-9012-3456",
+    });
+    const lines = text.split("\n").map((l) => l.trim());
+    expect(lines).toContain("KODE TOKEN");
+    expect(lines).toContain("1234-5678-9012-3456");
+    const titleIdx = lines.indexOf("KODE TOKEN");
+    expect(titleIdx).toBeGreaterThan(0);
+    expect(lines[titleIdx + 2]).toBe("1234-5678-9012-3456");
+    expect(lines[lines.length - 1]).toBe("1234-5678-9012-3456");
   });
 
   it("buildReceiptText dispatches by mode", () => {

@@ -148,13 +148,16 @@ describe("escpos renderer", () => {
       "",
       "WARUNG RESOYUDAN",
       "No Nota: TRX-1",
-      "@@Kode Token: 1234-5678-9012-3456",
+      "",
+      "               KODE TOKEN               ",
+      "",
+      "@@         1234-5678-9012-3456         ",
       "TOTAL  Rp 52.000",
     ].join("\n");
     const data = renderReceipt(text, { paperWidth: 58 });
     const arr = Array.from(data);
-    // The token line should be preceded by GS ! 0x20 (double-height) and
-    // ESC E 1 (bold on), and the "@@" marker must not be printed.
+    // The token code line should be preceded by GS ! 0x20 (double-height)
+    // and ESC E 1 (bold on), and the "@@" marker must not be printed.
     const tokenBytes = Array.from(textBytes("1234-5678-9012-3456"));
     const idx = arr.findIndex((_, i) =>
       i + tokenBytes.length <= arr.length &&
@@ -177,17 +180,17 @@ describe("escpos renderer", () => {
     );
     expect(boldIdx).toBeGreaterThan(0);
     expect(boldIdx).toBeLessThan(idx);
-    // The "Kode Token:" label must immediately precede the double-height
-    // token bytes — the "@@" marker is stripped and never printed.
-    const labelBytes = Array.from(textBytes("Kode Token:"));
-    const labelIdx = arr.findIndex((_, i) =>
-      i + labelBytes.length <= arr.length &&
-      arr.slice(i, i + labelBytes.length).every((v, j) => v === labelBytes[j]),
+    // The "KODE TOKEN" title line (fixed position, normal size) prints at
+    // regular height — no GS ! double-height before its first byte.
+    const titleBytes = Array.from(textBytes("KODE TOKEN"));
+    const titleIdx = arr.findIndex((_, i) =>
+      i + titleBytes.length <= arr.length &&
+      arr.slice(i, i + titleBytes.length).every((v, j) => v === titleBytes[j]),
     );
-    expect(labelIdx).toBeGreaterThan(0);
-    // Nothing printed between the label and the token bytes except the
+    expect(titleIdx).toBeGreaterThan(0);
+    const between = arr.slice(titleIdx + titleBytes.length, idx);
+    // Nothing printed between the title and the token code except the
     // double-height command and bold on — so no "@@" (0x40 0x40) is present.
-    const between = arr.slice(labelIdx + labelBytes.length, idx);
     expect(between).not.toContain(0x40);
   });
 
