@@ -84,7 +84,11 @@ function addTotal(
 }
 
 function formatDateParts(dateStr: string): { dateStr: string; timeStr: string } {
-  const d = new Date(dateStr);
+  // Date-only strings parse as UTC midnight — pin them to local midnight so
+  // the day (and 07:00 WIB) never shifts. Full timestamps pass through.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? new Date(`${dateStr}T00:00:00`)
+    : new Date(dateStr);
   if (Number.isNaN(d.getTime())) return { dateStr: "", timeStr: "" };
   const dateStr2 = d.toLocaleDateString("id-ID", {
     day: "numeric",
@@ -154,13 +158,19 @@ export function buildDigitalServiceThermalReceiptText(
   addMeta(lines, service.identifierReceiptLabel, customerIdentifier || "—", w);
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
-  // ── Token code at the bottom ──
+
+  // ── Token code below the note ──
+  // The title prints at the same size as the other titles (left-aligned),
+  // right after the "Catatan" line; the code itself sits below it on its own
+  // left-aligned line with breathing room, marked with "@@" so the ESC/POS
+  // renderer prints it tall and bold for the customer to read.
   if (tokenCode) {
-    // addBlank(lines);
-    addMeta(lines, service.tokenLabel ?? "Kode Token", '', w);
+    addBlank(lines);
+    lines.push((service.tokenLabel ?? "Kode Token").toUpperCase());
     addBlank(lines);
     lines.push(`@@${tokenCode}`);
   }
+
   addBlank(lines);
   addSep(lines, w);
 
@@ -241,13 +251,16 @@ export function buildDigitalServiceWhatsAppReceiptText(
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
 
-  // ── Token code at the very bottom ──
- if (tokenCode) {
-    // addBlank(lines);
-    addMeta(lines, service.tokenLabel ?? "Kode Token", '', w);
+  // ── Token code below the note ──
+  // Mirrors the thermal receipt: title at the normal size, code below it on
+  // its own line — both left-aligned.
+  if (tokenCode) {
     addBlank(lines);
-    lines.push(`@@${tokenCode}`);
+    lines.push((service.tokenLabel ?? "Kode Token").toUpperCase());
+    addBlank(lines);
+    lines.push(tokenCode);
   }
+
   addBlank(lines);
   addSep(lines, w);
 

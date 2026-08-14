@@ -7,7 +7,7 @@ import {
   DIGITAL_SERVICE_PAYMENTS,
   getServiceConfig,
 } from "@/lib/digital-services";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, withCurrentTime, withDate } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
 import CurrencyInput from "@/components/shared/currency-input";
 
@@ -90,7 +90,9 @@ export default function DigitalServiceForm({
     initial?.paymentMethod ?? "cash",
   );
   const [transactionDate, setTransactionDate] = useState(
-    initial?.transactionDate ?? new Date().toISOString().slice(0, 10),
+    initial?.transactionDate
+      ? initial.transactionDate.slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
   );
 
   const service = serviceType ? getServiceConfig(serviceType) : null;
@@ -128,7 +130,11 @@ export default function DigitalServiceForm({
       nominalAmount: fields.nominalAmount,
       serviceFee: fields.serviceFee,
       paymentMethod,
-      transactionDate,
+      // New transactions carry the current clock time; edits keep the
+      // original time-of-day and only update the chosen date.
+      transactionDate: initial
+        ? withDate(initial.transactionDate, transactionDate)
+        : withCurrentTime(transactionDate),
       notes: fields.notes.trim() || null,
     });
   };
@@ -191,28 +197,6 @@ export default function DigitalServiceForm({
               className={inputClass}
             />
           </div>
-
-          {/* Token code — large, emphasized input for PLN prepaid */}
-          {service.tokenLabel && (
-            <div>
-              <label className="mb-1.5 block text-label-md font-semibold text-on-surface-variant">
-                {service.tokenLabel} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                inputMode="text"
-                value={fields.tokenCode}
-                onChange={(e) =>
-                  setFields((f) => ({ ...f, tokenCode: e.target.value }))
-                }
-                placeholder="Contoh: 1234-5678-9012-3456"
-                className="h-16 w-full rounded-md border-2 border-secondary bg-card px-4 text-center text-xl font-bold tracking-[0.2em] text-on-surface outline-none transition-all placeholder:text-on-surface-variant/40 placeholder:tracking-normal focus:ring-4 focus:ring-secondary/20"
-              />
-              <p className="mt-1.5 text-caption text-on-surface-variant">
-                Masukkan kode token PLN yang ditampilkan setelah pembayaran.
-              </p>
-            </div>
-          )}
 
           {/* Customer name */}
           <div>
@@ -311,6 +295,28 @@ export default function DigitalServiceForm({
               placeholder="Catatan transaksi..."
             />
           </div>
+
+          {/* Token code — large, emphasized input for PLN prepaid */}
+          {service.tokenLabel && (
+            <div>
+              <label className="mb-1.5 block text-label-md font-semibold text-on-surface-variant">
+                {service.tokenLabel} <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="text"
+                value={fields.tokenCode}
+                onChange={(e) =>
+                  setFields((f) => ({ ...f, tokenCode: e.target.value }))
+                }
+                placeholder="Contoh: 1234-5678-9012-3456"
+                className="h-16 w-full rounded-md border-2 border-secondary bg-card px-4 text-center text-xl font-bold tracking-[0.2em] text-on-surface outline-none transition-all placeholder:text-on-surface-variant/40 placeholder:tracking-normal focus:ring-4 focus:ring-secondary/20"
+              />
+              <p className="mt-1.5 text-caption text-on-surface-variant">
+                Masukkan kode token PLN yang ditampilkan setelah pembayaran.
+              </p>
+            </div>
+          )}
 
           {/* Total */}
           <div className="rounded-md bg-surface-container p-4">

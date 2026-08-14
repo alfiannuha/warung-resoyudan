@@ -22,9 +22,24 @@ export function formatCurrencyCompact(amount: number): string {
   return formatCurrency(amount);
 }
 
+/**
+ * Parses a stored date string in LOCAL time.
+ *
+ * A bare "YYYY-MM-DD" string (the legacy transaction/expense convention) is
+ * interpreted by the JS engine as UTC midnight, which renders as 07:00 WIB
+ * in UTC+7 — never the intended value. Appending an explicit local midnight
+ * (`T00:00:00`) keeps date-only values on the right day and hour. Full ISO
+ * timestamps already carry their zone and pass through unchanged.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return new Date(`${dateStr}T00:00:00`);
+  }
+  return new Date(dateStr);
+}
+
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("id-ID", {
+  return parseLocalDate(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -32,16 +47,14 @@ export function formatDate(dateStr: string): string {
 }
 
 export function formatDateShort(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("id-ID", {
+  return parseLocalDate(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
   });
 }
 
 export function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("id-ID", {
+  return parseLocalDate(dateStr).toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -49,6 +62,36 @@ export function formatTime(dateStr: string): string {
 
 export function formatDateTime(dateStr: string): string {
   return `${formatDate(dateStr)} • ${formatTime(dateStr)}`;
+}
+
+/**
+ * Combines a date-only "YYYY-MM-DD" value with the current local clock time,
+ * producing a full ISO timestamp. Used when a form collects only a date but
+ * the record should remember when the sale actually happened.
+ */
+export function withCurrentTime(dateOnly: string): string {
+  const now = new Date();
+  const d = parseLocalDate(dateOnly);
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+  return d.toISOString();
+}
+
+/**
+ * Applies a new date-only "YYYY-MM-DD" value to an existing timestamp while
+ * keeping its local time-of-day (for edits where the time isn't editable).
+ * A date-only reference is treated as 00:00 local, not UTC midnight.
+ */
+export function withDate(timestamp: string, dateOnly: string): string {
+  const ref = parseLocalDate(timestamp);
+  if (Number.isNaN(ref.getTime())) return dateOnly;
+  const d = parseLocalDate(dateOnly);
+  d.setHours(
+    ref.getHours(),
+    ref.getMinutes(),
+    ref.getSeconds(),
+    ref.getMilliseconds(),
+  );
+  return d.toISOString();
 }
 
 export function getRelativeTime(dateStr: string): string {

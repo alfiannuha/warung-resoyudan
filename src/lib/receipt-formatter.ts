@@ -154,7 +154,11 @@ function addTotal(lines: string[], label: string, value: string, w: number, big 
 /* ── Date helpers ── */
 
 function formatDateParts(dateStr: string): { dateStr: string; timeStr: string } {
-  const d = new Date(dateStr);
+  // Date-only strings parse as UTC midnight — pin them to local midnight so
+  // the day (and 07:00 WIB) never shifts. Full timestamps pass through.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? new Date(`${dateStr}T00:00:00`)
+    : new Date(dateStr);
   if (Number.isNaN(d.getTime())) return { dateStr: "", timeStr: "" };
   const date = d.toLocaleDateString("id-ID", {
     day: "numeric",

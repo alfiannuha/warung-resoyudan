@@ -7,7 +7,7 @@ import { useTransactionStore } from "@/stores/use-transaction-store";
 import { useCustomerStore } from "@/stores/use-customer-store";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { useToast } from "@/components/shared/toast-provider";
-import { formatCurrency, getTodayISO } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { APP_NAME } from "@/lib/constants";
 import { generateReceiptNumber } from "@/lib/receipt-counter";
 import { sendWhatsAppReceipt } from "@/utils/whatsapp";
@@ -49,6 +49,9 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
   const [printState, setPrintState] = useState<PrintJobState>({ phase: "idle" as PrintPhase, error: null });
   const [printOpen, setPrintOpen] = useState(false);
   const printParamsRef = useRef<Parameters<typeof printReceiptJob>[0] | null>(null);
+  /** Timestamp captured when the transaction is confirmed — used both for
+   *  the stored record and the printed receipt so they always agree. */
+  const transactionTimeRef = useRef(new Date().toISOString());
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalAmount = items.reduce((sum, i) => sum + i.subtotal, 0);
@@ -98,6 +101,8 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       setReceiptNumber(rn);
       setAmountPaid(0);
       setChange(0);
+      // Capture the transaction time once — shared by storage + printed receipt.
+      transactionTimeRef.current = new Date().toISOString();
 
       if (paymentMethod === "cash") {
         setShowCashPayment(true);
@@ -108,7 +113,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
         // QRIS: save as unpaid (debt). Stock is reduced only when the
         // cashier confirms the payment has been received.
         const txnId = await addTransaction({
-            date: getTodayISO(),
+            date: transactionTimeRef.current,
           items: items.map((i) => ({ ...i })),
           totalAmount,
           totalProfit,
@@ -134,7 +139,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       }
 
       await addTransaction({
-          date: getTodayISO(),
+          date: transactionTimeRef.current,
         items: items.map((i) => ({ ...i })),
         totalAmount,
         totalProfit,
@@ -178,7 +183,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       }
 
       await addTransaction({
-          date: getTodayISO(),
+          date: transactionTimeRef.current,
         items: items.map((i) => ({ ...i })),
         totalAmount,
         totalProfit,
@@ -240,7 +245,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       change,
       paymentMethod,
       receiptNumber,
-      date: getTodayISO(),
+      date: transactionTimeRef.current,
       customerName: customer?.name,
       paperWidth,
       storeName: APP_NAME,
@@ -299,7 +304,7 @@ export function useCheckout(opts?: { onAfterDone?: () => void }) {
       change,
       paymentMethod,
       receiptNumber,
-      date: new Date().toISOString(),
+      date: transactionTimeRef.current,
       customerName: customer?.name,
       paperWidth,
     });

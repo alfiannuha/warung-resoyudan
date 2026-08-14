@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createAuditLog } from "@/lib/audit-log";
+import { toDateKey } from "@/lib/period-metrics";
 
 interface AddDigitalServiceInput {
   transactionNumber: string;
@@ -143,7 +144,7 @@ export const useDigitalServiceStore = create<DigitalServiceStore>((set, get) => 
     const endDate = new Date(`${end}T00:00:00`);
     endDate.setHours(23, 59, 59, 999);
     return get().transactions.filter((t) => {
-      const d = new Date(`${t.transactionDate}T00:00:00`);
+      const d = new Date(`${toDateKey(t.transactionDate)}T00:00:00`);
       return d >= startDate && d <= endDate;
     });
   },

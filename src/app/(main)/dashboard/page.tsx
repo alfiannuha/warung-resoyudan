@@ -68,7 +68,7 @@ export default function DashboardPage() {
     const s = new Date(`${start}T00:00:00`).getTime();
     const e = new Date(`${end}T00:00:00`).setHours(23, 59, 59, 999);
     const periodTx = digitalServices.filter((t) => {
-      const d = new Date(`${t.transactionDate}T00:00:00`).getTime();
+      const d = new Date(`${toDateKey(t.transactionDate)}T00:00:00`).getTime();
       return d >= s && d <= e;
     });
     return {

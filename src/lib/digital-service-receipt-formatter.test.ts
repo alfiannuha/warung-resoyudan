@@ -146,15 +146,12 @@ describe("digital service receipt formatter", () => {
     const lines = text.split("\n").map((l) => l.trim());
     expect(text).toContain("TOKEN PLN");
     expect(text).toContain("No. Meter: 123456789012");
-    // The token title is a fixed, normal-size line at the very bottom, and
-    // the code itself sits below it on its own centered line.
+    // The token title is a fixed, normal-size line placed after the service
+    // info (below the "Catatan" note); the code sits below it on its own
+    // line, marked with the "@@" large-bold prefix — both left-aligned.
     const titleIdx = lines.indexOf("KODE TOKEN");
     expect(titleIdx).toBeGreaterThan(0);
-    // The code sits on its own centered line below the title, marked with
-    // the "@@" large-bold prefix for the ESC/POS renderer.
-    expect(lines[titleIdx + 2].startsWith("@@")).toBe(true);
-    expect(lines[titleIdx + 2]).toContain("1234-5678-9012-3456");
-    expect(lines[lines.length - 1]).toContain("1234-5678-9012-3456");
+    expect(lines[titleIdx + 2]).toBe("@@1234-5678-9012-3456");
     // No stray tabs — width-based alignment.
     expect(text).not.toContain("\t");
   });
@@ -172,7 +169,6 @@ describe("digital service receipt formatter", () => {
     const titleIdx = lines.indexOf("KODE TOKEN");
     expect(titleIdx).toBeGreaterThan(0);
     expect(lines[titleIdx + 2]).toBe("1234-5678-9012-3456");
-    expect(lines[lines.length - 1]).toBe("1234-5678-9012-3456");
   });
 
   it("buildReceiptText dispatches by mode", () => {

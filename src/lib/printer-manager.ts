@@ -114,7 +114,11 @@ class PrinterManager {
     }
   }
 
-  /** Reconnects to the saved device WITHOUT showing the chooser. */
+  /**
+   * Reconnects to the saved device WITHOUT showing the chooser.
+   * Tries the already-granted device first (never shows the pairing
+   * dialog); only falls back to the chooser when the browser forgot it.
+   */
   private async connectSaved(
     savedId: string,
   ): Promise<BluetoothRemoteGATTCharacteristic | null> {
@@ -126,19 +130,8 @@ class PrinterManager {
     try {
       // Preferred path: find the already-granted device via getDevices() —
       // this never shows the pairing/chooser dialog.
-      const known = await navigator.bluetooth.getDevices();
-      const saved = known.find((d) => d.id === savedId);
-
-      if (saved) {
-        try {
-          return await this.connect(saved);
-        } catch {
-          // Connect failed (printer off / out of range) — don't show a
-          // chooser; report the failure to the caller.
-          this.setStatus("disconnected");
-          return null;
-        }
-      }
+      const granted = await this.connectGranted(savedId);
+      if (granted) return granted;
 
       // Fallback: the device was forgotten by the browser — the chooser is
       // the only way to re-grant access (first-time pairing).
@@ -159,6 +152,57 @@ class PrinterManager {
       this.setStatus("disconnected");
       return null;
     }
+  }
+
+  /**
+   * Reconnects to an already-granted saved device via getDevices() — never
+   * opens the browser chooser. Returns null when the device is not in the
+   * granted list or the connect fails.
+   */
+  private async connectGranted(
+    savedId: string,
+  ): Promise<BluetoothRemoteGATTCharacteristic | null> {
+    if (!isWebBluetoothSupported()) {
+      this.setStatus("unavailable");
+      return null;
+    }
+    try {
+      const known = await navigator.bluetooth.getDevices();
+      const saved = known.find((d) => d.id === savedId);
+      if (!saved) return null;
+      try {
+        return await this.connect(saved);
+      } catch {
+        // Connect failed (printer off / out of range) — don't show a
+        // chooser; report the failure to the caller.
+        this.setStatus("disconnected");
+        return null;
+      }
+    } catch {
+      this.setStatus("disconnected");
+      return null;
+    }
+  }
+
+  /**
+   * Best-effort reconnection to the saved device — called automatically on
+   * app start / page reload so a previously-paired printer is restored
+   * without removing and re-adding it. Never opens the chooser and never
+   * throws. Returns true when a live connection is established.
+   */
+  async warmReconnect(): Promise<boolean> {
+    if (this.isConnected()) return true;
+    const savedId = usePrinterStore.getState().savedDeviceId;
+    if (!savedId) return false;
+
+    this.setStatus("connecting");
+    const char = await this.connectGranted(savedId);
+    if (char) {
+      this.setStatus("connected");
+      return true;
+    }
+    this.setStatus("disconnected");
+    return false;
   }
 
   /** Connects a raw device from the settings "Hubungkan" button. */
@@ -246,8 +290,27 @@ class PrinterManager {
    * Writes ESC/POS bytes to the connected printer in bounded chunks.
    * Prefers writeWithoutResponse (fast path) when the characteristic
    * supports it; falls back to writeWithResponse.
+   *
+   * If the connection dropped mid-write, clears the stale characteristic,
+   * reconnects to the saved device WITHOUT the chooser, and retries once.
    */
   async write(data: Uint8Array): Promise<void> {
+    try {
+      await this.writeChunks(data);
+    } catch {
+      // A stale handle (connection lost between pages/loads) throws here.
+      // Clear it and attempt a silent reconnect before giving up.
+      this.characteristic = null;
+      this.setStatus("disconnected");
+      const reconnected = await this.warmReconnect();
+      if (!reconnected) {
+        throw makeError("connection-lost", "Printer tidak terhubung.");
+      }
+      await this.writeChunks(data);
+    }
+  }
+
+  private async writeChunks(data: Uint8Array): Promise<void> {
     if (!this.characteristic) {
       throw makeError("no-printer", "Printer tidak terhubung.");
     }
