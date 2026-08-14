@@ -154,6 +154,13 @@ export function buildDigitalServiceThermalReceiptText(
   addMeta(lines, service.identifierReceiptLabel, customerIdentifier || "—", w);
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
+  // ── Token code at the bottom ──
+  if (tokenCode) {
+    // addBlank(lines);
+    addMeta(lines, service.tokenLabel ?? "Kode Token", '', w);
+    addBlank(lines);
+    lines.push(`@@${tokenCode}`);
+  }
   addBlank(lines);
   addSep(lines, w);
 
@@ -180,18 +187,6 @@ export function buildDigitalServiceThermalReceiptText(
   lines.push(centerText(storeName, w));
   addBlank(lines);
   lines.push(separatorLine(w, "="));
-
-  // ── Token code at the very bottom ──
-  // The title prints at the same size as the other titles (a fixed spot
-  // right after the footer); the code itself is centered on its own line
-  // below with a blank line of breathing room, and marked with "@@" so the
-  // ESC/POS renderer prints it tall and bold for the customer to read.
-  if (tokenCode) {
-    addBlank(lines);
-    lines.push(centerText((service.tokenLabel ?? "Kode Token").toUpperCase(), w));
-    addBlank(lines);
-    lines.push(`@@${centerText(tokenCode, w)}`);
-  }
 
   return lines.join("\n");
 }
@@ -245,6 +240,14 @@ export function buildDigitalServiceWhatsAppReceiptText(
   addMeta(lines, service.identifierReceiptLabel, customerIdentifier || "—", w);
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
+
+  // ── Token code at the very bottom ──
+ if (tokenCode) {
+    // addBlank(lines);
+    addMeta(lines, service.tokenLabel ?? "Kode Token", '', w);
+    addBlank(lines);
+    lines.push(`@@${tokenCode}`);
+  }
   addBlank(lines);
   addSep(lines, w);
 
@@ -260,16 +263,6 @@ export function buildDigitalServiceWhatsAppReceiptText(
 
   addBlank(lines);
   lines.push(storeName);
-
-  // ── Token code at the very bottom ──
-  // Mirrors the thermal receipt: title at the normal size, code centered
-  // below it on its own line with breathing room.
-  if (tokenCode) {
-    addBlank(lines);
-    lines.push(centerText((service.tokenLabel ?? "Kode Token").toUpperCase(), w));
-    addBlank(lines);
-    lines.push(centerText(tokenCode, w));
-  }
 
   return lines.join("\n");
 }
