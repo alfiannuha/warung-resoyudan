@@ -18,6 +18,7 @@ const pageTitles: Record<string, string> = {
   "/settings": "Pengaturan",
   "/transaksi": "Transaksi",
   "/cart": "Keranjang",
+  "/layanan-digital": "Layanan Digital",
 };
 
 export default function TopAppBar() {

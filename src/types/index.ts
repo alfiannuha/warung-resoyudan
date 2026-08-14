@@ -36,6 +36,49 @@ export type PaymentMethod = "cash" | "kasbon" | "qris";
 export type TransactionStatus = "paid" | "debt";
 export type PaperWidth = 58 | 80;
 
+/**
+ * Payment method used on a digital service transaction. Reuses the POS
+ * methods but narrows to the ones that make sense for a service purchase
+ * (physical cash or QRIS; kasbon is intentionally excluded).
+ */
+export type DigitalServicePayment = "cash" | "qris";
+
+/**
+ * Digital Services — a record of a service-based transaction (BPJS, PDAM,
+ * pulsa, PLN, e-wallet, transfer, ...). It does NOT touch product stock.
+ */
+export interface DigitalServiceTransaction {
+  id: string;
+  /** Unique daily-sequential number, e.g. DSV-YYYYMMDD-XXX */
+  transactionNumber: string;
+  /** Service type id from the DIGITAL_SERVICES catalog, e.g. "pulsa". */
+  serviceType: string;
+  /** e.g. phone number, customer ID, meter number, biller reference. */
+  customerIdentifier: string;
+  /** Display name of the sub-option chosen (e.g. a game for game_topup). */
+  subService?: string | null;
+  customerName: string | null;
+  /** Face value of the service (before the service fee). */
+  nominalAmount: number;
+  /** Extra fee charged by the warung (service fee). */
+  serviceFee: number;
+  /** nominalAmount + serviceFee. */
+  totalAmount: number;
+  paymentMethod: DigitalServicePayment;
+  /** YYYY-MM-DD (local time), consistent with the rest of the app. */
+  transactionDate: string;
+  /** Free-form notes entered by the operator. */
+  notes: string | null;
+  /** Number printed on the receipt. */
+  receiptNumber: string | null;
+  /** Print status — receipt still printable even if not printed. */
+  printed: boolean;
+  /** Number of times the receipt has been printed (for repeat prints). */
+  printCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;

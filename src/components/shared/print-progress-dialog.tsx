@@ -4,6 +4,10 @@ import { useCallback } from "react";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { APP_NAME } from "@/lib/constants";
 import { buildReceiptText, type ReceiptParams } from "@/lib/receipt-formatter";
+import {
+  buildDigitalServiceReceiptText,
+  type DigitalServiceReceiptParams,
+} from "@/lib/digital-service-receipt-formatter";
 import { renderReceipt, renderTestPage, type DensityLevel } from "@/lib/escpos-renderer";
 import { printerManager } from "@/lib/printer-manager";
 
@@ -76,6 +80,39 @@ export async function testPrintJob(
     printerManager.resetConnection();
     onPhase("error");
     throw err instanceof Error ? err : new Error("Gagal mencetak test.");
+  }
+}
+
+/** Digital-services receipt job — same connect → prepare → print pipeline. */
+export async function printDigitalServiceJob(
+  params: DigitalServiceReceiptParams,
+  onPhase: (phase: PrintPhase) => void,
+): Promise<void> {
+  try {
+    onPhase("connecting");
+    const characteristic = await printerManager.getCharacteristic();
+    if (!characteristic) {
+      onPhase("error");
+      throw new Error("Hubungkan printer terlebih dahulu di menu Pengaturan.");
+    }
+
+    onPhase("preparing");
+    const density = usePrinterStore.getState().density as DensityLevel;
+    const text = buildDigitalServiceReceiptText(params);
+    const data = renderReceipt(text, {
+      paperWidth: params.paperWidth,
+      density,
+      storeName: APP_NAME,
+    });
+
+    onPhase("printing");
+    await printerManager.write(data);
+
+    onPhase("completed");
+  } catch (err) {
+    printerManager.resetConnection();
+    onPhase("error");
+    throw err instanceof Error ? err : new Error("Gagal mencetak nota.");
   }
 }
 

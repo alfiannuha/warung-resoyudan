@@ -43,8 +43,12 @@ export function parseReceiptQrPayload(payload: string): { transactionId: string 
     }
   }
 
-  // Bare receipt-number fallback (e.g. "TRX-20260805-002").
-  if (/^TRX-\d{8}-\d{3,}$/.test(trimmed)) {
+  // Bare receipt-number fallback (e.g. "TRX-20260805-002" or a
+  // digital-service number "DSV-20260814-001").
+  if (
+    /^TRX-\d{8}-\d{3,}$/.test(trimmed) ||
+    /^DSV-\d{8}-\d{3,}$/.test(trimmed)
+  ) {
     return { transactionId: trimmed };
   }
 

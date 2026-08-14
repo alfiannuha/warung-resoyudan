@@ -11,6 +11,9 @@ const COLLECTIONS = [
   "transactions",
   "customers",
   "debt_payments",
+  "expenses",
+  "capital",
+  "digital_services",
 ] as const;
 
 // ── Excel ──
@@ -60,6 +63,14 @@ export interface PDFCashAdvanceSummary {
   paidTotal: number;
 }
 
+export interface PDFDigitalServiceSummary {
+  totalRevenue: number;
+  totalFees: number;
+  totalProfit: number;
+  transactionCount: number;
+  byService: { label: string; revenue: number; profit: number; count: number }[];
+}
+
 export interface PDFCapitalSummary {
   initialCapital: number;
   additionCapital: number;
@@ -83,6 +94,7 @@ export interface PDFReportData {
   topProducts: { name: string; qty: number; revenue: number }[];
   cashAdvanceSummary: PDFCashAdvanceSummary;
   capitalSummary: PDFCapitalSummary;
+  digitalServiceSummary?: PDFDigitalServiceSummary;
   transactions: PDFTransactionRow[];
   expenses: PDFExpenseRow[];
 }
@@ -203,6 +215,50 @@ export async function exportToPDF(data: PDFReportData): Promise<void> {
     });
 
     finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+  }
+
+  // ── Digital Services Summary ──
+  if (data.digitalServiceSummary && data.digitalServiceSummary.transactionCount > 0) {
+    const { totalRevenue, totalFees, totalProfit, transactionCount, byService } =
+      data.digitalServiceSummary;
+    const y = finalY + 12;
+    doc.setFontSize(12);
+    doc.text("Layanan Digital", marginX, y);
+
+    autoTable(doc, {
+      startY: y + 4,
+      head: [["Metrik", "Nilai"]],
+      body: [
+        ["Total Pendapatan", formatCurrency(totalRevenue)],
+        ["Total Biaya Layanan", formatCurrency(totalFees)],
+        ["Laba Layanan", formatCurrency(totalProfit)],
+        ["Jumlah Transaksi", String(transactionCount)],
+      ],
+      theme: "striped",
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [0, 81, 213] },
+    });
+
+    finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+
+    if (byService.length > 0) {
+      const y2 = finalY + 8;
+      autoTable(doc, {
+        startY: y2,
+        head: [["Layanan", "Transaksi", "Pendapatan", "Laba"]],
+        body: byService.map((s) => [
+          s.label,
+          String(s.count),
+          formatCurrency(s.revenue),
+          formatCurrency(s.profit),
+        ]),
+        theme: "striped",
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [0, 81, 213] },
+      });
+
+      finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? finalY;
+    }
   }
 
   // ── Expense Summary ──

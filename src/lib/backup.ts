@@ -9,6 +9,7 @@ const COLLECTIONS = [
   "expenses",
   "capital",
   "drafts",
+  "digital_services",
 ] as const;
 
 interface BackupData {

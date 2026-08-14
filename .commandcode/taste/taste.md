@@ -10,7 +10,7 @@
 
 # language
 - Accept bug reports and feature requests written in Indonesian (Bahasa). Confidence: 0.8
-- Write all UI strings in Indonesian (Bahasa) for the app interface. Confidence: 0.65
+- Write all UI strings in Indonesian (Bahasa) for the app interface. Confidence: 0.7
 
 # package-management
 - Use pnpm for all package manager commands (install, lint, tsc, build). Confidence: 0.60
@@ -59,6 +59,10 @@ See [ui/taste.md](ui/taste.md)
 See [ui/taste.md](ui/taste.md)
 # business-rules
 - Unpaid/unconfirmed transactions (e.g., QRIS "Belum Dibayar") must not count as sales revenue in reports, dashboard, charts, or PDF, and stock should only be deducted once payment is confirmed — not when the transaction is created. Confidence: 0.75
+0.75
+dence: 0.75
+0.75
+paid/unconfirmed transactions (e.g., QRIS "Belum Dibayar") must not count as sales revenue in reports, dashboard, charts, or PDF, and stock should only be deducted once payment is confirmed — not when the transaction is created. Confidence: 0.75
 0.75
 dence: 0.75
 0.75

@@ -22,6 +22,7 @@ export const NAV_ITEMS = [
   { label: "Transaksi", href: "/transaksi", icon: "receipt_long" as const },
   { label: "Produk", href: "/produk", icon: "inventory_2" as const },
   { label: "Pelanggan", href: "/pelanggan", icon: "account_circle" as const },
+  { label: "Layanan Digital", href: "/layanan-digital", icon: "smartphone" as const },
   { label: "Modal", href: "/capital", icon: "account_balance_wallet" as const },
   { label: "Pengeluaran", href: "/pengeluaran", icon: "receipt_long" as const },
   { label: "Kasbon", href: "/kasbon", icon: "menu_book" as const },
