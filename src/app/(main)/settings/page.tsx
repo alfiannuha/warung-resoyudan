@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Printer, Database, Palette, ChevronLeft, Moon } from "lucide-react";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { printerManager, type PrinterStatus } from "@/lib/printer-manager";
@@ -61,26 +61,43 @@ export default function SettingsPage() {
   const [printState, setPrintState] = useState<PrintJobState>({ phase: "idle" as PrintPhase, error: null });
   const [printOpen, setPrintOpen] = useState(false);
 
-  const isConnected = printerManager.isConnected() || !!savedDeviceId;
+  // Reflect the REAL connection state, not just whether a device id is
+  // saved. Subscribes to printerManager so drops/auto-reconnects update
+  // the UI live.
+  useEffect(() => {
+    const refresh = () => setPrinterStatus(printerManager.getStatus());
+    refresh();
+    return printerManager.subscribe(refresh);
+  }, []);
+
+  const isConnected = printerManager.isConnected();
 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-          "000018f0-0000-1000-8000-00805f9b34fb",
-          "0000ff00-0000-1000-8000-00805f9b34fb",
-          "0000180f-0000-1000-8000-00805f9b34fb",
-        ],
-      });
-      const characteristic = await printerManager.connect(device);
-      if (!characteristic) {
-        toast("Gagal menghubungkan printer.", "error");
-        return;
+      // Prefer silent reconnection to the already-saved device (no chooser);
+      // only open the pairing dialog when nothing is saved or reconnect fails.
+      const savedId = usePrinterStore.getState().savedDeviceId;
+      const char = savedId
+        ? await printerManager.reconnectSaved()
+        : null;
+      if (!char) {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            "000018f0-0000-1000-8000-00805f9b34fb",
+            "0000ff00-0000-1000-8000-00805f9b34fb",
+            "0000180f-0000-1000-8000-00805f9b34fb",
+          ],
+        });
+        await printerManager.connect(device);
       }
       setPrinterStatus(printerManager.getStatus());
-      toast(`Printer "${device.name || "Tanpa nama"}" terhubung.`, "success");
+      if (printerManager.isConnected()) {
+        toast("Printer terhubung.", "success");
+      } else {
+        toast("Gagal menghubungkan printer.", "error");
+      }
     } catch (err) {
       if (err instanceof Error && err.name !== "NotFoundError") {
         toast("Gagal menghubungkan printer.", "error");

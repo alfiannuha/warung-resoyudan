@@ -17,6 +17,12 @@ import { usePrinterStore } from "@/stores/use-printer-store";
 
 const WRITE_CHUNK_SIZE = 512;
 
+/** How many silent auto-reconnect attempts to make after a drop before
+ *  giving up (the printer is likely off / out of range). */
+const MAX_AUTO_RECONNECT_ATTEMPTS = 5;
+/** Delay between silent auto-reconnect attempts. */
+const AUTO_RECONNECT_DELAY_MS = 3000;
+
 /** Service UUIDs commonly used by ESC/POS thermal printers. */
 const PRINT_SERVICE_UUIDS = [
   "000018f0-0000-1000-8000-00805f9b34fb", // standard POS
@@ -57,6 +63,11 @@ class PrinterManager {
   private status: PrinterStatus = "disconnected";
   private deviceName: string | null = null;
   private connecting: Promise<BluetoothRemoteGATTCharacteristic | null> | null = null;
+  /** Set while auto-reconnecting after a drop, so manual prints queue up
+   *  instead of racing the reconnect. */
+  private reconnecting: Promise<BluetoothRemoteGATTCharacteristic | null> | null = null;
+  private statusListeners = new Set<() => void>();
+  private reconnectAttempts = 0;
 
   getState(): PrinterManagerState {
     return { status: this.status, deviceName: this.deviceName };
@@ -71,8 +82,19 @@ class PrinterManager {
     return !!this.device?.gatt?.connected && !!this.characteristic;
   }
 
+  /** Subscribe to status changes (e.g. settings page). Returns unsubscribe. */
+  subscribe(fn: () => void): () => void {
+    this.statusListeners.add(fn);
+    return () => this.statusListeners.delete(fn);
+  }
+
+  private emitStatus() {
+    for (const fn of this.statusListeners) fn();
+  }
+
   private setStatus(status: PrinterStatus) {
     this.status = status;
+    this.emitStatus();
   }
 
   private setDevice(device: BluetoothDevice | null, name: string | null) {
@@ -185,24 +207,35 @@ class PrinterManager {
   }
 
   /**
+   * Reconnects to the saved device WITHOUT the chooser. Returns the live
+   * characteristic, or null when nothing is saved / the device is not
+   * granted / the connect fails. Used by Settings "Hubungkan" to avoid
+   * forcing the pairing dialog every time.
+   */
+  async reconnectSaved(): Promise<BluetoothRemoteGATTCharacteristic | null> {
+    if (this.isConnected()) return this.characteristic;
+    if (this.connecting) return this.connecting;
+
+    const savedId = usePrinterStore.getState().savedDeviceId;
+    if (!savedId) return null;
+
+    this.setStatus("connecting");
+    this.connecting = this.connectSaved(savedId);
+    try {
+      return await this.connecting;
+    } finally {
+      this.connecting = null;
+    }
+  }
+
+  /**
    * Best-effort reconnection to the saved device — called automatically on
    * app start / page reload so a previously-paired printer is restored
    * without removing and re-adding it. Never opens the chooser and never
    * throws. Returns true when a live connection is established.
    */
   async warmReconnect(): Promise<boolean> {
-    if (this.isConnected()) return true;
-    const savedId = usePrinterStore.getState().savedDeviceId;
-    if (!savedId) return false;
-
-    this.setStatus("connecting");
-    const char = await this.connectGranted(savedId);
-    if (char) {
-      this.setStatus("connected");
-      return true;
-    }
-    this.setStatus("disconnected");
-    return false;
+    return this.ensureConnected();
   }
 
   /** Connects a raw device from the settings "Hubungkan" button. */
@@ -237,6 +270,9 @@ class PrinterManager {
       device.addEventListener("gattserverdisconnected", () => {
         this.characteristic = null;
         this.setStatus("disconnected");
+        // Automatically reconnect to the saved printer (no chooser) so the
+        // next print "just works" — the user never has to re-pair.
+        this.scheduleAutoReconnect();
       });
 
       const characteristic = await this.discoverWriteCharacteristic(server);
@@ -252,6 +288,44 @@ class PrinterManager {
       this.setStatus("disconnected");
       throw err;
     }
+  }
+
+  /** After a drop, silently try to reconnect a bounded number of times. */
+  private scheduleAutoReconnect() {
+    this.reconnectAttempts = 0;
+    void this.runAutoReconnect();
+  }
+
+  private async runAutoReconnect() {
+    // Give any in-flight write a moment to settle before retrying.
+    await new Promise((r) => setTimeout(r, AUTO_RECONNECT_DELAY_MS));
+
+    if (this.isConnected() || this.reconnecting) return;
+
+    const savedId = usePrinterStore.getState().savedDeviceId;
+    if (!savedId) return;
+
+    while (this.reconnectAttempts < MAX_AUTO_RECONNECT_ATTEMPTS && !this.isConnected()) {
+      this.reconnectAttempts++;
+      this.setStatus("connecting");
+      this.reconnecting = this.connectGranted(savedId);
+      const char = await this.reconnecting;
+      this.reconnecting = null;
+      if (char) {
+        this.reconnectAttempts = 0;
+        this.setStatus("connected");
+        return;
+      }
+      this.setStatus("disconnected");
+      if (this.reconnectAttempts < MAX_AUTO_RECONNECT_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, AUTO_RECONNECT_DELAY_MS));
+      }
+    }
+  }
+
+  /** Aborts any in-flight auto-reconnect (e.g. manual disconnect). */
+  private cancelAutoReconnect() {
+    this.reconnectAttempts = MAX_AUTO_RECONNECT_ATTEMPTS;
   }
 
   /** Finds the write characteristic across the printer's services. */
@@ -302,11 +376,44 @@ class PrinterManager {
       // Clear it and attempt a silent reconnect before giving up.
       this.characteristic = null;
       this.setStatus("disconnected");
-      const reconnected = await this.warmReconnect();
+
+      // If an auto-reconnect is already in flight, reuse it (no race).
+      const reconnected = await this.ensureConnected();
       if (!reconnected) {
         throw makeError("connection-lost", "Printer tidak terhubung.");
       }
       await this.writeChunks(data);
+    }
+  }
+
+  /**
+   * Ensures a live connection exists, reconnecting to the saved device
+   * WITHOUT the chooser when possible. Shares an in-flight reconnect and
+   * does not throw on failure — returns whether a connection is live.
+   */
+  private async ensureConnected(): Promise<boolean> {
+    if (this.isConnected()) return true;
+    if (this.reconnecting) {
+      const char = await this.reconnecting;
+      return !!char;
+    }
+
+    const savedId = usePrinterStore.getState().savedDeviceId;
+    if (!savedId) return false;
+
+    this.setStatus("connecting");
+    this.reconnecting = this.connectGranted(savedId);
+    try {
+      const char = await this.reconnecting;
+      if (char) {
+        this.reconnectAttempts = 0;
+        this.setStatus("connected");
+        return true;
+      }
+      this.setStatus("disconnected");
+      return false;
+    } finally {
+      this.reconnecting = null;
     }
   }
 
@@ -330,6 +437,7 @@ class PrinterManager {
 
   /** Releases the connection (settings "Putuskan Printer"). */
   disconnect(): void {
+    this.cancelAutoReconnect();
     this.characteristic = null;
     if (this.device?.gatt?.connected) {
       this.device.gatt.disconnect();
