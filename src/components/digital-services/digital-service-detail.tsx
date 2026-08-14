@@ -256,13 +256,9 @@ export default function DigitalServiceDetail({
         <div className="mt-5 space-y-2">
           <button
             onClick={handlePrint}
-            className={`flex w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98] ${
-              service.prominentPrint
-                ? "h-16 text-body-lg text-lg"
-                : "h-12"
-            }`}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
           >
-            <Icon name="print" size={service.prominentPrint ? 26 : 20} />
+            <Icon name="print" size={20} />
             {transaction.printed ? "Cetak Ulang" : "Cetak Nota"}
           </button>
           <button

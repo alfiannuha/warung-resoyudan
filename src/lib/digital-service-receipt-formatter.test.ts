@@ -251,10 +251,9 @@ describe("digital services catalog", () => {
     expect(indihome?.label).toBe("IndiHome");
   });
 
-  it("pln_prepaid exposes token config and prominent print flag", () => {
+  it("pln_prepaid exposes token config", () => {
     const pln = getServiceConfig("pln_prepaid");
     expect(pln.tokenLabel).toBe("Kode Token");
-    expect(pln.prominentPrint).toBe(true);
   });
 
   it("getServiceConfig resolves a known service and falls back gracefully", () => {

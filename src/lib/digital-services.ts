@@ -45,8 +45,6 @@ export interface DigitalServiceConfig {
    * The token code is stored in the `tokenCode` transaction field.
    */
   tokenLabel?: string;
-  /** Whether this service needs a larger, emphasized print button. */
-  prominentPrint?: boolean;
 }
 
 export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
@@ -113,7 +111,6 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierInputMode: "numeric",
     defaultFee: 2000,
     tokenLabel: "Kode Token",
-    prominentPrint: true,
   },
   {
     id: "pln_postpaid",
