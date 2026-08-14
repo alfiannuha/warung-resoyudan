@@ -19,7 +19,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import type { CapitalTransaction, CapitalType } from "@/types";
+import type { CapitalTransaction, CapitalType, CapitalCategory } from "@/types";
+import {
+  CAPITAL_CATEGORY_LABELS,
+  normalizeCapitalCategory,
+} from "@/stores/use-capital-store";
 
 const TYPE_META: Record<
   CapitalType,
@@ -45,12 +49,19 @@ const TYPE_META: Record<
   },
 };
 
+const CATEGORY_META: Record<
+  CapitalCategory,
+  { icon: string; tone: "info" | "default" }
+> = {
+  warung: { icon: "shopping_bag", tone: "info" },
+  digital_service: { icon: "smartphone", tone: "default" },
+};
+
 export default function CapitalPage() {
   const capitalTransactions = useCapitalStore((s) => s.capitalTransactions);
   const { addCapitalTransaction, updateCapitalTransaction, deleteCapitalTransaction } =
     useCapitalStore();
-  const currentCapital = useCapitalStore((s) => s.getCurrentCapital());
-  const hasInitial = useCapitalStore((s) => s.hasInitialCapital());
+  const hasInitial = useCapitalStore((s) => s.hasInitialCapital);
   const transactions = useTransactionStore((s) => s.transactions);
   const expenses = useExpenseStore((s) => s.expenses);
   const { toast } = useToast();
@@ -64,6 +75,7 @@ export default function CapitalPage() {
   const [editCapital, setEditCapital] = useState<CapitalTransaction | null>(null);
   const [transactionDate, setTransactionDate] = useState(getTodayISO());
   const [type, setType] = useState<CapitalType>("addition");
+  const [category, setCategory] = useState<CapitalCategory>("warung");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
@@ -72,13 +84,19 @@ export default function CapitalPage() {
   const [deleteTarget, setDeleteTarget] = useState<CapitalTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Break-even & Remaining Capital ──
+  // ── Per-category capital ──
+  const getCapitalBreakdown = useCapitalStore((s) => s.getCapitalBreakdown);
+  const warungCapital = getCapitalBreakdown("warung").current;
+  const digitalCapital = getCapitalBreakdown("digital_service").current;
+  const combinedCapital = warungCapital + digitalCapital;
+
+  // ── Break-even & Remaining Capital (Warung) ──
   const grossProfit = transactions.reduce((s, t) => s + t.totalProfit, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.totalAmount, 0);
   const netProfit = grossProfit - totalExpenses;
-  const breakEvenPercent =
-    currentCapital > 0 ? (netProfit / currentCapital) * 100 : 0;
-  const isBreakEven = breakEvenPercent >= 100;
+  const warungBreakEvenPercent =
+    warungCapital > 0 ? (netProfit / warungCapital) * 100 : 0;
+  const isBreakEven = warungBreakEvenPercent >= 100;
 
   const filtered = search.trim()
     ? capitalTransactions.filter(
@@ -91,7 +109,8 @@ export default function CapitalPage() {
   const openAdd = () => {
     setEditCapital(null);
     setTransactionDate(getTodayISO());
-    setType(hasInitial ? "addition" : "initial");
+    setType(hasInitial("warung") ? "addition" : "initial");
+    setCategory("warung");
     setAmount("");
     setDescription("");
     setFormOpen(true);
@@ -101,6 +120,7 @@ export default function CapitalPage() {
     setEditCapital(capital);
     setTransactionDate(capital.transactionDate);
     setType(capital.type);
+    setCategory(normalizeCapitalCategory(capital.category));
     setAmount(String(capital.amount));
     setDescription(capital.description);
     setFormOpen(true);
@@ -109,7 +129,7 @@ export default function CapitalPage() {
   const handleSubmit = async () => {
     const amt = Number(amount);
     if (saving || !transactionDate || !(amt > 0)) return;
-    if (type === "initial" && !editCapital && hasInitial) {
+    if (type === "initial" && !editCapital && hasInitial(category)) {
       toast("Modal awal hanya dapat dibuat satu kali.", "error");
       return;
     }
@@ -119,6 +139,7 @@ export default function CapitalPage() {
         await updateCapitalTransaction(editCapital.id, {
           transactionDate,
           type,
+          category,
           amount: amt,
           description: description.trim(),
         });
@@ -129,6 +150,7 @@ export default function CapitalPage() {
           capitalNumber,
           transactionDate,
           type,
+          category,
           amount: amt,
           description: description.trim(),
         });
@@ -180,10 +202,26 @@ export default function CapitalPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
             <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">
+              Warung Capital
+            </p>
+            <p className="mt-1 text-numeric-display font-bold text-on-surface">
+              {formatCurrency(warungCapital)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">
+              Digital Capital
+            </p>
+            <p className="mt-1 text-numeric-display font-bold text-on-surface">
+              {formatCurrency(digitalCapital)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">
               Total Modal Aktif
             </p>
             <p className="mt-1 text-numeric-display font-bold text-on-surface">
-              {formatCurrency(currentCapital)}
+              {formatCurrency(combinedCapital)}
             </p>
           </div>
           <div className="rounded-lg border border-border-standard bg-card p-4 shadow-card">
@@ -191,7 +229,7 @@ export default function CapitalPage() {
               Break-even
             </p>
             <p className="mt-1 text-numeric-display font-bold text-secondary">
-              {Math.round(breakEvenPercent)}%
+              {Math.round(warungBreakEvenPercent)}%
             </p>
             <p className="text-caption text-on-surface-variant">
               {isBreakEven ? "Sudah balik modal ✅" : "Belum balik modal"}
@@ -230,6 +268,10 @@ export default function CapitalPage() {
                       <StatusBadge
                         label={meta.label}
                         variant={capital.type === "withdrawal" ? "danger" : capital.type === "addition" ? "success" : "info"}
+                      />
+                      <StatusBadge
+                        label={CAPITAL_CATEGORY_LABELS[normalizeCapitalCategory(capital.category)]}
+                        variant={capital.category === "digital_service" ? "info" : "default"}
                       />
                       <h3 className="truncate text-body-md font-bold text-on-surface">
                         {capital.capitalNumber}
@@ -320,6 +362,10 @@ export default function CapitalPage() {
                           label={meta.label}
                           variant={capital.type === "withdrawal" ? "danger" : capital.type === "addition" ? "success" : "info"}
                         />
+                        <StatusBadge
+                          label={CAPITAL_CATEGORY_LABELS[normalizeCapitalCategory(capital.category)]}
+                          variant={capital.category === "digital_service" ? "info" : "default"}
+                        />
                         <h3 className="truncate text-label-xl font-bold text-on-surface">
                           {capital.capitalNumber}
                         </h3>
@@ -355,7 +401,7 @@ export default function CapitalPage() {
           ) : (
             <TabletDetailContent
               capital={selectedCapital}
-              currentCapital={currentCapital}
+              currentCapital={getCapitalBreakdown(normalizeCapitalCategory(selectedCapital.category)).current}
               onEdit={() => openEdit(selectedCapital)}
               onDelete={() => setDeleteTarget(selectedCapital)}
             />
@@ -385,12 +431,50 @@ export default function CapitalPage() {
             </div>
             <div>
               <label className="mb-1 block text-label-md text-on-surface-variant">
+                Kategori Modal <span className="text-danger">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    {
+                      value: "warung",
+                      label: CAPITAL_CATEGORY_LABELS.warung,
+                      icon: "shopping_bag",
+                    },
+                    {
+                      value: "digital_service",
+                      label: CAPITAL_CATEGORY_LABELS.digital_service,
+                      icon: "smartphone",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setCategory(opt.value);
+                      setType(hasInitial(opt.value) ? "addition" : "initial");
+                    }}
+                    className={`flex h-12 items-center justify-center gap-1.5 rounded-md text-label-md font-semibold transition-all active:scale-[0.98] ${
+                      category === opt.value
+                        ? "border-2 border-secondary bg-secondary/5 text-secondary"
+                        : "border border-border-standard bg-card text-on-surface-variant"
+                    }`}
+                  >
+                    <Icon name={opt.icon} size={18} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-label-md text-on-surface-variant">
                 Jenis Transaksi <span className="text-danger">*</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {(
                   [
-                    { value: "initial", label: "Modal Awal", disabled: hasInitial && !editCapital },
+                    { value: "initial", label: "Modal Awal", disabled: hasInitial(category) && !editCapital },
                     { value: "addition", label: "Penambahan", disabled: false },
                     { value: "withdrawal", label: "Penarikan", disabled: false },
                   ] as const
@@ -511,6 +595,12 @@ function MobileDetailContent({
           <span className="text-caption text-on-surface-variant font-semibold">
             {capital.capitalNumber}
           </span>
+          <div className="mt-1">
+            <StatusBadge
+              label={CAPITAL_CATEGORY_LABELS[normalizeCapitalCategory(capital.category)]}
+              variant={capital.category === "digital_service" ? "info" : "default"}
+            />
+          </div>
           <h2 className="text-headline-md font-bold text-on-surface">{meta.label}</h2>
           <p className={`text-label-xl font-bold ${meta.text}`}>
             {meta.sign} {formatCurrency(capital.amount)}
@@ -584,8 +674,8 @@ function TabletDetailContent({
             </span>
             <h2 className="text-headline-md font-bold text-on-surface">{meta.label}</h2>
             <p className="flex items-center gap-1 text-body-sm text-on-surface-variant">
-              <Icon name="calendar_month" size={14} />
-              {formatDate(capital.transactionDate)}
+              <Icon name={CATEGORY_META[normalizeCapitalCategory(capital.category)].icon} size={14} />
+              {CAPITAL_CATEGORY_LABELS[normalizeCapitalCategory(capital.category)]}
             </p>
           </div>
         </div>

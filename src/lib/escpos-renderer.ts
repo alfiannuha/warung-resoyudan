@@ -156,6 +156,11 @@ export function doubleWidth(): Uint8Array {
   return escPos(GS, 0x21, 0x10);
 }
 
+/** Double-height only via GS ! (0x20) — taller but keeps line width. */
+export function doubleHeight(): Uint8Array {
+  return escPos(GS, 0x21, 0x20);
+}
+
 /** Reset print mode to normal (GS ! 0). */
 export function normalSize(): Uint8Array {
   return escPos(GS, 0x21, 0x00);
@@ -193,15 +198,19 @@ export function finishSequence(feedLines = 5): Uint8Array {
 /**
  * Renders one plain-text line with an optional ESC/POS mode:
  *  - center: ESC a 1 before, ESC a 0 after
- *  - big/bold: GS ! / ESC E before, normal after
+ *  - big: GS ! double width+height (line is centered, e.g. store name)
+ *  - tall: GS ! double height only (token codes — keeps column width)
+ *  - bold: ESC E before/after
  */
-function renderLine(line: string, opts: { center?: boolean; bold?: boolean; big?: boolean }): Uint8Array {
+function renderLine(line: string, opts: { center?: boolean; bold?: boolean; big?: boolean; tall?: boolean }): Uint8Array {
   const chunks: Uint8Array[] = [];
   if (opts.center) chunks.push(align(1));
   if (opts.big) chunks.push(doubleSize());
+  if (opts.tall) chunks.push(doubleHeight());
   if (opts.bold) chunks.push(bold(true));
   chunks.push(textBytes(line));
   if (opts.bold) chunks.push(bold(false));
+  if (opts.tall) chunks.push(normalSize());
   if (opts.big) chunks.push(normalSize());
   if (opts.center) chunks.push(align(0));
   chunks.push(escPos(LF));
@@ -264,6 +273,12 @@ export function renderReceipt(text: string, opts: RenderOptions): Uint8Array {
     }
 
     // Everything else — alignment is already baked into the text.
+    // Lines prefixed with "@@" are emphasized (large + bold) on paper —
+    // used for the PLN token code so it stands out on the receipt.
+    if (line.startsWith("@@")) {
+      chunks.push(renderLine(line.slice(2), { tall: true, bold: true }));
+      continue;
+    }
     chunks.push(renderLine(line, {}));
   }
 

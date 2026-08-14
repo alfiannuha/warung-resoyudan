@@ -97,7 +97,7 @@ describe("digital service receipt formatter", () => {
       customerIdentifier: "1234567890",
     });
     expect(text).toContain("TOP UP GAME");
-    expect(text).toContain("Game: Free Fire");
+    expect(text).toContain("Pilih Game: Free Fire");
     expect(text).toContain("User ID: 1234567890");
     // No stray tabs — width-based alignment.
     expect(text).not.toContain("\t");
@@ -110,8 +110,44 @@ describe("digital service receipt formatter", () => {
       subService: "Mobile Legends",
       customerIdentifier: "987654321",
     });
-    expect(text).toContain("Game: Mobile Legends");
+    expect(text).toContain("Pilih Game: Mobile Legends");
     expect(text).not.toContain("🙏");
+  });
+
+  it("renders provider option on pulsa thermal receipt", () => {
+    const text = buildDigitalServiceThermalReceiptText({
+      ...base,
+      serviceType: "pulsa",
+      subService: "Telkomsel",
+      customerIdentifier: "081234567890",
+    });
+    expect(text).toContain("Pilih Provider: Telkomsel");
+    expect(text).toContain("No. HP: 081234567890");
+  });
+
+  it("renders bank destination on transfer WhatsApp receipt", () => {
+    const text = buildDigitalServiceWhatsAppReceiptText({
+      ...base,
+      serviceType: "transfer",
+      subService: "BRI",
+      customerIdentifier: "1234567890",
+    });
+    expect(text).toContain("Pilih Bank Tujuan: BRI");
+    expect(text).not.toContain("🙏");
+  });
+
+  it("renders the PLN token code on thermal receipts", () => {
+    const text = buildDigitalServiceThermalReceiptText({
+      ...base,
+      serviceType: "pln_prepaid",
+      customerIdentifier: "123456789012",
+      tokenCode: "1234-5678-9012-3456",
+    });
+    expect(text).toContain("TOKEN PLN");
+    expect(text).toContain("No. Meter: 123456789012");
+    expect(text).toContain("Kode Token: 1234-5678-9012-3456");
+    // No stray tabs — width-based alignment.
+    expect(text).not.toContain("\t");
   });
 
   it("buildReceiptText dispatches by mode", () => {
@@ -154,6 +190,50 @@ describe("digital services catalog", () => {
     expect(getSubServiceLabel("game_topup", "genshin_impact")).toBe("Genshin Impact");
     expect(getSubServiceLabel("pulsa", "not-a-game")).toBe("not-a-game");
     expect(getSubServiceLabel("game_topup", null)).toBeNull();
+  });
+
+  it("pulsa and data expose provider options (Tri, Telkomsel, etc)", () => {
+    const pulsa = getServiceConfig("pulsa");
+    expect(pulsa.optionsLabel).toBe("Pilih Provider");
+    const pulsaIds = pulsa.options?.map((o) => o.id) ?? [];
+    expect(pulsaIds).toContain("tri");
+    expect(pulsaIds).toContain("telkomsel");
+    expect(pulsaIds).toContain("indosat");
+    expect(pulsaIds).toContain("xl");
+
+    const data = getServiceConfig("data");
+    expect(data.optionsLabel).toBe("Pilih Provider");
+    expect(data.options?.some((o) => o.id === "tri")).toBe(true);
+  });
+
+  it("transfer exposes bank destination options (BRI, BCA, Mandiri)", () => {
+    const transfer = getServiceConfig("transfer");
+    expect(transfer.optionsLabel).toBe("Pilih Bank Tujuan");
+    const ids = transfer.options?.map((o) => o.id) ?? [];
+    expect(ids).toContain("bri");
+    expect(ids).toContain("bca");
+    expect(ids).toContain("mandiri");
+    expect(ids).toContain("bni");
+    expect(ids).toContain("bsi");
+    const bri = transfer.options?.find((o) => o.id === "bri");
+    expect(bri?.label).toBe("BRI");
+  });
+
+  it("internet exposes service provider options (IndiHome, BizNet)", () => {
+    const internet = getServiceConfig("internet");
+    expect(internet.optionsLabel).toBe("Pilih Provider");
+    const ids = internet.options?.map((o) => o.id) ?? [];
+    expect(ids).toContain("indihome");
+    expect(ids).toContain("biznet");
+    expect(ids).toContain("firstmedia");
+    const indihome = internet.options?.find((o) => o.id === "indihome");
+    expect(indihome?.label).toBe("IndiHome");
+  });
+
+  it("pln_prepaid exposes token config and prominent print flag", () => {
+    const pln = getServiceConfig("pln_prepaid");
+    expect(pln.tokenLabel).toBe("Kode Token");
+    expect(pln.prominentPrint).toBe(true);
   });
 
   it("getServiceConfig resolves a known service and falls back gracefully", () => {

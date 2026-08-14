@@ -8,6 +8,8 @@ import { useCustomerStore } from "@/stores/use-customer-store";
 import { useProductStore } from "@/stores/use-product-store";
 import { useExpenseStore } from "@/stores/use-expense-store";
 import { useReportStore } from "@/stores/use-report-store";
+import { useDigitalServiceStore } from "@/stores/use-digital-service-store";
+import { useCapitalStore } from "@/stores/use-capital-store";
 import { generateInsights } from "@/lib/insights";
 import { getDateRange, getDateOffsetISO, sumExpensesInRange, toDateKey } from "@/lib/period-metrics";
 import { PERIOD_LABELS } from "@/lib/constants";
@@ -17,6 +19,7 @@ import KpiGrid from "@/components/shared/kpi-grid";
 import KpiCard from "@/components/shared/kpi-card";
 import InsightStrip from "@/components/shared/insight-strip";
 import FinancialSummaryCard from "@/components/dashboard/financial-summary-card";
+import CapitalSummaryCard from "@/components/dashboard/capital-summary-card";
 import SalesTrendCard from "@/components/dashboard/sales-trend-card";
 import RecentTransactionsCard from "@/components/dashboard/recent-transactions-card";
 import { SkeletonCard } from "@/components/shared/skeleton";
@@ -58,9 +61,35 @@ export default function DashboardPage() {
   const totalSales = reported.reduce((s, t) => s + t.totalAmount, 0);
   const totalProfit = reported.reduce((s, t) => s + t.totalProfit, 0);
   const totalExpenses = sumExpensesInRange(expenses, start, end);
-  const netProfit = totalProfit - totalExpenses;
-  const margin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
-  const transactionCount = reported.length;
+
+  // Digital-services period revenue & profit (service fees = profit).
+  const digitalServices = useDigitalServiceStore((s) => s.transactions);
+  const digitalPeriod = useMemo(() => {
+    const s = new Date(`${start}T00:00:00`).getTime();
+    const e = new Date(`${end}T00:00:00`).setHours(23, 59, 59, 999);
+    const periodTx = digitalServices.filter((t) => {
+      const d = new Date(`${t.transactionDate}T00:00:00`).getTime();
+      return d >= s && d <= e;
+    });
+    return {
+      revenue: periodTx.reduce((sum, t) => sum + t.totalAmount, 0),
+      profit: periodTx.reduce((sum, t) => sum + t.serviceFee, 0),
+      count: periodTx.length,
+    };
+  }, [digitalServices, start, end]);
+
+  const netProfit = totalProfit - totalExpenses + digitalPeriod.profit;
+  const margin =
+    totalSales + digitalPeriod.revenue > 0
+      ? Math.round((netProfit / (totalSales + digitalPeriod.revenue)) * 100)
+      : 0;
+  const transactionCount = reported.length + digitalPeriod.count;
+
+  // Capital (per category + combined, lifetime).
+  const getCapitalBreakdown = useCapitalStore((s) => s.getCapitalBreakdown);
+  const warungCapital = getCapitalBreakdown("warung").current;
+  const digitalCapital = getCapitalBreakdown("digital_service").current;
+  const currentCapital = warungCapital + digitalCapital;
 
   // ── Always-on overview numbers (today, local time) ──
   const todayISO = getTodayISO();
@@ -173,11 +202,14 @@ export default function DashboardPage() {
 
       {/* 4. Financial Summary — one compact card */}
       <FinancialSummaryCard
-        income={totalSales}
+        income={totalSales + digitalPeriod.revenue}
         expense={totalExpenses}
         netProfit={netProfit}
         margin={margin}
       />
+
+      {/* 5. Capital — per category */}
+      <CapitalSummaryCard warungCapital={warungCapital} digitalCapital={digitalCapital} currentCapital={currentCapital} />
 
       {/* 5. Sales Trend — 7/30/90 with stats */}
       <SalesTrendCard />

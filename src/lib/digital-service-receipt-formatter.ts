@@ -24,6 +24,7 @@ export interface DigitalServiceReceiptParams {
   serviceType: string;
   customerIdentifier: string;
   subService?: string | null;
+  tokenCode?: string | null;
   customerName?: string | null;
   nominalAmount: number;
   serviceFee: number;
@@ -101,6 +102,7 @@ export function buildDigitalServiceThermalReceiptText(
     serviceType,
     customerIdentifier,
     subService,
+    tokenCode,
     customerName,
     nominalAmount,
     serviceFee,
@@ -146,8 +148,16 @@ export function buildDigitalServiceThermalReceiptText(
 
   // ── Service info ──
   lines.push(service.label.toUpperCase());
-  if (subService) addMeta(lines, "Game", subService, w);
+  if (subService) {
+    addMeta(lines, service.optionsLabel ?? "Opsi", subService, w);
+  }
   addMeta(lines, service.identifierReceiptLabel, customerIdentifier || "—", w);
+  if (tokenCode) {
+    // The token code is the key piece of info on a PLN prepaid receipt —
+    // mark it so the ESC/POS renderer prints it larger and bold.
+    addMeta(lines, service.tokenLabel ?? "Kode Token", tokenCode, w);
+    lines[lines.length - 1] = `@@${lines[lines.length - 1]}`;
+  }
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
   addBlank(lines);
@@ -187,6 +197,7 @@ export function buildDigitalServiceWhatsAppReceiptText(
     serviceType,
     customerIdentifier,
     subService,
+    tokenCode,
     customerName,
     nominalAmount,
     serviceFee,
@@ -222,8 +233,13 @@ export function buildDigitalServiceWhatsAppReceiptText(
   addBlank(lines);
 
   lines.push(service.label.toUpperCase());
-  if (subService) addMeta(lines, "Game", subService, w);
+  if (subService) {
+    addMeta(lines, service.optionsLabel ?? "Opsi", subService, w);
+  }
   addMeta(lines, service.identifierReceiptLabel, customerIdentifier || "—", w);
+  if (tokenCode) {
+    addMeta(lines, service.tokenLabel ?? "Kode Token", tokenCode, w);
+  }
   if (customerName) addMeta(lines, "Pelanggan", customerName, w);
   if (notes) addMeta(lines, "Catatan", notes, w);
   addBlank(lines);

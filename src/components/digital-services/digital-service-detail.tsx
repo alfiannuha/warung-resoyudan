@@ -26,6 +26,7 @@ interface Props {
   transaction: DigitalServiceTransaction;
   onClose: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
 /**
@@ -37,6 +38,7 @@ export default function DigitalServiceDetail({
   transaction,
   onClose,
   onEdit,
+  onDelete,
 }: Props) {
   const [printState, setPrintState] = useState<PrintJobState>({
     phase: "idle" as PrintPhase,
@@ -57,6 +59,7 @@ export default function DigitalServiceDetail({
       transaction.serviceType,
       transaction.subService,
     ),
+    tokenCode: transaction.tokenCode ?? null,
     customerName: transaction.customerName,
     nominalAmount: transaction.nominalAmount,
     serviceFee: transaction.serviceFee,
@@ -132,6 +135,14 @@ export default function DigitalServiceDetail({
       : []),
     { label: "No. Transaksi", value: transaction.transactionNumber },
     { label: service.identifierReceiptLabel, value: transaction.customerIdentifier },
+    ...(transaction.tokenCode
+      ? [
+          {
+            label: service.tokenLabel ?? "Kode Token",
+            value: transaction.tokenCode,
+          },
+        ]
+      : []),
     ...(transaction.customerName
       ? [{ label: "Nama Pelanggan", value: transaction.customerName }]
       : []),
@@ -164,6 +175,13 @@ export default function DigitalServiceDetail({
           </div>
           <div className="flex items-center gap-1">
             <button
+              onClick={onDelete}
+              className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
+              aria-label="Hapus transaksi"
+            >
+              <Icon name="delete" size={20} className="text-danger" />
+            </button>
+            <button
               onClick={onEdit}
               className="flex size-11 items-center justify-center rounded-md transition-colors hover:bg-surface-container active:scale-90"
               aria-label="Edit transaksi"
@@ -190,19 +208,32 @@ export default function DigitalServiceDetail({
 
         {/* Meta rows */}
         <div className="space-y-2">
-          {meta.map((m) => (
-            <div
-              key={m.label}
-              className="rounded-md border border-border-standard bg-card p-3 shadow-card"
-            >
-              <p className="mb-0.5 text-overline uppercase tracking-[0.08em] text-on-surface-variant">
-                {m.label}
-              </p>
-              <p className="whitespace-pre-wrap text-body-sm font-semibold text-on-surface">
-                {m.value}
-              </p>
-            </div>
-          ))}
+          {meta.map((m) => {
+            const isToken = m.label === service.tokenLabel;
+            return (
+              <div
+                key={m.label}
+                className={`rounded-md border p-3 shadow-card ${
+                  isToken
+                    ? "border-secondary bg-secondary/5"
+                    : "border-border-standard bg-card"
+                }`}
+              >
+                <p className="mb-0.5 text-overline uppercase tracking-[0.08em] text-on-surface-variant">
+                  {m.label}
+                </p>
+                <p
+                  className={`whitespace-pre-wrap font-semibold text-on-surface ${
+                    isToken
+                      ? "text-lg tracking-[0.15em] text-secondary"
+                      : "text-body-sm"
+                  }`}
+                >
+                  {m.value}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Amount breakdown */}
@@ -225,9 +256,13 @@ export default function DigitalServiceDetail({
         <div className="mt-5 space-y-2">
           <button
             onClick={handlePrint}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
+            className={`flex w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98] ${
+              service.prominentPrint
+                ? "h-16 text-body-lg text-lg"
+                : "h-12"
+            }`}
           >
-            <Icon name="print" size={20} />
+            <Icon name="print" size={service.prominentPrint ? 26 : 20} />
             {transaction.printed ? "Cetak Ulang" : "Cetak Nota"}
           </button>
           <button

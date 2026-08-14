@@ -14,14 +14,25 @@ export interface CashFlowData {
   kasbonIn: number;
 }
 
+export interface CapitalCategorySummary {
+  initial: number;
+  addition: number;
+  withdrawal: number;
+  current: number;
+}
+
 export interface FinancialDetailsData {
-  /** Modal Awal (initial capital). */
+  /** Warung Capital lifecycle (goods business line). */
+  warungCapital: CapitalCategorySummary;
+  /** Digital Services Capital lifecycle (services business line). */
+  digitalCapital: CapitalCategorySummary;
+  /** Modal Awal (initial capital, combined). */
   initialCapital: number;
-  /** Penambahan Modal (additions). */
+  /** Penambahan Modal (additions, combined). */
   additionCapital: number;
-  /** Penarikan Modal (withdrawals). */
+  /** Penarikan Modal (withdrawals, combined). */
   withdrawalCapital: number;
-  /** Total Modal Aktif (current capital). */
+  /** Total Modal Aktif (current capital, combined). */
   currentCapital: number;
   /** Cumulative net profit (lifetime). */
   lifetimeNetProfit: number;
@@ -57,6 +68,21 @@ export default function FinancialDetailsCard({ data }: Props) {
     { label: "Kasbon Masuk (Pelunasan)", value: data.cashFlow.kasbonIn, valueClass: "text-success" },
   ];
 
+  const categoryRows = [
+    {
+      label: "Warung Capital",
+      sub: "Untuk dagang barang",
+      value: data.warungCapital.current,
+      valueClass: "text-on-surface",
+    },
+    {
+      label: "Digital Services Capital",
+      sub: "Untuk layanan digital",
+      value: data.digitalCapital.current,
+      valueClass: "text-secondary",
+    },
+  ];
+
   return (
     <section className="overflow-hidden rounded-lg border border-border-standard bg-card shadow-card">
       <div className="flex items-center justify-between border-b border-border-standard px-5 py-4">
@@ -74,6 +100,21 @@ export default function FinancialDetailsCard({ data }: Props) {
             <p className={cn("mt-1 text-numeric-display font-bold text-on-surface", cell.valueClass)}>
               {formatCurrency(cell.value)}
             </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Capital categories */}
+      <div className="grid grid-cols-1 gap-px bg-border-standard md:grid-cols-2">
+        {categoryRows.map((row) => (
+          <div key={row.label} className="bg-surface-container-low p-5">
+            <p className="text-overline uppercase tracking-[0.08em] text-on-surface-variant">
+              {row.label}
+            </p>
+            <p className={cn("mt-1 text-numeric-display font-bold text-on-surface", row.valueClass)}>
+              {formatCurrency(row.value)}
+            </p>
+            <p className="mt-0.5 text-caption text-on-surface-variant">{row.sub}</p>
           </div>
         ))}
       </div>

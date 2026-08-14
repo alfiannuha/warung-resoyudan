@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CapitalTransaction, CapitalType } from "@/types";
+import type { CapitalTransaction, CapitalType, CapitalCategory } from "@/types";
 import {
   collection,
   doc,
@@ -20,6 +20,21 @@ const CAPITAL_TYPE_LABELS: Record<CapitalType, string> = {
   withdrawal: "Penarikan Modal",
 };
 
+export const CAPITAL_CATEGORY_LABELS: Record<CapitalCategory, string> = {
+  warung: "Warung Capital",
+  digital_service: "Digital Services Capital",
+};
+
+/** Default category for legacy records that predate categories. */
+export const DEFAULT_CAPITAL_CATEGORY: CapitalCategory = "warung";
+
+/** Normalizes a possibly-missing/legacy category to a valid one. */
+export function normalizeCapitalCategory(
+  category: CapitalCategory | string | null | undefined,
+): CapitalCategory {
+  return category === "digital_service" ? "digital_service" : "warung";
+}
+
 interface CapitalStore {
   capitalTransactions: CapitalTransaction[];
   loading: boolean;
@@ -33,8 +48,16 @@ interface CapitalStore {
     data: Partial<CapitalTransaction>,
   ) => Promise<void>;
   deleteCapitalTransaction: (id: string) => Promise<void>;
-  getCurrentCapital: () => number;
-  hasInitialCapital: () => boolean;
+  /** Current capital for a category (default: all categories combined). */
+  getCurrentCapital: (category?: CapitalCategory) => number;
+  hasInitialCapital: (category?: CapitalCategory) => boolean;
+  /** Lifecycle sums (initial/addition/withdrawal/current) for a category. */
+  getCapitalBreakdown: (category?: CapitalCategory) => {
+    initial: number;
+    addition: number;
+    withdrawal: number;
+    current: number;
+  };
 }
 
 const capitalCollection = collection(db, "capital_transactions");
@@ -55,6 +78,7 @@ export const useCapitalStore = create<CapitalStore>((set, get) => ({
             return {
               id: d.id,
               ...data,
+              category: normalizeCapitalCategory(data.category),
               createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt,
               updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? data.updatedAt,
             } as CapitalTransaction;
@@ -115,15 +139,45 @@ export const useCapitalStore = create<CapitalStore>((set, get) => ({
     });
   },
 
-  getCurrentCapital: () => {
-    return get().capitalTransactions.reduce((sum, t) => {
+  getCurrentCapital: (category) => {
+    const list = get().capitalTransactions;
+    const filtered = category
+      ? list.filter((t) => normalizeCapitalCategory(t.category) === category)
+      : list;
+    return filtered.reduce((sum, t) => {
       if (t.type === "withdrawal") return sum - t.amount;
       return sum + t.amount;
     }, 0);
   },
 
-  hasInitialCapital: () => {
-    return get().capitalTransactions.some((t) => t.type === "initial");
+  hasInitialCapital: (category) => {
+    const list = get().capitalTransactions;
+    const filtered = category
+      ? list.filter((t) => normalizeCapitalCategory(t.category) === category)
+      : list;
+    return filtered.some((t) => t.type === "initial");
+  },
+
+  getCapitalBreakdown: (category) => {
+    const list = get().capitalTransactions;
+    const filtered = category
+      ? list.filter((t) => normalizeCapitalCategory(t.category) === category)
+      : list;
+    const initial = filtered
+      .filter((t) => t.type === "initial")
+      .reduce((s, t) => s + t.amount, 0);
+    const addition = filtered
+      .filter((t) => t.type === "addition")
+      .reduce((s, t) => s + t.amount, 0);
+    const withdrawal = filtered
+      .filter((t) => t.type === "withdrawal")
+      .reduce((s, t) => s + t.amount, 0);
+    return {
+      initial,
+      addition,
+      withdrawal,
+      current: initial + addition - withdrawal,
+    };
   },
 }));
 

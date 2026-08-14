@@ -142,27 +142,27 @@ export default function LaporanPage() {
   );
 
   // ── Capital summary (lifetime values, not period-scoped) ──
-  const capitalTransactions = useCapitalStore((s) => s.capitalTransactions);
-  const currentCapital = capitalTransactions.reduce((sum, t) => {
-    return t.type === "withdrawal" ? sum - t.amount : sum + t.amount;
-  }, 0);
-  const initialCapital = capitalTransactions
-    .filter((t) => t.type === "initial")
-    .reduce((s, t) => s + t.amount, 0);
-  const additionCapital = capitalTransactions
-    .filter((t) => t.type === "addition")
-    .reduce((s, t) => s + t.amount, 0);
-  const withdrawalCapital = capitalTransactions
-    .filter((t) => t.type === "withdrawal")
-    .reduce((s, t) => s + t.amount, 0);
+  const getCapitalBreakdown = useCapitalStore((s) => s.getCapitalBreakdown);
+  const warungCapital = getCapitalBreakdown("warung");
+  const digitalCapital = getCapitalBreakdown("digital_service");
+  const initialCapital = warungCapital.initial + digitalCapital.initial;
+  const additionCapital = warungCapital.addition + digitalCapital.addition;
+  const withdrawalCapital = warungCapital.withdrawal + digitalCapital.withdrawal;
+  const currentCapital = warungCapital.current + digitalCapital.current;
   const lifetimeProfit = transactions
     .filter(isReportedTransaction)
     .reduce((s, t) => s + t.totalProfit, 0);
   const lifetimeExpenses = expenses.reduce((s, e) => s + e.totalAmount, 0);
   const lifetimeNetProfit = lifetimeProfit - lifetimeExpenses;
+  // Lifetime digital-service profit = Σ service fees (the warung's income
+  // from the digital-services business line).
+  const lifetimeDigitalProfit = useDigitalServiceStore(
+    (s) => s.transactions,
+  ).reduce((s, t) => s + t.serviceFee, 0);
+  const combinedLifetimeProfit = lifetimeNetProfit + lifetimeDigitalProfit;
   const breakEvenPercent =
-    currentCapital > 0 ? (lifetimeNetProfit / currentCapital) * 100 : 0;
-  const remainingCapital = currentCapital - lifetimeNetProfit;
+    currentCapital > 0 ? (combinedLifetimeProfit / currentCapital) * 100 : 0;
+  const remainingCapital = currentCapital - combinedLifetimeProfit;
 
   // ── Cash flow (period-scoped) ──
   const debtPayments = useDebtPaymentStore((s) => s.payments);
@@ -280,6 +280,8 @@ export default function LaporanPage() {
         topProducts,
         cashAdvanceSummary,
         capitalSummary: {
+          warungCapital,
+          digitalCapital,
           initialCapital,
           additionCapital,
           withdrawalCapital,
@@ -491,6 +493,8 @@ export default function LaporanPage() {
           {/* Section 4 — Financial Details (capital + cash flow) */}
           <FinancialDetailsCard
             data={{
+              warungCapital,
+              digitalCapital,
               initialCapital,
               additionCapital,
               withdrawalCapital,

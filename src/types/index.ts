@@ -57,6 +57,8 @@ export interface DigitalServiceTransaction {
   customerIdentifier: string;
   /** Display name of the sub-option chosen (e.g. a game for game_topup). */
   subService?: string | null;
+  /** PLN prepaid token code (for pln_prepaid transactions). */
+  tokenCode?: string | null;
   customerName: string | null;
   /** Face value of the service (before the service fee). */
   nominalAmount: number;
@@ -126,11 +128,21 @@ export interface Expense {
 
 export type CapitalType = "initial" | "addition" | "withdrawal";
 
+/**
+ * Which business stream a capital entry belongs to.
+ * - "warung": capital for physical goods (offset against goods profit).
+ * - "digital_service": capital for the digital-services business line
+ *   (offset against digital-service profit / service fees).
+ * Missing/legacy records default to "warung".
+ */
+export type CapitalCategory = "warung" | "digital_service";
+
 export interface CapitalTransaction {
   id: string;
   capitalNumber: string; // CAP-YYYYMMDD-XXX
   transactionDate: string; // ISO (YYYY-MM-DD)
   type: CapitalType;
+  category: CapitalCategory;
   amount: number;
   description: string;
   createdAt: string;

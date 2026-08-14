@@ -61,6 +61,15 @@ import {
   Target,
   Clover,
   Shield,
+  Landmark,
+  Signal,
+  SignalHigh,
+  TowerControl,
+  Building2,
+  Router,
+  Satellite,
+  Network,
+  Banknote,
   type LucideIcon,
 } from "lucide-react";
 
@@ -88,6 +97,9 @@ export const iconMap: Record<string, LucideIcon> = {
   file_text: FileText,
   trending_up: TrendingUp,
   account_balance_wallet: Wallet,
+  wallet: Wallet,
+  signal: Signal,
+  signal_high: SignalHigh,
   history_edu: History,
   error: AlertCircle,
   warning: AlertTriangle,
@@ -134,6 +146,15 @@ export const iconMap: Record<string, LucideIcon> = {
   target: Target,
   clover: Clover,
   shield: Shield,
+  bank: Landmark,
+  provider: Signal,
+  provider_alt: SignalHigh,
+  tower: TowerControl,
+  building: Building2,
+  router: Router,
+  satellite: Satellite,
+  network: Network,
+  banknote: Banknote,
 };
 
 export function Icon({ name, className = "", size = 24, fill }: { name: string; className?: string; size?: number; fill?: string }) {

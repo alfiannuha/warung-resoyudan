@@ -19,6 +19,7 @@ interface AddDigitalServiceInput {
   serviceType: string;
   customerIdentifier: string;
   subService?: string | null;
+  tokenCode?: string | null;
   customerName: string | null;
   nominalAmount: number;
   serviceFee: number;

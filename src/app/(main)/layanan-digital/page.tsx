@@ -80,6 +80,7 @@ export default function DigitalServicesPage() {
           serviceType: values.serviceType,
           customerIdentifier: values.customerIdentifier,
           subService: values.subService,
+          tokenCode: values.tokenCode,
           customerName: values.customerName,
           nominalAmount: values.nominalAmount,
           serviceFee: values.serviceFee,
@@ -96,6 +97,7 @@ export default function DigitalServicesPage() {
           serviceType: values.serviceType,
           customerIdentifier: values.customerIdentifier,
           subService: values.subService,
+          tokenCode: values.tokenCode,
           customerName: values.customerName,
           nominalAmount: values.nominalAmount,
           serviceFee: values.serviceFee,
@@ -226,6 +228,7 @@ export default function DigitalServicesPage() {
                     setDetailOpen(false);
                     openEdit(selected);
                   }}
+                  onDelete={() => setDeleteTarget(selected)}
                 />
               </div>
             )}
@@ -364,6 +367,7 @@ export default function DigitalServicesPage() {
                 transaction={selected}
                 onClose={() => setSelected(null)}
                 onEdit={() => openEdit(selected)}
+                onDelete={() => setDeleteTarget(selected)}
               />
             </div>
           )}

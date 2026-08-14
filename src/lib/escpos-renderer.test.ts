@@ -6,6 +6,7 @@ import {
   densityCommand,
   doubleSize,
   doubleWidth,
+  doubleHeight,
   escPos,
   finishSequence,
   initSequence,
@@ -64,6 +65,7 @@ describe("escpos renderer", () => {
     expect(Array.from(bold(false))).toEqual([0x1b, 0x45, 0x00]);
     expect(Array.from(doubleSize())).toEqual([0x1d, 0x21, 0x30]);
     expect(Array.from(doubleWidth())).toEqual([0x1d, 0x21, 0x10]);
+    expect(Array.from(doubleHeight())).toEqual([0x1d, 0x21, 0x20]);
     expect(Array.from(normalSize())).toEqual([0x1d, 0x21, 0x00]);
   });
 
@@ -139,6 +141,54 @@ describe("escpos renderer", () => {
     expect(tail[2]).toBe(0x1d); // GS
     expect(tail[3]).toBe(0x56); // V
     expect(tail[4]).toBe(0x41); // 65
+  });
+
+  it("renderReceipt renders @@-prefixed lines as large bold (double-height)", () => {
+    const text = [
+      "",
+      "WARUNG RESOYUDAN",
+      "No Nota: TRX-1",
+      "@@Kode Token: 1234-5678-9012-3456",
+      "TOTAL  Rp 52.000",
+    ].join("\n");
+    const data = renderReceipt(text, { paperWidth: 58 });
+    const arr = Array.from(data);
+    // The token line should be preceded by GS ! 0x20 (double-height) and
+    // ESC E 1 (bold on), and the "@@" marker must not be printed.
+    const tokenBytes = Array.from(textBytes("1234-5678-9012-3456"));
+    const idx = arr.findIndex((_, i) =>
+      i + tokenBytes.length <= arr.length &&
+      arr.slice(i, i + tokenBytes.length).every((v, j) => v === tokenBytes[j]),
+    );
+    expect(idx).toBeGreaterThan(0);
+    // double-height GS ! 0x20 present before the token bytes.
+    const dblSeq = [0x1d, 0x21, 0x20];
+    const dblIdx = arr.findIndex((_, i) =>
+      i + dblSeq.length <= arr.length &&
+      arr.slice(i, i + dblSeq.length).every((v, j) => v === dblSeq[j]),
+    );
+    expect(dblIdx).toBeGreaterThan(0);
+    expect(dblIdx).toBeLessThan(idx);
+    // Bold on (ESC E 1) present before the token bytes.
+    const boldSeq = [0x1b, 0x45, 0x01];
+    const boldIdx = arr.findIndex((_, i) =>
+      i + boldSeq.length <= arr.length &&
+      arr.slice(i, i + boldSeq.length).every((v, j) => v === boldSeq[j]),
+    );
+    expect(boldIdx).toBeGreaterThan(0);
+    expect(boldIdx).toBeLessThan(idx);
+    // The "Kode Token:" label must immediately precede the double-height
+    // token bytes — the "@@" marker is stripped and never printed.
+    const labelBytes = Array.from(textBytes("Kode Token:"));
+    const labelIdx = arr.findIndex((_, i) =>
+      i + labelBytes.length <= arr.length &&
+      arr.slice(i, i + labelBytes.length).every((v, j) => v === labelBytes[j]),
+    );
+    expect(labelIdx).toBeGreaterThan(0);
+    // Nothing printed between the label and the token bytes except the
+    // double-height command and bold on — so no "@@" (0x40 0x40) is present.
+    const between = arr.slice(labelIdx + labelBytes.length, idx);
+    expect(between).not.toContain(0x40);
   });
 
   it("renderTestPage builds a complete stream", () => {

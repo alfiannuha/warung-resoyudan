@@ -39,6 +39,14 @@ export interface DigitalServiceConfig {
   options?: DigitalServiceOption[];
   /** Label for the sub-option selector, when `options` is present. */
   optionsLabel?: string;
+  /**
+   * When set (e.g. PLN prepaid token), the form renders an extra token-code
+   * input alongside the identifier and the receipt shows it prominently.
+   * The token code is stored in the `tokenCode` transaction field.
+   */
+  tokenLabel?: string;
+  /** Whether this service needs a larger, emphasized print button. */
+  prominentPrint?: boolean;
 }
 
 export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
@@ -71,6 +79,19 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierReceiptLabel: "No. Pelanggan",
     identifierInputMode: "numeric",
     defaultFee: 2000,
+    optionsLabel: "Pilih Provider",
+    options: [
+      { id: "indihome", label: "IndiHome", icon: "provider" },
+      { id: "biznet", label: "BizNet", icon: "network" },
+      { id: "firstmedia", label: "First Media", icon: "router" },
+      { id: "mytv", label: "MyRepublic", icon: "satellite" },
+      { id: "iconnet", label: "Iconnet", icon: "network" },
+      { id: "mora", label: "Mora", icon: "satellite" },
+      { id: "cbn", label: "CBN", icon: "building" },
+      { id: "oxygen", label: "Oxygen", icon: "tower" },
+      { id: "smartfren", label: "Smartfren", icon: "provider_alt" },
+      { id: "starlink", label: "Starlink", icon: "satellite" },
+    ],
   },
   {
     id: "cable_tv",
@@ -91,6 +112,8 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierReceiptLabel: "No. Meter",
     identifierInputMode: "numeric",
     defaultFee: 2000,
+    tokenLabel: "Kode Token",
+    prominentPrint: true,
   },
   {
     id: "pln_postpaid",
@@ -111,6 +134,15 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierReceiptLabel: "No. HP",
     identifierInputMode: "tel",
     defaultFee: 1500,
+    optionsLabel: "Pilih Provider",
+    options: [
+      { id: "telkomsel", label: "Telkomsel", icon: "provider" },
+      { id: "indosat", label: "Indosat / IM3", icon: "provider_alt" },
+      { id: "xl", label: "XL / Axis", icon: "signal" },
+      { id: "tri", label: "Tri / 3", icon: "signal_high" },
+      { id: "smartfren", label: "Smartfren", icon: "tower" },
+      { id: "by_u", label: "by.U", icon: "provider_alt" },
+    ],
   },
   {
     id: "data",
@@ -121,6 +153,15 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierReceiptLabel: "No. HP",
     identifierInputMode: "tel",
     defaultFee: 1500,
+    optionsLabel: "Pilih Provider",
+    options: [
+      { id: "telkomsel", label: "Telkomsel", icon: "provider" },
+      { id: "indosat", label: "Indosat / IM3", icon: "provider_alt" },
+      { id: "xl", label: "XL / Axis", icon: "signal" },
+      { id: "tri", label: "Tri / 3", icon: "signal_high" },
+      { id: "smartfren", label: "Smartfren", icon: "tower" },
+      { id: "by_u", label: "by.U", icon: "provider_alt" },
+    ],
   },
   {
     id: "ewallet",
@@ -141,6 +182,26 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierReceiptLabel: "No. Tujuan",
     identifierInputMode: "tel",
     defaultFee: 2500,
+    optionsLabel: "Pilih Bank Tujuan",
+    options: [
+      { id: "bri", label: "BRI", icon: "bank" },
+      { id: "bca", label: "BCA", icon: "banknote" },
+      { id: "mandiri", label: "Mandiri", icon: "bank" },
+      { id: "bni", label: "BNI", icon: "bank" },
+      { id: "btn", label: "BTN", icon: "bank" },
+      { id: "bsi", label: "BSI", icon: "bank" },
+      { id: "permata", label: "Permata", icon: "bank" },
+      { id: "cimb", label: "CIMB Niaga", icon: "bank" },
+      { id: "danamon", label: "Danamon", icon: "bank" },
+      { id: "maybank", label: "Maybank", icon: "bank" },
+      { id: "dbs", label: "DBS", icon: "bank" },
+      { id: "jago", label: "Jago", icon: "bank" },
+      { id: "sea_bank", label: "SeaBank", icon: "bank" },
+      { id: "ovo", label: "OVO", icon: "wallet" },
+      { id: "dana", label: "DANA", icon: "wallet" },
+      { id: "gopay", label: "GoPay", icon: "wallet" },
+      { id: "shopeepay", label: "ShopeePay", icon: "wallet" },
+    ],
   },
   {
     id: "game_topup",

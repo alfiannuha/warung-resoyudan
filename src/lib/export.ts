@@ -71,7 +71,16 @@ export interface PDFDigitalServiceSummary {
   byService: { label: string; revenue: number; profit: number; count: number }[];
 }
 
+export interface PDFCapitalCategorySummary {
+  initial: number;
+  addition: number;
+  withdrawal: number;
+  current: number;
+}
+
 export interface PDFCapitalSummary {
+  warungCapital?: PDFCapitalCategorySummary;
+  digitalCapital?: PDFCapitalCategorySummary;
   initialCapital: number;
   additionCapital: number;
   withdrawalCapital: number;
@@ -197,18 +206,37 @@ export async function exportToPDF(data: PDFReportData): Promise<void> {
     doc.setFontSize(12);
     doc.text("Ringkasan Modal", marginX, y);
 
+    const capitalRows = [
+      ["Modal Awal", formatCurrency(initialCapital)],
+      ["Penambahan Modal", formatCurrency(additionCapital)],
+      ["Penarikan Modal", formatCurrency(withdrawalCapital)],
+      ["Total Modal Aktif", formatCurrency(currentCapital)],
+    ];
+
+    // Append per-category rows when provided.
+    if (data.capitalSummary.warungCapital) {
+      capitalRows.push([
+        "Warung Capital (Aktif)",
+        formatCurrency(data.capitalSummary.warungCapital.current),
+      ]);
+    }
+    if (data.capitalSummary.digitalCapital) {
+      capitalRows.push([
+        "Digital Services Capital (Aktif)",
+        formatCurrency(data.capitalSummary.digitalCapital.current),
+      ]);
+    }
+
+    capitalRows.push(
+      ["Laba Bersih (Kumulatif)", formatCurrency(capNetProfit)],
+      ["Break-even Progress", `${Math.round(breakEvenPercent)}%`],
+      ["Remaining Capital", formatCurrency(remainingCapital)],
+    );
+
     autoTable(doc, {
       startY: y + 4,
       head: [["Metrik", "Nilai"]],
-      body: [
-        ["Modal Awal", formatCurrency(initialCapital)],
-        ["Penambahan Modal", formatCurrency(additionCapital)],
-        ["Penarikan Modal", formatCurrency(withdrawalCapital)],
-        ["Total Modal Aktif", formatCurrency(currentCapital)],
-        ["Laba Bersih (Kumulatif)", formatCurrency(capNetProfit)],
-        ["Break-even Progress", `${Math.round(breakEvenPercent)}%`],
-        ["Remaining Capital", formatCurrency(remainingCapital)],
-      ],
+      body: capitalRows,
       theme: "striped",
       styles: { fontSize: 10 },
       headStyles: { fillColor: [0, 81, 213] },
