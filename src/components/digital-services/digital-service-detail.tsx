@@ -322,14 +322,18 @@ export default function DigitalServiceDetail({
           <p className="text-body-sm text-on-surface-variant">
             Nomor ini digunakan untuk mengirim nota via WhatsApp.
           </p>
-          <input
-            type="tel"
-            inputMode="tel"
-            value={waPhone}
-            onChange={(e) => setWaPhone(e.target.value)}
-            placeholder="Contoh: 081234567890"
-            className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
-          />
+          <div className="flex overflow-hidden rounded-md border border-border-standard bg-card transition-all focus-within:border-secondary focus-within:ring-4 focus-within:ring-secondary/15">
+            <span className="flex shrink-0 items-center bg-surface-container px-3 text-body-md font-bold text-on-surface-variant">
+              +62
+            </span>
+            <input
+              value={waPhone}
+              onChange={(e) => setWaPhone(e.target.value.replace(/\D/g, ""))}
+              className="h-12 flex-1 px-3 text-base outline-none"
+              placeholder="81x-xxxx-xxxx"
+              inputMode="numeric"
+            />
+          </div>
           <div className="flex gap-3">
             <button
               type="button"
