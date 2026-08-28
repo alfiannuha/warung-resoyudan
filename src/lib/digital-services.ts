@@ -29,6 +29,13 @@ export interface DigitalServiceConfig {
   identifierReceiptLabel: string;
   /** Input type hint for the identifier field. */
   identifierInputMode?: "text" | "numeric" | "tel";
+  /**
+   * When true, the customer identifier IS the customer's phone number, so
+   * a WhatsApp receipt can be sent directly to it. Otherwise (BPJS number,
+   * meter number, game user ID, ...) the user must supply a WhatsApp number
+   * at send time.
+   */
+  identifierIsPhone?: boolean;
   /** Default service fee charged when the field is left blank. */
   defaultFee: number;
   /**
@@ -130,6 +137,7 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierPlaceholder: "Contoh: 081234567890",
     identifierReceiptLabel: "No. HP",
     identifierInputMode: "tel",
+    identifierIsPhone: true,
     defaultFee: 1500,
     optionsLabel: "Pilih Provider",
     options: [
@@ -149,6 +157,7 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierPlaceholder: "Contoh: 081234567890",
     identifierReceiptLabel: "No. HP",
     identifierInputMode: "tel",
+    identifierIsPhone: true,
     defaultFee: 1500,
     optionsLabel: "Pilih Provider",
     options: [
@@ -168,6 +177,7 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierPlaceholder: "Contoh: 081234567890",
     identifierReceiptLabel: "No. Akun",
     identifierInputMode: "tel",
+    identifierIsPhone: true,
     defaultFee: 1500,
   },
   {

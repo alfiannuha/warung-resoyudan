@@ -9,7 +9,13 @@ import {
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { APP_NAME } from "@/lib/constants";
 import { buildDigitalServiceReceiptText } from "@/lib/digital-service-receipt-formatter";
-import { formatPhoneToInternational } from "@/utils/whatsapp";
+import { formatPhoneToInternational, isValidPhone } from "@/utils/whatsapp";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { usePrinterStore } from "@/stores/use-printer-store";
 import { useDigitalServiceStore } from "@/stores/use-digital-service-store";
 import { useToast } from "@/components/shared/toast-provider";
@@ -46,6 +52,8 @@ export default function DigitalServiceDetail({
   });
   const [printOpen, setPrintOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [waPromptOpen, setWaPromptOpen] = useState(false);
+  const [waPhone, setWaPhone] = useState("");
   const { paperWidth } = usePrinterStore();
   const markPrinted = useDigitalServiceStore((s) => s.markPrinted);
   const { toast } = useToast();
@@ -104,23 +112,37 @@ export default function DigitalServiceDetail({
     }
   };
 
-  const handleWhatsApp = () => {
-    const phone = transaction.customerIdentifier.replace(/[^0-9]/g, "");
-    if (!/^(\+?62|0)\d{8,13}$/.test(phone)) {
-      toast("Nomor pelanggan bukan nomor WhatsApp yang valid.", "error");
-      return;
-    }
+  const buildWhatsAppUrl = (phone: string) => {
     setSharing(true);
     try {
       const text = buildDigitalServiceReceiptText({
         ...receiptParams,
         mode: "whatsapp",
       });
-      const url = `https://wa.me/${formatPhoneToInternational(phone)}?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank");
+      return `https://wa.me/${formatPhoneToInternational(phone)}?text=${encodeURIComponent(text)}`;
     } finally {
       setSharing(false);
     }
+  };
+
+  const sendToPhone = (phone: string) => {
+    if (!isValidPhone(phone)) {
+      toast("Nomor pelanggan bukan nomor WhatsApp yang valid.", "error");
+      return;
+    }
+    window.open(buildWhatsAppUrl(phone), "_blank");
+  };
+
+  const handleWhatsApp = () => {
+    // For pulsa / data / e-wallet the identifier IS the phone number, so
+    // send directly. For other services (BPJS, PLN meter, game user ID, ...)
+    // ask the user for the WhatsApp number first.
+    if (service.identifierIsPhone) {
+      sendToPhone(transaction.customerIdentifier);
+      return;
+    }
+    setWaPhone("");
+    setWaPromptOpen(true);
   };
 
   const subServiceLabel = getSubServiceLabel(
@@ -282,6 +304,54 @@ export default function DigitalServiceDetail({
           setPrintState({ phase: "idle" as PrintPhase, error: null });
         }}
       />
+
+      {/* WhatsApp number prompt (services whose identifier isn't a phone) */}
+      <Dialog open={waPromptOpen} onOpenChange={setWaPromptOpen} persistent={false}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-[340px]"
+          onKeyDownCapture={(e) => {
+            if (e.key === "Escape") e.stopPropagation();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-headline-sm font-bold">
+              Nomor WhatsApp Penerima
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-body-sm text-on-surface-variant">
+            Nomor ini digunakan untuk mengirim nota via WhatsApp.
+          </p>
+          <input
+            type="tel"
+            inputMode="tel"
+            value={waPhone}
+            onChange={(e) => setWaPhone(e.target.value)}
+            placeholder="Contoh: 081234567890"
+            className="h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15"
+          />
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setWaPromptOpen(false)}
+              className="h-11 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={sharing}
+              onClick={() => {
+                sendToPhone(waPhone);
+                setWaPromptOpen(false);
+              }}
+              className="h-11 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              Kirim
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

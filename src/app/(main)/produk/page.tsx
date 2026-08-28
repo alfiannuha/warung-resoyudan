@@ -16,10 +16,17 @@ import PageHeader from "@/components/shared/page-header";
 import SearchInput from "@/components/shared/search-input";
 import KpiCard from "@/components/shared/kpi-card";
 import EmptyState from "@/components/shared/empty-state";
-import StatusBadge from "@/components/shared/status-badge";
+import { SkeletonList } from "@/components/shared/skeleton";
 import { useInventoryAnalytics, VELOCITY_META, type SalesVelocity } from "@/hooks/use-inventory-analytics";
 
 type Filter = "semua" | "stok-tipis" | "favorit" | SalesVelocity;
+
+const VELOCITY_TEXT: Record<SalesVelocity, string> = {
+  fast: "text-success",
+  normal: "text-info",
+  slow: "text-warning",
+  dead: "text-danger",
+};
 
 export default function ProdukPage() {
   const [search, setSearch] = useState("");
@@ -36,9 +43,10 @@ export default function ProdukPage() {
   const [scannedCategory, setScannedCategory] = useState<string>("");
   const [scannedImageUrl, setScannedImageUrl] = useState<string>("");
 
-  const { products, quickAddStock, deleteProduct, toggleFavorite } = useProductStore(
+  const { products, loading: productsLoading, quickAddStock, deleteProduct, toggleFavorite } = useProductStore(
     useShallow((s) => ({
       products: s.products,
+      loading: s.loading,
       quickAddStock: s.quickAddStock,
       deleteProduct: s.deleteProduct,
       toggleFavorite: s.toggleFavorite,
@@ -243,14 +251,19 @@ export default function ProdukPage() {
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Beli</th>
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Harga Jual</th>
               <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Stok</th>
-              <th className="px-5 py-3 text-center text-label-md text-on-surface-variant">Pesanan Disarankan</th>
               <th className="px-5 py-3 text-right text-label-md text-on-surface-variant">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-standard">
-            {filtered.length === 0 ? (
+            {productsLoading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12">
+                <td colSpan={5} className="px-6 py-6">
+                  <SkeletonList count={5} />
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12">
                   <EmptyState
                     icon="inventory_2"
                     title="Tidak ada produk"
@@ -292,27 +305,28 @@ export default function ProdukPage() {
                     <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
                       {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
                     </span>
-                  </td>
-                  <td className="px-5 py-4 text-center">
                     {(() => {
                       const a = analyticsByProduct.get(product.id);
-                      if (!a) return <span className="text-caption text-on-surface-variant">—</span>;
-                      return (
-                        <div className="flex flex-col items-center gap-1">
-                          <StatusBadge label={VELOCITY_META[a.velocity].label} variant={VELOCITY_META[a.velocity].badge} />
-                          {a.reorderQty > 0 ? (
-                            <span className="text-caption font-semibold text-secondary">
-                              +{a.reorderQty} pcs
-                            </span>
-                          ) : (
-                            <span className="text-caption text-on-surface-variant">Cukup</span>
-                          )}
-                        </div>
-                      );
+                      if (!a) return null;
+                      if (a.reorderQty > 0) {
+                        return (
+                          <span className="mt-0.5 block text-caption font-semibold text-warning">
+                            +{a.reorderQty} pcs untuk restok
+                          </span>
+                        );
+                      }
+                      if (a.velocity === "slow" || a.velocity === "dead") {
+                        return (
+                          <span className={`mt-0.5 block text-caption font-medium ${VELOCITY_TEXT[a.velocity]}`}>
+                            {VELOCITY_META[a.velocity].label}
+                          </span>
+                        );
+                      }
+                      return null;
                     })()}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={async () => {
                           const r = await toggleFavorite(product.id);
@@ -346,7 +360,7 @@ export default function ProdukPage() {
                       </button>
                       <button
                         onClick={() => quickAddStock(product.id, 1)}
-                        className="flex size-11 items-center justify-center rounded-md bg-secondary text-white transition-all active:scale-95"
+                        className="flex size-11 items-center justify-center rounded-md border border-border-standard bg-card text-secondary transition-all active:scale-95"
                         title="Tambah stok +1"
                         aria-label="Tambah stok"
                       >
@@ -363,7 +377,9 @@ export default function ProdukPage() {
 
       {/* Mobile: product rows */}
       <div className="space-y-3 md:hidden">
-        {filtered.length === 0 ? (
+        {productsLoading ? (
+          <SkeletonList count={6} />
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon="inventory_2"
             title="Tidak ada produk"
@@ -441,13 +457,34 @@ export default function ProdukPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2">
-                <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
-                  {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
-                </span>
+                <div className="flex min-w-0 flex-col">
+                  <span className={`font-bold ${product.stock <= product.minStock ? "text-danger" : "text-on-surface"}`}>
+                    {product.stock} <span className="text-body-sm font-normal text-on-surface-variant">pcs</span>
+                  </span>
+                  {(() => {
+                    const a = analyticsByProduct.get(product.id);
+                    if (!a) return null;
+                    if (a.reorderQty > 0) {
+                      return (
+                        <span className="text-caption font-semibold text-warning">
+                          +{a.reorderQty} pcs untuk restok
+                        </span>
+                      );
+                    }
+                    if (a.velocity === "slow" || a.velocity === "dead") {
+                      return (
+                        <span className={`text-caption font-medium ${VELOCITY_TEXT[a.velocity]}`}>
+                          {VELOCITY_META[a.velocity].label}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => quickAddStock(product.id, 1)}
-                    className="flex size-11 items-center justify-center rounded-md bg-primary text-white transition-opacity active:opacity-80"
+                    className="flex size-11 items-center justify-center rounded-md border border-border-standard bg-card text-secondary transition-all active:scale-95"
                     aria-label="Tambah stok"
                   >
                     <Plus className="size-5" />
