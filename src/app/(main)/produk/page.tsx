@@ -398,7 +398,7 @@ export default function ProdukPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <span className="block truncate text-label-xl font-bold text-on-surface">{product.name}</span>
+                    <span className="block text-wrap wrap-break-word text-label-xl font-bold text-on-surface">{product.name}</span>
                     {product.brand && <span className="text-caption text-on-surface-variant">{product.brand}</span>}
                     <span className="block text-caption text-on-surface-variant">{product.category}</span>
                   </div>
