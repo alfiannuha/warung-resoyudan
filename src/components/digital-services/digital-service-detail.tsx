@@ -306,7 +306,7 @@ export default function DigitalServiceDetail({
       />
 
       {/* WhatsApp number prompt (services whose identifier isn't a phone) */}
-      <Dialog open={waPromptOpen} onOpenChange={setWaPromptOpen} persistent={false}>
+      <Dialog open={waPromptOpen} onOpenChange={setWaPromptOpen}>
         <DialogContent
           showCloseButton={false}
           className="max-w-[340px]"
