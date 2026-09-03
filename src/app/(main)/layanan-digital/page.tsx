@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useDigitalServiceStore } from "@/stores/use-digital-service-store";
 import { getServiceConfig } from "@/lib/digital-services";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -13,10 +13,14 @@ import StatusBadge from "@/components/shared/status-badge";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ServiceCardGrid from "@/components/digital-services/service-card-grid";
 import DigitalServiceForm, {
@@ -37,9 +41,13 @@ export default function DigitalServicesPage() {
 
   // Add / Edit dialog state
   const [formOpen, setFormOpen] = useState(false);
+  const [pickingOpen, setPickingOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<DigitalServiceTransaction | null>(null);
   const [presetService, setPresetService] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const formRef = useRef<{ submit: () => void }>(null);
+  const [canSubmit, setCanSubmit] = useState(false);
 
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<DigitalServiceTransaction | null>(null);
@@ -59,9 +67,9 @@ export default function DigitalServicesPage() {
     });
   }, [transactions, search]);
 
-  const openAdd = (serviceType?: string) => {
+  const openAdd = (serviceType: string) => {
     setEditTarget(null);
-    setPresetService(serviceType ?? null);
+    setPresetService(serviceType);
     setFormOpen(true);
   };
 
@@ -146,7 +154,7 @@ export default function DigitalServicesPage() {
         <div className="flex items-center justify-between pt-1">
           <h1 className="text-headline-md font-bold text-on-surface">Layanan Digital</h1>
           <button
-            onClick={() => openAdd()}
+            onClick={() => setPickingOpen(true)}
             className="inline-flex h-11 items-center gap-1.5 rounded-md bg-secondary px-4 font-semibold text-white transition-all active:scale-95"
           >
             <Icon name="add" size={18} />
@@ -244,7 +252,7 @@ export default function DigitalServicesPage() {
             <div className="flex items-center justify-between">
               <h1 className="text-headline-md font-bold text-on-surface">Layanan Digital</h1>
               <button
-                onClick={() => openAdd()}
+                onClick={() => setPickingOpen(true)}
                 className="inline-flex h-11 items-center gap-1.5 rounded-md bg-secondary px-4 font-semibold text-white transition-all active:scale-95"
               >
                 <Icon name="add" size={18} />
@@ -374,28 +382,83 @@ export default function DigitalServicesPage() {
         </section>
       </div>
 
-      {/* ===== ADD / EDIT DIALOG ===== */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-h-[90dvh] max-w-[420px] overflow-y-auto">
+      {/* ===== SERVICE PICKER (new transaction) ===== */}
+      <Dialog open={pickingOpen} onOpenChange={setPickingOpen}>
+        <DialogContent className="max-w-[420px]">
           <DialogHeader>
             <DialogTitle className="text-headline-md font-bold">
-              {editTarget ? "Edit Transaksi Layanan" : "Transaksi Layanan Digital"}
+              Pilih Layanan
             </DialogTitle>
           </DialogHeader>
-          <DigitalServiceForm
-            key={
-              editTarget?.id ??
-              `new-${presetService ?? "none"}`
-            }
-            initial={editTarget}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setFormOpen(false);
-              setEditTarget(null);
-              setPresetService(null);
+          <p className="-mt-1 text-body-sm text-on-surface-variant">
+            Pilih jenis layanan untuk membuat transaksi baru.
+          </p>
+          <ServiceCardGrid
+            selectedId={null}
+            onSelect={(s) => {
+              setPickingOpen(false);
+              openAdd(s.id);
             }}
-            submitting={saving}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== ADD / EDIT DIALOG ===== */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-bold">
+              {editTarget
+                ? "Edit Transaksi Layanan"
+                : `Transaksi ${presetService ? getServiceConfig(presetService).label : "Layanan Digital"}`}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Isi detail transaksi layanan digital.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="-mx-5 no-scrollbar max-h-[70vh] overflow-y-auto px-5">
+            <DigitalServiceForm
+              key={
+                editTarget?.id ??
+                `new-${presetService ?? "none"}`
+              }
+              ref={formRef}
+              initial={editTarget}
+              defaultService={presetService}
+              onSubmit={handleSubmit}
+              onValidChange={setCanSubmit}
+            />
+          </div>
+          <DialogFooter className="flex flex-row gap-3">
+            <DialogClose
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormOpen(false);
+                    setEditTarget(null);
+                    setPresetService(null);
+                  }}
+                  className="h-12 flex-1"
+                >
+                  Batal
+                </Button>
+              }
+            />
+            <Button
+              type="button"
+              onClick={() => formRef.current?.submit()}
+              disabled={!canSubmit || saving}
+              className="h-12 flex-1 bg-secondary text-white"
+            >
+              {saving
+                ? "Menyimpan..."
+                : editTarget
+                  ? "Simpan Perubahan"
+                  : "Simpan Transaksi"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

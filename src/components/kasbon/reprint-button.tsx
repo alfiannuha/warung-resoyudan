@@ -9,6 +9,13 @@ import { useToast } from "@/components/shared/toast-provider";
 import { APP_NAME } from "@/lib/constants";
 import { Icon } from "@/lib/icon-map";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   PrintProgressDialog,
   printReceiptJob,
   type PrintJobState,
@@ -106,14 +113,16 @@ export default function ReprintButton({ transaction }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-2xl max-w-[320px] w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-          <div className="text-center">
-            <h3 className="text-headline-md font-bold">Cetak Ulang Nota</h3>
-            <p className="text-label-md text-on-surface-variant mt-1 font-mono">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[320px]">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="text-headline-md font-bold">
+              Cetak Ulang Nota
+            </DialogTitle>
+            <DialogDescription className="text-label-md text-on-surface-variant font-mono">
               {transaction.receiptNumber || "Tanpa nomor nota"}
-            </p>
-          </div>
+            </DialogDescription>
+          </DialogHeader>
 
           {/* Customer info */}
           {customer && (
@@ -170,8 +179,8 @@ export default function ReprintButton({ transaction }: Props) {
           >
             Tutup
           </button>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Print progress + retry */}
       <PrintProgressDialog

@@ -11,6 +11,12 @@ import { useExpenseStore } from "@/stores/use-expense-store";
 import { useCapitalStore } from "@/stores/use-capital-store";
 import { Icon } from "@/lib/icon-map";
 import { formatCurrency, formatDateShort } from "@/lib/formatters";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Result {
   id: string;
@@ -156,14 +162,16 @@ export default function GlobalSearch() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/40 p-4 pt-[10vh] backdrop-blur-sm" onClick={handleClose}>
-      <div
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-border-standard bg-card shadow-dialog"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Pencarian global"
+    <Dialog open={isOpen} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-[10vh] max-w-lg translate-y-0 !p-0"
       >
+        <DialogTitle className="sr-only">Pencarian global</DialogTitle>
+        <DialogDescription className="sr-only">
+          Cari produk, pelanggan, transaksi, pengeluaran, atau modal.
+        </DialogDescription>
+
         {/* Input */}
         <div className="flex items-center gap-3 border-b border-border-standard px-4">
           <Search className="size-5 shrink-0 text-on-surface-variant" />
@@ -220,7 +228,7 @@ export default function GlobalSearch() {
             ))
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

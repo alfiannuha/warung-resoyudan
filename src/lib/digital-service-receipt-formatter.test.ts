@@ -192,7 +192,18 @@ describe("digital services catalog", () => {
     expect(ids).toContain("data");
     expect(ids).toContain("ewallet");
     expect(ids).toContain("transfer");
+    expect(ids).toContain("tarik_tunai");
     expect(ids).toContain("game_topup");
+  });
+
+  it("tarik_tunai exposes bank/e-wallet options (BRI, BCA, Mandiri)", () => {
+    const ttk = getServiceConfig("tarik_tunai");
+    expect(ttk.label).toBe("Tarik Tunai");
+    expect(ttk.optionsLabel).toBe("Pilih Bank / E-Wallet");
+    const ids = ttk.options?.map((o) => o.id) ?? [];
+    expect(ids).toContain("bri");
+    expect(ids).toContain("bca");
+    expect(ids).toContain("ovo");
   });
 
   it("game_topup service exposes game options (Free Fire, Mobile Legends)", () => {

@@ -10,6 +10,13 @@ import {
 } from "@/lib/digital-service-receipt-formatter";
 import { renderReceipt, renderTestPage, type DensityLevel } from "@/lib/escpos-renderer";
 import { printerManager } from "@/lib/printer-manager";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export type PrintPhase = "connecting" | "preparing" | "printing" | "completed" | "error";
 
@@ -152,69 +159,72 @@ export function PrintProgressDialog({
       : "Gagal mencetak";
 
   return (
-    <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Status pencetakan"
-    >
-      <div className="w-full max-w-[340px] rounded-2xl border border-border-standard bg-card p-6 shadow-dialog">
-        <div className="flex flex-col items-center text-center">
-          {state.phase === "completed" ? (
-            <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-success/10 text-success">
-              <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-            </span>
-          ) : state.phase === "error" ? (
-            <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-danger/10 text-danger">
-              <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 8v4" />
-                <path d="M12 16h.01" />
-              </svg>
-            </span>
-          ) : (
-            <span className="mb-3 flex size-14 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-              <svg viewBox="0 0 24 24" className="size-7 animate-spin" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-                <path d="M21 12a9 9 0 1 1-6.2-8.56" />
-              </svg>
-            </span>
-          )}
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent
+        showCloseButton={!isBusy}
+        className="max-w-[340px]"
+      >
+        {state.phase === "completed" ? (
+          <span className="mx-auto mb-1 flex size-14 items-center justify-center rounded-full bg-success/10 text-success">
+            <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </span>
+        ) : state.phase === "error" ? (
+          <span className="mx-auto mb-1 flex size-14 items-center justify-center rounded-full bg-danger/10 text-danger">
+            <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v4" />
+              <path d="M12 16h.01" />
+            </svg>
+          </span>
+        ) : (
+          <span className="mx-auto mb-1 flex size-14 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+            <svg viewBox="0 0 24 24" className="size-7 animate-spin" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+            </svg>
+          </span>
+        )}
 
-          <h3 className="text-headline-md font-bold text-on-surface">{phaseLabel}</h3>
+        <DialogHeader className="items-center text-center">
+          <DialogTitle className="text-headline-md font-bold text-on-surface">
+            {phaseLabel}
+          </DialogTitle>
           {state.phase === "error" && state.error && (
-            <p className="mt-1 text-body-sm text-on-surface-variant">{state.error}</p>
+            <DialogDescription className="text-body-sm text-on-surface-variant">
+              {state.error}
+            </DialogDescription>
           )}
+        </DialogHeader>
 
-          {/* Retry / Close */}
-          <div className="mt-5 w-full space-y-2">
-            {state.phase === "error" && (
-              <button
-                onClick={onRetry}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
-              >
-                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                  <path d="M21 3v6h-6" />
-                </svg>
-                Coba Lagi
-              </button>
-            )}
-            {state.phase === "completed" && (
-              <button
-                onClick={handleClose}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
-              >
-                Selesai
-              </button>
-            )}
-            {isBusy && (
-              <p className="text-caption text-on-surface-variant">Mohon tunggu…</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          {state.phase === "error" && (
+            <button
+              onClick={onRetry}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
+            >
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+              Coba Lagi
+            </button>
+          )}
+          {state.phase === "completed" && (
+            <button
+              onClick={handleClose}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-secondary font-semibold text-white shadow-fab transition-all active:scale-[0.98]"
+            >
+              Selesai
+            </button>
+          )}
+          {isBusy && (
+            <p className="text-center text-caption text-on-surface-variant">
+              Mohon tunggu…
+            </p>
+          )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

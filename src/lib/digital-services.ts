@@ -18,6 +18,27 @@ export interface DigitalServiceOption {
  * entry here (plus optionally a matching icon in icon-map.tsx). No core
  * logic changes are needed.
  */
+/** Shared destination options for money-moving services (transfer, tarik tunai). */
+const BANK_OPTIONS: DigitalServiceOption[] = [
+  { id: "bri", label: "BRI", icon: "bank" },
+  { id: "bca", label: "BCA", icon: "banknote" },
+  { id: "mandiri", label: "Mandiri", icon: "bank" },
+  { id: "bni", label: "BNI", icon: "bank" },
+  { id: "btn", label: "BTN", icon: "bank" },
+  { id: "bsi", label: "BSI", icon: "bank" },
+  { id: "permata", label: "Permata", icon: "bank" },
+  { id: "cimb", label: "CIMB Niaga", icon: "bank" },
+  { id: "danamon", label: "Danamon", icon: "bank" },
+  { id: "maybank", label: "Maybank", icon: "bank" },
+  { id: "dbs", label: "DBS", icon: "bank" },
+  { id: "jago", label: "Jago", icon: "bank" },
+  { id: "sea_bank", label: "SeaBank", icon: "bank" },
+  { id: "ovo", label: "OVO", icon: "wallet" },
+  { id: "dana", label: "DANA", icon: "wallet" },
+  { id: "gopay", label: "GoPay", icon: "wallet" },
+  { id: "shopeepay", label: "ShopeePay", icon: "wallet" },
+];
+
 export interface DigitalServiceConfig {
   id: string;
   label: string;
@@ -190,25 +211,19 @@ export const DIGITAL_SERVICES: DigitalServiceConfig[] = [
     identifierInputMode: "tel",
     defaultFee: 2500,
     optionsLabel: "Pilih Bank Tujuan",
-    options: [
-      { id: "bri", label: "BRI", icon: "bank" },
-      { id: "bca", label: "BCA", icon: "banknote" },
-      { id: "mandiri", label: "Mandiri", icon: "bank" },
-      { id: "bni", label: "BNI", icon: "bank" },
-      { id: "btn", label: "BTN", icon: "bank" },
-      { id: "bsi", label: "BSI", icon: "bank" },
-      { id: "permata", label: "Permata", icon: "bank" },
-      { id: "cimb", label: "CIMB Niaga", icon: "bank" },
-      { id: "danamon", label: "Danamon", icon: "bank" },
-      { id: "maybank", label: "Maybank", icon: "bank" },
-      { id: "dbs", label: "DBS", icon: "bank" },
-      { id: "jago", label: "Jago", icon: "bank" },
-      { id: "sea_bank", label: "SeaBank", icon: "bank" },
-      { id: "ovo", label: "OVO", icon: "wallet" },
-      { id: "dana", label: "DANA", icon: "wallet" },
-      { id: "gopay", label: "GoPay", icon: "wallet" },
-      { id: "shopeepay", label: "ShopeePay", icon: "wallet" },
-    ],
+    options: BANK_OPTIONS,
+  },
+  {
+    id: "tarik_tunai",
+    label: "Tarik Tunai",
+    icon: "banknote",
+    identifierLabel: "No. Rekening / No. HP",
+    identifierPlaceholder: "Tujuan tarik tunai",
+    identifierReceiptLabel: "No. Tujuan",
+    identifierInputMode: "tel",
+    defaultFee: 2500,
+    optionsLabel: "Pilih Bank / E-Wallet",
+    options: BANK_OPTIONS,
   },
   {
     id: "game_topup",

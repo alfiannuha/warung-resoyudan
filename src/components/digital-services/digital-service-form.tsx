@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useImperativeHandle, useMemo, useState, type Ref } from "react";
 import type { DigitalServiceTransaction } from "@/types";
 import {
-  DIGITAL_SERVICES,
   DIGITAL_SERVICE_PAYMENTS,
   getServiceConfig,
+  type DigitalServiceOption,
 } from "@/lib/digital-services";
 import { formatCurrency, withCurrentTime, withDate } from "@/lib/formatters";
 import { Icon } from "@/lib/icon-map";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import CurrencyInput from "@/components/shared/currency-input";
 
 export interface DigitalServiceFormValues {
@@ -41,10 +49,13 @@ type FormFields = Pick<
 
 interface Props {
   initial?: DigitalServiceTransaction | null;
+  /** Service type preselected before the form opens (new transactions). */
+  defaultService?: string | null;
   onSubmit: (values: DigitalServiceFormValues) => Promise<void> | void;
-  onCancel: () => void;
-  submitting?: boolean;
-  submitLabel?: string;
+  /** Reports whether the form is valid enough to submit (drives footer button). */
+  onValidChange?: (valid: boolean) => void;
+  /** Imperative submit exposed so the DialogFooter lives outside this body. */
+  ref?: Ref<{ submit: () => void }>;
 }
 
 const EMPTY_FIELDS: FormFields = {
@@ -59,21 +70,82 @@ const EMPTY_FIELDS: FormFields = {
 const inputClass =
   "h-12 w-full rounded-md border border-border-standard bg-card px-4 text-base outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/15";
 
+function ProviderCombobox({
+  options,
+  value,
+  onValueChange,
+}: {
+  options: DigitalServiceOption[];
+  /** Seeds the initial input only; the field is a free-text combobox. */
+  value: string;
+  onValueChange: (v: string) => void;
+}) {
+  const optionByLabel = useMemo(
+    () => new Map(options.map((o) => [o.label, o])),
+    [options],
+  );
+
+  return (
+    <Combobox
+      items={options.map((o) => o.label)}
+      value={value}
+      onValueChange={(label) => {
+        if (label !== null) onValueChange(label);
+      }}
+      onInputValueChange={(text) => onValueChange(text)}
+      autoHighlight
+    >
+      <ComboboxInput
+        placeholder="Pilih atau ketik baru…"
+        aria-label="Pilih provider"
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>Tidak ada hasil</ComboboxEmpty>
+        <ComboboxList>
+          {(label: string) => {
+            const opt = optionByLabel.get(label);
+            return (
+              <ComboboxItem key={label} value={label}>
+                {opt && <Icon name={opt.icon} size={16} />}
+                {label}
+              </ComboboxItem>
+            );
+          }}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
 /**
  * Reusable digital-service transaction form. Handles both new transactions
  * (service preselected via prop) and edits (populated from an existing record).
  */
 export default function DigitalServiceForm({
   initial = null,
+  defaultService = null,
   onSubmit,
-  onCancel,
-  submitting = false,
-  submitLabel,
+  onValidChange,
+  ref,
 }: Props) {
-  const [serviceType, setServiceType] = useState(initial?.serviceType ?? "");
-  const [subService, setSubService] = useState<string | null>(
-    initial?.subService ?? null,
-  );
+  const serviceType = initial?.serviceType ?? defaultService ?? "";
+  // When editing, a stored sub-option that isn't a known option of the
+  // service is a custom typed name → prefill the "Lainnya" input.
+  const initialSubService =
+    initial?.subService ?? null;
+  const initialIsCustom =
+    !!initialSubService &&
+    !getServiceConfig(serviceType).options?.some((o) => o.id === initialSubService);
+  // Free-text provider: seeded from the known option's label (edits of a known
+  // option) or the stored custom name.
+  const [providerText, setProviderText] = useState(() => {
+    if (!initialSubService) return "";
+    if (initialIsCustom) return initialSubService;
+    return (
+      getServiceConfig(serviceType).options?.find((o) => o.id === initialSubService)
+        ?.label ?? ""
+    );
+  });
   const [fields, setFields] = useState(() =>
     initial
       ? {
@@ -98,33 +170,40 @@ export default function DigitalServiceForm({
   const service = serviceType ? getServiceConfig(serviceType) : null;
   const total = fields.nominalAmount + fields.serviceFee;
 
-  const handleServiceSelect = (id: string) => {
-    setServiceType(id);
-    // A sub-option (game) choice is scoped to a service — reset it and
-    // re-apply the default fee when switching.
-    setSubService(null);
-    setFields((f) => ({
-      ...f,
-      serviceFee: f.serviceFee > 0 ? f.serviceFee : getServiceConfig(id).defaultFee,
-    }));
-  };
+  const canSubmit =
+    !!serviceType &&
+    !!fields.customerIdentifier.trim() &&
+    fields.nominalAmount > 0 &&
+    ((service?.options?.length ?? 0) === 0 || providerText.trim() !== "") &&
+    (!service?.tokenLabel || !!fields.tokenCode.trim());
+
+  useEffect(() => {
+    onValidChange?.(canSubmit);
+  }, [onValidChange, canSubmit]);
 
   const handleSubmit = () => {
     if (!serviceType || !fields.customerIdentifier.trim() || !(fields.nominalAmount > 0)) {
       return;
     }
     const requiresSub = (getServiceConfig(serviceType).options?.length ?? 0) > 0;
-    if (requiresSub && !subService) {
-      return;
-    }
+    const provider = providerText.trim();
+    if (requiresSub && !provider) return;
     const isTokenService = !!getServiceConfig(serviceType).tokenLabel;
     if (isTokenService && !fields.tokenCode.trim()) {
       return;
     }
+    // A provider matching a known option is stored by id; otherwise the typed
+    // free-text name is stored directly so the whole stack (receipts, detail,
+    // reports) renders it without any special case.
+    const providerOption =
+      getServiceConfig(serviceType).options?.find(
+        (o) => o.label.toLowerCase() === provider.toLowerCase(),
+      ) ?? null;
+    const resolvedSubService = providerOption ? providerOption.id : provider || null;
     onSubmit({
       serviceType,
       customerIdentifier: fields.customerIdentifier.trim(),
-      subService,
+      subService: resolvedSubService,
       tokenCode: fields.tokenCode.trim() || null,
       customerName: fields.customerName.trim() || null,
       nominalAmount: fields.nominalAmount,
@@ -139,43 +218,24 @@ export default function DigitalServiceForm({
     });
   };
 
+  useImperativeHandle(ref, () => ({ submit: handleSubmit }));
+
   return (
     <div className="space-y-4">
-      {/* Service selector — hidden in edit mode (service type immutable). */}
-      {!initial && (
-        <div>
-          <label className="mb-1.5 block text-label-md font-semibold text-on-surface-variant">
-            Jenis Layanan <span className="text-danger">*</span>
-          </label>
-          <ServiceTypePicker selected={serviceType} onSelect={handleServiceSelect} />
-        </div>
-      )}
-
       {service && service.options && service.options.length > 0 && (
-        <div>
+        <div className="space-y-1">
           <label className="mb-1.5 block text-label-md font-semibold text-on-surface-variant">
             {service.optionsLabel ?? "Pilih Opsi"} <span className="text-danger">*</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            {service.options.map((opt) => {
-              const isActive = subService === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSubService(opt.id)}
-                  className={`flex h-12 items-center gap-2 rounded-md border px-3 font-medium transition-all active:scale-[0.98] ${
-                    isActive
-                      ? "border-secondary bg-secondary/5 text-secondary"
-                      : "border-border-standard bg-card text-on-surface-variant"
-                  }`}
-                >
-                  <Icon name={opt.icon} size={16} />
-                  <span className="truncate">{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <ProviderCombobox
+            options={service.options}
+            value={providerText}
+            onValueChange={setProviderText}
+          />
+          <p className="text-caption text-on-surface-variant">
+            Ketik untuk mencari atau masukkan nama{" "}
+            {(service.optionsLabel ?? "Opsi").replace(/^Pilih\s*/i, "").toLowerCase()} baru.
+          </p>
         </div>
       )}
 
@@ -327,64 +387,8 @@ export default function DigitalServiceForm({
               </span>
             </div>
           </div>
-
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="h-12 flex-1 rounded-md border border-border-standard bg-card font-semibold text-on-surface-variant transition-colors active:bg-surface-container"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                submitting ||
-                !serviceType ||
-                !fields.customerIdentifier.trim() ||
-                !(fields.nominalAmount > 0) ||
-                ((service.options?.length ?? 0) > 0 && !subService) ||
-                (!!service.tokenLabel && !fields.tokenCode.trim())
-              }
-              className="h-12 flex-1 rounded-md bg-secondary font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50"
-            >
-              {submitting
-                ? "Menyimpan..."
-                : submitLabel ?? (initial ? "Simpan Perubahan" : "Simpan Transaksi")}
-            </button>
-          </div>
         </>
       )}
-    </div>
-  );
-}
-
-/** Compact service type picker used inside the new-transaction form. */
-function ServiceTypePicker({
-  selected,
-  onSelect,
-}: {
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {DIGITAL_SERVICES.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => onSelect(s.id)}
-          className={`flex h-12 items-center gap-2 rounded-md border px-3 font-medium transition-all active:scale-[0.98] ${
-            selected === s.id
-              ? "border-secondary bg-secondary/5 text-secondary"
-              : "border-border-standard bg-card text-on-surface-variant"
-          }`}
-        >
-          <Icon name={s.icon} size={16} />
-          <span className="truncate">{s.label}</span>
-        </button>
-      ))}
     </div>
   );
 }
